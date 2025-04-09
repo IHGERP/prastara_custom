@@ -32,6 +32,13 @@ app_license = "MIT"
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
+
+
+doctype_js = {
+    "Leave Application": "public/js/leave_application.js",
+}
+
+
 # Home Pages
 # ----------
 
@@ -163,6 +170,13 @@ app_license = "MIT"
 # override_doctype_dashboards = {
 #	"Task": "prastara_custom.task.get_dashboard_data"
 # }
+
+
+
+override_doctype_class = {
+	"Payroll Entry": "ihgind_custom.overrides.ihg_payroll_entry.IHGPayrollEntry",
+}
+
 
 # exempt linked doctypes from being automatically cancelled
 #
