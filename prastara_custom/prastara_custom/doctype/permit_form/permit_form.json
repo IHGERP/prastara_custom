@@ -1,0 +1,150 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "PRMT-.#####",
+ "creation": "2025-04-11 17:57:51.602037",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "quotation",
+  "branch",
+  "company",
+  "column_break_ilapt",
+  "posting_date",
+  "customer",
+  "section_break_uvpwl",
+  "permit_selection",
+  "section_break_xtc0e",
+  "column_break_dzflb",
+  "total_amount",
+  "after_approval_tab",
+  "section_break_yzfen",
+  "sales_order",
+  "items",
+  "section_break_kte0c",
+  "paid_by"
+ ],
+ "fields": [
+  {
+   "fieldname": "quotation",
+   "fieldtype": "Link",
+   "label": "Quotation",
+   "options": "Quotation"
+  },
+  {
+   "fetch_from": "quotation.branch",
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fetch_from": "quotation.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "column_break_ilapt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fetch_from": "quotation.customer_name",
+   "fieldname": "customer",
+   "fieldtype": "Data",
+   "label": "Customer"
+  },
+  {
+   "fieldname": "section_break_uvpwl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "permit_selection",
+   "fieldtype": "Table",
+   "label": "Permit Selection",
+   "options": "Permit Selection"
+  },
+  {
+   "fieldname": "section_break_xtc0e",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_dzflb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Float",
+   "label": "Total Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "after_approval_tab",
+   "fieldtype": "Tab Break",
+   "label": "After Approval"
+  },
+  {
+   "fieldname": "section_break_yzfen",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:in_list([\"Approved\",\"Pending Accounts Approval\",\"Pending For Payment Approval\",\"Paid\",\"Paid and Completed\"],doc.workflow_state)",
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "depends_on": "eval:doc.sales_order",
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Permit Items"
+  },
+  {
+   "fieldname": "section_break_kte0c",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:in_list([\"Approved\",\"Pending Accounts Approval\",\"Pending For Payment Approval\",\"Paid\",\"Paid and Completed\"],doc.workflow_state)",
+   "fieldname": "paid_by",
+   "fieldtype": "Select",
+   "label": "Paid By",
+   "options": "\nCustomer\nCompany"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-11 17:57:51.602037",
+ "modified_by": "Administrator",
+ "module": "Prastara Custom",
+ "name": "Permit Form",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

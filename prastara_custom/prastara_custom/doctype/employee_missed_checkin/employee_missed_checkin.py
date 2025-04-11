@@ -3,6 +3,7 @@ from frappe.model.document import Document
 
 class EmployeeMissedCheckin(Document):
 	def validate(self):
+		frappe.errprint("Leave application")
 		if self.log_type == '':
 			frappe.throw("Log Type is required for check-ins falling in the shift: 08:30 AM TO 06:00 PM")
 

@@ -1,0 +1,238 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "SEC-CHQ-.#####",
+ "creation": "2023-09-20 17:40:19.036139",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "date",
+  "type",
+  "company",
+  "branch",
+  "disbute",
+  "column_break_5c4hi",
+  "party_type",
+  "party",
+  "party_name",
+  "payment_entry",
+  "cheque_details_section",
+  "undated",
+  "cheque_reference_number",
+  "cheque_issue_date",
+  "column_break_upnrt",
+  "cheque_expiry_date",
+  "amount",
+  "currency",
+  "column_break_b5xxk",
+  "purpose",
+  "remarks",
+  "more_info_section",
+  "loan",
+  "project",
+  "permit_request",
+  "sales_order",
+  "column_break_eivrg",
+  "purchase_order",
+  "sales_invoice",
+  "proforma_invoice"
+ ],
+ "fields": [
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "\nSecurity Cheque - Paid\nSecurity Cheque - Received\nCheque Bounced - Paid\nCheque Bounced - Received"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "default": "0",
+   "fieldname": "disbute",
+   "fieldtype": "Check",
+   "label": "Disbute"
+  },
+  {
+   "fieldname": "column_break_5c4hi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "party_type",
+   "fieldtype": "Link",
+   "label": "Party Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "party",
+   "fieldtype": "Dynamic Link",
+   "label": "Party",
+   "options": "party_type"
+  },
+  {
+   "fieldname": "party_name",
+   "fieldtype": "Data",
+   "label": "Party Name"
+  },
+  {
+   "depends_on": "eval:doc.party != null;",
+   "fieldname": "payment_entry",
+   "fieldtype": "Link",
+   "label": "Payment Entry",
+   "options": "Payment Entry"
+  },
+  {
+   "fieldname": "cheque_details_section",
+   "fieldtype": "Section Break",
+   "label": "Cheque Details"
+  },
+  {
+   "default": "0",
+   "fieldname": "undated",
+   "fieldtype": "Check",
+   "label": "Undated"
+  },
+  {
+   "fieldname": "cheque_reference_number",
+   "fieldtype": "Data",
+   "label": "Cheque Reference Number"
+  },
+  {
+   "depends_on": "eval:doc.undated == 0;",
+   "fieldname": "cheque_issue_date",
+   "fieldtype": "Date",
+   "label": "Cheque Issue Date"
+  },
+  {
+   "fieldname": "column_break_upnrt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.undated == 0;",
+   "fieldname": "cheque_expiry_date",
+   "fieldtype": "Date",
+   "label": "Cheque Expiry Date"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "options": "Currency"
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency"
+  },
+  {
+   "fieldname": "column_break_b5xxk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "purpose",
+   "fieldtype": "Select",
+   "label": "Purpose",
+   "options": "\nFinal settlement (EOSB) in accordance with the agreed-upon basic salary.\nContract Salary Change Request\nSalary Certificate Request (Banking purpose)\nNOC Letter Request\nDevice Installment\nShort-term Loan (STL).\nSalary Advance.\nRental Agreements\nCommercial Contracts\nCredit Application\nSupplier or Vendor Agreements\nService Contracts\nCustoms and Duties\nLegal Proceedings\nLeave salary release request\nOne Time Salary Transfer (Banking Purpose)"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "more_info_section",
+   "fieldtype": "Section Break",
+   "label": "More Info"
+  },
+  {
+   "fieldname": "loan",
+   "fieldtype": "Link",
+   "label": "Loan",
+   "options": "Loan"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project"
+  },
+  {
+   "fieldname": "permit_request",
+   "fieldtype": "Link",
+   "label": "Permit Request",
+   "options": "Permit Request"
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "column_break_eivrg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "purchase_order",
+   "fieldtype": "Link",
+   "label": "Purchase Order",
+   "options": "Purchase Order"
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "label": "Sales Invoice",
+   "options": "Sales Invoice"
+  },
+  {
+   "fieldname": "proforma_invoice",
+   "fieldtype": "Link",
+   "label": "Proforma Invoice",
+   "options": "Proforma Invoice"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-11 17:55:49.414923",
+ "modified_by": "Administrator",
+ "module": "Prastara Custom",
+ "name": "Cheque Document",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

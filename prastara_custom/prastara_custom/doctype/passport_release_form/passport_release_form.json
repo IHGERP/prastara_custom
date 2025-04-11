@@ -1,0 +1,225 @@
+{
+ "actions": [],
+ "autoname": "PRLS-.####",
+ "creation": "2021-12-07 13:32:01.534829",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "posting_date",
+  "column_break_3",
+  "status",
+  "type",
+  "section_break_5",
+  "employee",
+  "employee_name",
+  "column_break_8",
+  "department",
+  "designation",
+  "section_break_11",
+  "reason",
+  "column_break_13",
+  "passport_number",
+  "date_of_collection",
+  "returning_date",
+  "section_break_16",
+  "head_of_department",
+  "received_on_date",
+  "column_break_25",
+  "sim_card_received",
+  "sim_card_received_date",
+  "comments",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "HR-PRF-.YYYY.-"
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "label": "Status"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Leave Request\nBank Purpose\nRenewal\nAttestation\nBusiness Trip\nVisa Renewal\nFamily Purpose\nResignation\nTermination\nSitework\nPassport Renewal\nPersonal Purpose\nMedical Purpose",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_5",
+   "fieldtype": "Section Break",
+   "label": "Employee Details"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fetch_if_empty": 1,
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "employee.department",
+   "fetch_if_empty": 1,
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fetch_if_empty": 1,
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_11",
+   "fieldtype": "Section Break",
+   "hide_border": 1,
+   "label": "Passport Withdrawal Details"
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason"
+  },
+  {
+   "fieldname": "column_break_13",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "passport_number",
+   "fieldtype": "Data",
+   "label": "Passport Number"
+  },
+  {
+   "fieldname": "date_of_collection",
+   "fieldtype": "Date",
+   "label": "Date Of Collection"
+  },
+  {
+   "fieldname": "returning_date",
+   "fieldtype": "Date",
+   "label": "Returning Date"
+  },
+  {
+   "fieldname": "section_break_16",
+   "fieldtype": "Section Break",
+   "label": "Clearance Approval"
+  },
+  {
+   "fetch_from": "employee.leave_approver",
+   "fieldname": "head_of_department",
+   "fieldtype": "Link",
+   "label": "Head Of Department",
+   "options": "User"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "received_on_date",
+   "fieldtype": "Date",
+   "label": "Passport Returned Date"
+  },
+  {
+   "fieldname": "column_break_25",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "sim_card_received",
+   "fieldtype": "Check",
+   "label": "Sim Card Received"
+  },
+  {
+   "fieldname": "sim_card_received_date",
+   "fieldtype": "Date",
+   "label": "Sim Card Received Date"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Data",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Passport Release Form",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-04-11 17:48:46.298346",
+ "modified_by": "Administrator",
+ "module": "Prastara Custom",
+ "name": "Passport Release Form",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

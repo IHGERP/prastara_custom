@@ -1,0 +1,201 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "ATRF-.#####",
+ "creation": "2025-04-11 16:47:26.358195",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "employee_name",
+  "column_break_r1ivd",
+  "branch",
+  "company",
+  "joining_date",
+  "leave_salary_period_section",
+  "from_date",
+  "column_break_kcdv2",
+  "to_date",
+  "leave_history_section",
+  "show_leave_history",
+  "leave_details",
+  "provision_section",
+  "leave_salary_provision",
+  "type",
+  "column_break_am9oo",
+  "salary_component",
+  "payroll_date",
+  "salary_to_be_paid",
+  "leaves_section",
+  "leave_selection",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_r1ivd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "employee.branch",
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.date_of_joining",
+   "fieldname": "joining_date",
+   "fieldtype": "Date",
+   "label": "Joining Date"
+  },
+  {
+   "fieldname": "leave_salary_period_section",
+   "fieldtype": "Section Break",
+   "label": "Leave Salary Period"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "fieldname": "column_break_kcdv2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date"
+  },
+  {
+   "fieldname": "leave_history_section",
+   "fieldtype": "Section Break",
+   "label": "Leave History"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_leave_history",
+   "fieldtype": "Check",
+   "label": "Show Leave History"
+  },
+  {
+   "depends_on": "eval:doc.show_leave_history == 1",
+   "fieldname": "leave_details",
+   "fieldtype": "Table",
+   "label": "Leave Details",
+   "options": "Leave History",
+   "read_only": 1
+  },
+  {
+   "fieldname": "provision_section",
+   "fieldtype": "Section Break",
+   "label": "Provision"
+  },
+  {
+   "fieldname": "leave_salary_provision",
+   "fieldtype": "Float",
+   "label": "Airticket Provision",
+   "read_only": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "\nHOD\nNormal"
+  },
+  {
+   "fieldname": "column_break_am9oo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "salary_component",
+   "fieldtype": "Link",
+   "label": "Salary Component",
+   "options": "Salary Component"
+  },
+  {
+   "fieldname": "payroll_date",
+   "fieldtype": "Date",
+   "label": "Payroll Date"
+  },
+  {
+   "fieldname": "salary_to_be_paid",
+   "fieldtype": "Float",
+   "label": "Salary to be Paid"
+  },
+  {
+   "fieldname": "leaves_section",
+   "fieldtype": "Section Break",
+   "label": "Leaves"
+  },
+  {
+   "fieldname": "leave_selection",
+   "fieldtype": "Table",
+   "label": "Leave Selection",
+   "options": "Employee Leave Details"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Air Ticket Request Form",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-04-11 16:47:26.358195",
+ "modified_by": "Administrator",
+ "module": "Prastara Custom",
+ "name": "Air Ticket Request Form",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
