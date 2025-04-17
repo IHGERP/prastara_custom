@@ -1326,7 +1326,7 @@ class IHGSalarySlip(TransactionBase):
 	def get_loan_details(self):
 		#frappe.errprint("check loan")
 		return frappe.get_all("Loan",
-			fields=["name", "interest_income_account", "loan_account", "loan_type"],
+			fields=["name", "interest_income_account", "loan_account", "loan_product"],
 			filters = {
 				"applicant": self.employee,
 				"docstatus": 1,
@@ -1337,7 +1337,7 @@ class IHGSalarySlip(TransactionBase):
 	def make_loan_repayment_entry(self):
 		for loan in self.loans:
 			repayment_entry = create_repayment_entry(loan.loan, self.employee,
-				self.company, self.posting_date, loan.loan_type, "Regular Payment", loan.interest_amount,
+				self.company, self.posting_date, loan.loan_product, "Regular Payment", loan.interest_amount,
 				loan.principal_amount, loan.total_payment)
 
 			repayment_entry.save()
