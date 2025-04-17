@@ -30,7 +30,7 @@ from six import iteritems
 import erpnext
 from erpnext.accounts.utils import get_fiscal_year
 from hrms.hr.utils import get_holiday_dates_for_employee, validate_active_employee
-from ihgind_custom.overrides.ihg_loan_repayment import (
+from prastara_custom.overrides.ihg_loan_repayment import (
 	calculate_amounts,
 	create_repayment_entry,
 )

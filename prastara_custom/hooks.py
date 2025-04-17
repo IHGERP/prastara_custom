@@ -176,6 +176,7 @@ doctype_js = {
 override_doctype_class = {
 	"Payroll Entry": "prastara_custom.overrides.ihg_payroll_entry.IHGPayrollEntry",
     "Salary Slip": "prastara_custom.overrides.ihg_salary_slip.IHGSalarySlip",
+    "Loan Repayment": "prastara_custom.overrides.ihg_loan_repayment.IHGLoanRepayment",
 }
 
 
