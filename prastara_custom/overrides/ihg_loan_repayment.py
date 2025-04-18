@@ -4,7 +4,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, cint, date_diff, flt, get_datetime, getdate
+from frappe.utils import add_days, cint, date_diff, flt, get_datetime, getdate,get_last_day,
 
 import erpnext
 from erpnext.accounts.general_ledger import make_gl_entries
@@ -488,7 +488,7 @@ def create_repayment_entry(
 	applicant,
 	company,
 	posting_date,
-	loan_type,
+	loan_product,
 	payment_type,
 	interest_payable,
 	payable_principal_amount,
@@ -509,7 +509,7 @@ def create_repayment_entry(
 			"interest_payable": interest_payable,
 			"payable_principal_amount": payable_principal_amount,
 			"amount_paid": amount_paid,
-			"loan_type": loan_type,
+			"loan_product": loan_product,
 			"payroll_payable_account": payroll_payable_account,
 		}
 	).insert()
@@ -570,11 +570,6 @@ def get_penalty_details(against_loan):
 
 
 def regenerate_repayment_schedule(loan, cancel=0):
-	from lending.loan_management.doctype.loan.loan import (
-		add_single_month,
-		get_monthly_repayment_amount,
-	)
-
 	loan_doc = frappe.get_doc("Loan", loan)
 	next_accrual_date = None
 	accrued_entries = 0
@@ -636,6 +631,24 @@ def regenerate_repayment_schedule(loan, cancel=0):
 
 	loan_doc.save()
 
+def add_single_month(date):
+	if getdate(date) == get_last_day(date):
+		return get_last_day(add_months(date, 1))
+	else:
+		return add_months(date, 1)
+
+
+def get_monthly_repayment_amount(loan_amount, rate_of_interest, repayment_periods):
+	if rate_of_interest:
+		monthly_interest_rate = flt(rate_of_interest) / (12 * 100)
+		monthly_repayment_amount = math.ceil(
+			(loan_amount * monthly_interest_rate * (1 + monthly_interest_rate) ** repayment_periods)
+			/ ((1 + monthly_interest_rate) ** repayment_periods - 1)
+		)
+	else:
+		monthly_repayment_amount = math.ceil(flt(loan_amount) / repayment_periods)
+	return monthly_repayment_amount
+
 
 def get_pending_principal_amount(loan):
 	if loan.status in ("Disbursed", "Closed") or loan.disbursed_amount >= loan.loan_amount:
@@ -670,7 +683,7 @@ def get_amounts(amounts, against_loan, posting_date):
 	precision = cint(frappe.db.get_default("currency_precision")) or 2
 
 	against_loan_doc = frappe.get_doc("Loan", against_loan)
-	loan_type_details = frappe.get_doc("Loan Type", against_loan_doc.loan_type)
+	loan_type_details = frappe.get_doc("Loan Product", against_loan_doc.loan_product)
 	accrued_interest_entries = get_accrued_interest_entries(against_loan_doc.name, posting_date)
 
 	computed_penalty_date, pending_penalty_amount = get_penalty_details(against_loan)
