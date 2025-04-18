@@ -4,7 +4,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, cint, date_diff, flt, get_datetime, getdate,get_last_day,
+from frappe.utils import add_days, cint, date_diff, flt, get_datetime, getdate,get_last_day
 
 import erpnext
 from erpnext.accounts.general_ledger import make_gl_entries
