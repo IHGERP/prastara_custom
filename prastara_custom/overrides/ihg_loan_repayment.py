@@ -4,7 +4,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, cint, date_diff, flt, get_datetime, getdate,get_last_day
+from frappe.utils import add_days, cint, date_diff, flt, get_datetime, getdate,get_last_day,
 
 import erpnext
 from erpnext.accounts.general_ledger import make_gl_entries
@@ -570,10 +570,6 @@ def get_penalty_details(against_loan):
 
 
 def regenerate_repayment_schedule(loan, cancel=0):
-	from lending.loan_management.doctype.loan.loan import (
-		get_monthly_repayment_amount,
-	)
-
 	loan_doc = frappe.get_doc("Loan", loan)
 	next_accrual_date = None
 	accrued_entries = 0
@@ -630,7 +626,7 @@ def regenerate_repayment_schedule(loan, cancel=0):
 				"balance_loan_amount": balance_amount,
 			},
 		)
-		next_payment_date = self.add_single_month(payment_date)
+		next_payment_date = add_single_month(payment_date)
 		payment_date = next_payment_date
 
 	loan_doc.save()
