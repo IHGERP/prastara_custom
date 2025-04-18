@@ -576,7 +576,7 @@ def regenerate_repayment_schedule(loan, cancel=0):
 	last_repayment_amount = None
 	last_balance_amount = None
 
-	for term in reversed(loan_doc.get("repayment_schedule")):
+	for term in reversed(loan_doc.get("repayment_schedule") or []):
 		if not term.is_accrued:
 			next_accrual_date = term.payment_date
 			loan_doc.remove(term)
