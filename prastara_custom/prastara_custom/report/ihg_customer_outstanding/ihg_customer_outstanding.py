@@ -66,22 +66,27 @@ class ReceivablePayableReport(object):
 
 	def set_defaults(self):
 		if not self.filters.get("company"):
-			self.filters.company = frappe.db.get_single_value("Global Defaults", "default_company")
-		self.company_currency = frappe.get_cached_value(
-			"Company", self.filters.get("company"), "default_currency"
-		)
-		self.currency_precision = get_currency_precision() or 2
-		self.dr_or_cr = "debit" if self.filters.party_type == "Customer" else "credit"
-		self.party_type = self.filters.party_type
-		self.party_details = {}
-		self.invoices = set()
-		self.skip_total_row = 0
+        self.filters.company = frappe.db.get_single_value("Global Defaults", "default_company")
+    self.company_currency = frappe.get_cached_value(
+        "Company", self.filters.get("company"), "default_currency"
+    )
+    self.currency_precision = get_currency_precision() or 2
+    self.dr_or_cr = "debit" if self.filters.party_type == "Customer" else "credit"
+    self.party_type = self.filters.party_type
+    self.party_details = {}
+    self.invoices = set()
+    self.skip_total_row = 0
 
-		if self.filters.get("group_by_party"):
-			self.previous_party = ""
-			self.total_row_map = {}
-			self.skip_total_row = 1
+    # Set default ageing ranges
+    self.filters.setdefault("range1", 30)
+    self.filters.setdefault("range2", 60)
+    self.filters.setdefault("range3", 90)
+    self.filters.setdefault("range4", 120)
 
+    if self.filters.get("group_by_party"):
+        self.previous_party = ""
+        self.total_row_map = {}
+        self.skip_total_row = 1
 	def get_data(self):
 		self.get_ple_entries()
 		self.get_sales_invoices_or_customers_based_on_sales_person()
