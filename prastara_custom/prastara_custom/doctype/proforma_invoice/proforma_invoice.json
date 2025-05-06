@@ -1,0 +1,224 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format: PI-{sales_order}",
+ "creation": "2022-10-20 15:50:59.866538",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "sales_order",
+  "company",
+  "amended_from",
+  "date",
+  "customer",
+  "customer_address",
+  "trn",
+  "status",
+  "column_break_8",
+  "contact_number",
+  "company_trn",
+  "account_incharge",
+  "account_incharge_name",
+  "lpo_no",
+  "lpo_date",
+  "advance_amount",
+  "section_break_14",
+  "proforma_invoice_no",
+  "section_break_15",
+  "net_total",
+  "vat",
+  "gross_total",
+  "in_words",
+  "section_break_23",
+  "terms_and_condition_template",
+  "terms_and_condition"
+ ],
+ "fields": [
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sales Order",
+   "options": "Sales Order",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "sales_order.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Proforma Invoice",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fetch_from": "sales_order.transaction_date",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fetch_from": "sales_order.customer",
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fetch_from": "sales_order.address_display",
+   "fieldname": "customer_address",
+   "fieldtype": "Small Text",
+   "label": "Customer Address"
+  },
+  {
+   "fetch_from": "sales_order.tax_id",
+   "fieldname": "trn",
+   "fieldtype": "Data",
+   "label": "TRN"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nDraft\nSubmitted\nInvoiced",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "sales_order.contact_mobile",
+   "fieldname": "contact_number",
+   "fieldtype": "Data",
+   "label": "Contact Number"
+  },
+  {
+   "fetch_from": "sales_order.company_trn",
+   "fieldname": "company_trn",
+   "fieldtype": "Data",
+   "label": "Company TRN"
+  },
+  {
+   "fieldname": "account_incharge",
+   "fieldtype": "Link",
+   "label": "Account Incharge",
+   "options": "User"
+  },
+  {
+   "fetch_from": "account_incharge.full_name",
+   "fieldname": "account_incharge_name",
+   "fieldtype": "Data",
+   "label": "Account Incharge Name"
+  },
+  {
+   "fieldname": "lpo_no",
+   "fieldtype": "Link",
+   "label": "LPO No",
+   "options": "Payment Entry"
+  },
+  {
+   "fetch_from": "lpo_no.posting_date",
+   "fieldname": "lpo_date",
+   "fieldtype": "Date",
+   "label": "LPO Date"
+  },
+  {
+   "fetch_from": "lpo_no.paid_amount",
+   "fieldname": "advance_amount",
+   "fieldtype": "Float",
+   "label": "Advance Amount"
+  },
+  {
+   "fieldname": "section_break_14",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_bulk_edit": 1,
+   "fieldname": "proforma_invoice_no",
+   "fieldtype": "Table",
+   "label": "Proforma Invoice No",
+   "options": "Proforma Invoice Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_15",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fetch_from": "sales_order.total",
+   "fieldname": "net_total",
+   "fieldtype": "Float",
+   "label": "Net Total"
+  },
+  {
+   "fetch_from": "sales_order.total_taxes_and_charges",
+   "fieldname": "vat",
+   "fieldtype": "Float",
+   "label": "VAT"
+  },
+  {
+   "fetch_from": "sales_order.grand_total",
+   "fieldname": "gross_total",
+   "fieldtype": "Float",
+   "label": "Gross Total"
+  },
+  {
+   "fetch_from": "sales_order.in_words",
+   "fieldname": "in_words",
+   "fieldtype": "Data",
+   "label": "In Words"
+  },
+  {
+   "fieldname": "section_break_23",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "terms_and_condition_template",
+   "fieldtype": "Link",
+   "label": "Terms and Condition Template",
+   "options": "Terms and Conditions"
+  },
+  {
+   "fetch_from": "terms_and_condition_template.terms",
+   "fieldname": "terms_and_condition",
+   "fieldtype": "Text Editor",
+   "label": "Terms and Condition"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-05-06 09:20:18.671206",
+ "modified_by": "Administrator",
+ "module": "Prastara Custom",
+ "name": "Proforma Invoice",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
