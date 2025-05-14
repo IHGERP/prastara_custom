@@ -1,0 +1,516 @@
+<style>
+	.print-format {
+		padding: 1mm;
+		font-size: 7.0pt !important;
+	}
+
+	.table1 tbody tr:last-child td:last-child {
+		color: #eee !important;
+	}
+
+	.head-tle {
+		border-color: black !important;
+	}
+
+	.td-black {
+		background-color: black !important;
+		color: white !important;
+	}
+
+	.bg-color {
+		border-color: #2e2e2e !important;
+		border-radius: .5px;
+		background-color: #eee !important;
+	}
+
+	.print-format td {
+		vertical-align: middle !important;
+	}
+
+	.set-color {
+		background-color: black !important;
+		color: white !important;
+	}
+
+	.print-format.landscape {
+
+		padding: 0in !important;
+	}
+
+	td,
+	tr,
+	th {
+		font-size: 8px !important;
+		border-color: black !important;
+	}
+
+	table {
+		border: 1px solid black !important;
+	}
+</style>
+
+<img src="https://erp.prastaradecor.com/files/SOA-1.jpg" alt="Title">
+
+
+<b><center><h3>Please mention the address and mobile number of the customer before proceeding to print.</h3></center></b>
+
+
+
+<table class="table table-bordered table-condensed" width="100%" style="BORDER: 1PX SOLID BLACK;">
+	<tr>
+		<td rowspan="5" class="head-tle" width="50%"><b>
+				<h3 style="margin-left: 10%;display: flex;">{%= filters.customer_name %}</h3>
+			</b>
+			<p style="display: flex; margin-left: 10%;"><b>{%= filters.primary_address%}</b></p>
+		</td>
+	</tr>
+	<tr>
+		<td class="head-tle" width="35%" style="border-top-style:hidden;border-right-style:hidden;"><b>{%= __("Email :")
+				%}</b>{%= filters.email_id %}</td>
+	</tr>
+	<tr>
+		<td class="head-tle" width="35%" style="border-right-style:hidden;"><b>{%= __("Mob :") %}</b>{%=
+			filters.mobile_no %}
+		</td>
+	</tr>
+	<tr>
+		<td class="head-tle" width="35%" style="border-right-style:hidden;"><b>{%= __("Tax-Id :") %}</b>{%=
+			filters.tax_id %}</td>
+	</tr>
+	<tr>
+		<td class="head-tle" width="35%" style="border-right-style:hidden;"><b>{%= __("Due Date :") %}</b>{%=
+			frappe.datetime.str_to_user(filters.report_date) %}</td>
+	</tr>
+
+</table>
+
+
+<table class="table table-bordered table1">
+	<thead>
+		<tr>
+
+			<td class="td-black" style="width: 10%">{%= __("Date") %}</td>
+
+			<td class="td-black" style="width: 14%">{%= __("Reference") %}</td>
+
+			<td class="td-black" style="width: 10%">{%= (filters.customer || filters.supplier) ? __("Customer LPO"):
+				__("LPO") %}</td>
+
+			<td class="td-black" style="width: 10%">{%= __("Project Name") %}</td>
+
+			<td class="td-black" style="width: 10%; text-align: right">{%= __("Invoiced Amount (AED)") %}</td>
+
+			<td class="td-black" style="width: 10%; text-align: right">{%= __("Paid Amount (AED)") %}</td>
+			<td class="td-black" style="width: 10%; text-align: right">{%= report.report_name === "IHG Customer Outstanding" ? __('Credit
+				Note') : __('Debit Note') %}</td>
+
+			<td class="td-black" style="width: 10%; text-align: right">{%= __("Outstanding Amount (AED)") %}</td>
+
+
+			<td class="td-black" style="width: 10%">{%= __("Future Payment Amount AED") %}</td>
+			<!-- <td class="td-black" style="width: 10%">{%= __("Remaining Balance (AED)") %}</td> -->
+			<td class="td-black" style="width: 10%">{%= __("Cumilative Balance") %}</td>
+			<td class="td-black" style="width: 10%">{%= __("Age") %}</td>
+
+
+		</tr>
+	</thead>
+	<tbody>
+		{% var flag = 0; %}
+		{% for(var i=0, l=data.length; i<l; i++) { %} <tr class="table-active">
+			<td class="bg-color">{%= frappe.datetime.str_to_user(data[i]["posting_date"]) %}</td>
+
+			<td class="bg-color">
+
+				{%= data[i]["voucher_type"] %}
+				<br>
+
+				{%= data[i]["voucher_no"] %}
+
+
+			</td>
+			{% if(!data[i]["is_total_row"]) { %}
+			<td class="bg-color" style="text-align: right">
+				{%= data[i]["po_no"] %}</td>
+
+			<td class="bg-color" style="text-align: right">
+				{%= data[i]["project_name"] %}
+			</td>
+
+			<td class="bg-color" style="text-align: right">
+				{%= (data[i]["invoiced"]) %}</td>
+
+			<td class="bg-color" style="text-align: right">
+				{%= (data[i]["paid"]) %}</td>
+			<td class="bg-color" style="text-align: right">
+			{%= (data[i]["credit_note"]) %}</td>
+
+			<td class="bg-color" style="text-align: right">
+				{%= (data[i]["outstanding"]) %}</td>
+			<td class="bg-color" style="text-align: right">{%= (data[i]["future_amount"]) %}</td>
+			<!-- <td class="bg-color" style="text-align: right">{%= (data[i]["remaining_balance"]) %}</td> -->
+			{% if(!data[i]["is_total_row"]) { %}
+			{% if(i == 0) { %}
+			<td class="bg-color" style="text-align: right">
+				{%= (data[i]["outstanding"]) %}</td>
+
+			{% } else { %}
+			{% var t = 0; %}
+			{% t = data[0]["outstanding"] ; %}
+			{% for(var j=1; j<=i; j++) { %} {% t=t + (data[j]["outstanding"] - data[j]["future_amount"] ) ; %} {% var
+				pointValue=parseFloat(t); %} {% var pointValue=pointValue.toFixed(2); %} {% } %} <td class="bg-color"
+				style="text-align: right">{%= __(flt(pointValue)) %}</td>
+				{% } %}
+				{% } else { %}
+				<td class="bg-color" style="text-align: right"></td>
+				{% } %}
+				<td class="bg-color" style="text-align: right">{%= data[i]["age"] %}</td>
+
+
+				{% } else { %}
+				<td class="bg-color"><b>{%= __("Total") %}</b></td>
+
+
+				<td class="bg-color" style="text-align: right">
+					{% var pointValue = parseFloat(data[i]["project_name"]); %}
+					{% var pointValue = pointValue.toFixed(2); %}
+					<b>{%= pointValue %}</b>
+				</td>
+
+				<td class="bg-color" style="text-align: right">
+					<b>
+						{% var pointValue = parseFloat(data[i]["invoiced"]); %}
+						{% var pointValue = pointValue.toFixed(2); %}
+						{%= pointValue %}</b>
+				</td>
+
+				<td class="bg-color" style="text-align: right">
+					{% var pointValue = parseFloat(data[i]["paid"]); %}
+					{% var pointValue = pointValue.toFixed(2); %}
+					<b>{%= pointValue %}</b>
+				</td>
+				<td class="bg-color" style="text-align: right">
+				{%= (data[i]["credit_note"]) %}</td>
+
+				<td class="bg-color" style="text-align: right">
+					{% var pointValue = parseFloat(data[i]["outstanding"]); %}
+					{% var pointValue = pointValue.toFixed(2); %}
+					<b>{%= pointValue %}</b>
+				</td>
+				<td class="bg-color" style="text-align: right"><b>
+						{% var pointValue = parseFloat(data[i]["future_amount"]); %}
+						{% var pointValue = pointValue.toFixed(2); %}
+						{%= pointValue %}</b></td>
+				<!-- <td class="bg-color" style="text-align: right">{%= (data[i]["remaining_balance"]) %}</td> -->
+
+				<td class="bg-color" style="text-align: right"></td>
+
+				<td class="bg-color" style="text-align: right"></td>
+				{% } %}
+				{% } %}
+	</tbody>
+</table>
+<br>
+
+<h4 style="text-align:center;"><b>FUTURE PAYMENT</b></h4>
+
+
+
+<table class="table table-bordered table1">
+	<thead>
+		<tr>
+
+			<td class="td-black" style="width: 10%">{%= __("Date") %}</td>
+
+			<td class="td-black" style="width: 14%">{%= __("Reference") %}</td>
+
+			<td class="td-black" style="width: 10%">{%= (filters.customer || filters.supplier) ? __("Customer LPO"):
+				__("LPO") %}</td>
+
+			<td class="td-black" style="width: 10%">{%= __("Project Name") %}</td>
+
+			<td class="td-black" style="width: 10%; text-align: right">{%= __("Invoiced Amount (AED)") %}</td>
+
+			<td class="td-black" style="width: 10%; text-align: right">{%= __("Paid Amount (AED)") %}</td>
+			<td class="td-black" style="width: 10%; text-align: right">{%= report.report_name === "IHG Customer Outstanding" ? __('Credit
+				Note') : __('Debit Note') %}</td>
+
+			<td class="td-black" style="width: 10%; text-align: right">{%= __("Outstanding Amount (AED)") %}</td>
+
+
+			<td class="td-black" style="width: 10%">{%= __("Future Payment Amount AED") %}</td>
+			<!-- <td class="td-black" style="width: 10%">{%= __("Remaining Balance (AED)") %}</td> -->
+			<td class="td-black" style="width: 10%">{%= __("Cumilative Balance") %}</td>
+			<td class="td-black" style="width: 10%">{%= __("Age") %}</td>
+
+
+		</tr>
+	</thead>
+	<tbody>
+		{% var flag = 0; %}
+		{% var outs = 0; %}
+		{% var invo = 0; %}
+		{% var futu = 0; %}
+		{% var pay = 0; %}
+		{% var test = 0; %}
+		{% for(var i=0, l=data.length; i<l; i++) { %} <tr class="table-active">
+			{% if(data[i]["future_amount"] != 0) { %}
+			<td class="bg-color">{%= frappe.datetime.str_to_user(data[i]["posting_date"]) %}</td>
+
+			<td class="bg-color">
+
+				{%= data[i]["voucher_type"] %}
+				<br>
+
+				{%= data[i]["voucher_no"] %}
+
+
+			</td>
+			{% if(!data[i]["is_total_row"]) { %}
+			<td class="bg-color" style="text-align: right">
+				{%= data[i]["po_no"] %}</td>
+
+
+
+			<td class="bg-color" style="text-align: right">
+				{%= data[i]["project_name"] %}
+			</td>
+
+			<td class="bg-color" style="text-align: right">
+				{%= (data[i]["invoiced"]) %}</td>
+			{% invo = invo + (data[i]["invoiced"]) %}
+
+			<td class="bg-color" style="text-align: right">
+				{%= (data[i]["paid"]) %}</td>
+			{% pay = pay + (data[i]["paid"]) %}
+			<td class="bg-color" style="text-align: right">
+			{%= (data[i]["credit_note"]) %}</td>
+
+			<td class="bg-color" style="text-align: right">
+				{%= (data[i]["outstanding"]) %}</td>
+			{% outs = outs + (data[i]["outstanding"]) %}
+			<td class="bg-color" style="text-align: right">{%= (data[i]["future_amount"]) %}</td>
+			{% futu = futu + (data[i]["future_amount"]) %}
+			<!-- <td class="bg-color" style="text-align: right">{%= (data[i]["remaining_balance"]) %}</td> -->
+			{% if(!data[i]["is_total_row"]) { %}
+			{% if(flag == 0) { %}
+			<td class="bg-color" style="text-align: right">
+				{%= (data[i]["outstanding"]) %}</td>
+
+			{% if(i == 0) { %}
+			{% flag = 1; %}
+			{% } else { %}
+			{% flag = i; %}
+			{% } %}
+
+			{% } else { %}
+			{% var t = 0; %}
+			{% t = data[flag - 1]["outstanding"]; %}
+			{% for(var j=flag; j<=i; j++) { %} {% if(data[j]["future_amount"] !=0) { %} {% t=t +
+				(data[j]["outstanding"]) ; %} {% var pointValue=parseFloat(t); %} {% var
+				pointValue=pointValue.toFixed(2); %} {% } %} {% } %} <td class="bg-color" style="text-align: right">{%=
+				__(flt(pointValue)) %}</td>
+				{% } %}
+				{% } else { %}
+				<td class="bg-color" style="text-align: right"></td>
+				{% } %}
+				<td class="bg-color" style="text-align: right">{%= data[i]["age"] %}</td>
+
+				{% } else { %}
+				<td class="bg-color"><b>{%= __("Total") %}</b></td>
+
+
+				<td class="bg-color" style="text-align: right">
+					<b>{%= data[i]["project_name"] %}</b>
+				</td>
+
+				<td class="bg-color" style="text-align: right">
+					{% var pointValue = parseFloat(invo); %}
+					{% var pointValue = pointValue.toFixed(2); %}
+					<b>{%= __(flt(pointValue)) %}</b>
+				</td>
+
+				<td class="bg-color" style="text-align: right">
+					{% var pointValue = parseFloat(pay); %}
+					{% var pointValue = pointValue.toFixed(2); %}
+					<b>{%= __(flt(pointValue)) %}</b>
+				</td>
+				<td class="bg-color" style="text-align: right">
+				{%= (data[i]["credit_note"]) %}</td>
+
+				<td class="bg-color" style="text-align: right">
+					{% var pointValue = parseFloat(outs); %}
+					{% var pointValue = pointValue.toFixed(2); %}
+					<b>{%= __(flt(pointValue)) %}</b>
+				</td>
+				<td class="bg-color" style="text-align: right"><b>
+						{% var pointValue = parseFloat(futu); %}
+						{% var pointValue = pointValue.toFixed(2); %}
+						{%= __(flt(pointValue)) %}</b></td>
+				<!-- <td class="bg-color" style="text-align: right">{%= (data[i]["remaining_balance"]) %}</td> -->
+				{% if(!data[i]["is_total_row"]) { %}
+				{% if(flag == 0) { %}
+				<td class="bg-color" style="text-align: right">
+					<b>{%= (data[i]["outstanding"]) %}</b>
+				</td>
+
+				{% if(i == 0) { %}
+				{% flag = 1; %}
+				{% } else { %}
+				{% flag = i; %}
+				{% } %}
+
+				{% } else { %}
+				{% var t = 0; %}
+				{% for(var j=flag - 1; j<=i; j++) { %} {% if(data[j]["future_amount"] !=0) { %} {% t=t +
+					(data[j]["outstanding"]) ; %} {% var pointValue=parseFloat(t); %} {% var
+					pointValue=pointValue.toFixed(2); %} {% } %} {% } %} <td class="bg-color" style="text-align: right">
+					<b>{%= __(flt(pointValue)) %}</b></td>
+					{% } %}
+					{% } else { %}
+					<td class="bg-color" style="text-align: right"></td>
+					{% } %}
+					<td class="bg-color" style="text-align: right"></td>
+					{% } %}
+
+					{% } else { %}
+					{% if(test == 0) { %}
+					{% if(i != 0) { %}
+					<td class="bg-color" style="text-align: right">{%= 0 %}</td>
+					<td class="bg-color" style="text-align: right">{%= 0 %}</td>
+					<td class="bg-color" style="text-align: right">{%= 0 %}</td>
+					<td class="bg-color" style="text-align: right">{%= 0 %}</td>
+					<td class="bg-color" style="text-align: right">{%= 0 %}</td>
+					<td class="bg-color" style="text-align: right">{%= 0 %}</td>
+					<td class="bg-color" style="text-align: right">{%= 0 %}</td>
+					<td class="bg-color" style="text-align: right">{%= 0 %}</td>
+					<td class="bg-color" style="text-align: right">{%= 0 %}</td>
+					<td class="bg-color" style="text-align: right">{%= 0 %}</td>
+					<td class="bg-color" style="text-align: right">{%= 0 %}</td>
+					{% test = 1; %}
+					{% } %}
+					{% } %}
+					{% } %}
+					{% } %}
+	</tbody>
+</table>
+
+
+
+{% if(filters.show_future_payments) { %}
+{% var balance_row = data.slice(-1).pop();
+var start = report.columns.findIndex((elem) => (elem.fieldname == 'age'));
+var range1 = report.columns[start].label;
+var range2 = report.columns[start+1].label;
+var range3 = report.columns[start+2].label;
+var range4 = report.columns[start+3].label;
+var range5 = report.columns[start+4].label;
+var range6 = report.columns[start+5].label;
+%}
+{% if(balance_row) { %}
+
+<h2 id="number-header" style="text-align: end;"><b>TOTAL OUTSTANDING :
+
+		{%= format_currency(flt(balance_row["outstanding"] - balance_row[("future_amount")]),
+		data[data.length-1]["currency"]) %} </b><br></h2>
+<p id="number-words"></p>
+
+<h4 style="text-align:center;"><b>OUTSTANDING SUMMARY</b></h4>
+<table class="table table-bordered table-condensed">
+	<caption class="text-right">(Amount in {%= data[0]["currency"] || "" %})</caption>
+	<colgroup>
+		<col style="width: 30mm;">
+		<col style="width: 18mm;">
+		<col style="width: 18mm;">
+		<col style="width: 18mm;">
+		<col style="width: 18mm;">
+		<col style="width: 18mm;">
+		<col style="width: 18mm;">
+		<col style="width: 18mm;">
+	</colgroup>
+
+	<thead>
+		<tr>
+			<td class="set-color">Days</td>
+			<td>{%= __(range2) %}</td>
+			<td>{%= __(range3) %}</td>
+			<td>{%= __(range4) %}</td>
+			<td>{%= __(range5) %}</td>
+			<td>{%= __(range6) %}</td>
+			<td>{%= __("Total") %}</td>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td class="set-color">{%= __("Total Outstanding") %}</td>
+			<!-- <td class="text-right">
+				{%= format_number(balance_row["age"], null, 2) %}
+			</td> -->
+			<td class="text-right">
+				{%= format_currency(balance_row["range1"], data[data.length-1]["currency"]) %}
+			</td>
+			<td class="text-right">
+				{%= format_currency(balance_row["range2"], data[data.length-1]["currency"]) %}
+			</td>
+			<td class="text-right">
+				{%= format_currency(balance_row["range3"], data[data.length-1]["currency"]) %}
+			</td>
+			<td class="text-right">
+				{%= format_currency(balance_row["range4"], data[data.length-1]["currency"]) %}
+			</td>
+			<td class="text-right">
+				{%= format_currency(balance_row["range5"], data[data.length-1]["currency"]) %}
+			</td>
+			<td class="text-right">
+				{%= format_currency(flt(balance_row["outstanding"]), data[data.length-1]["currency"]) %}
+			</td>
+		</tr>
+		<td class="set-color">{%= __("Future Payments") %}</td>
+		<td></td>
+		<td></td>
+		<td></td>
+		<td></td>
+		<td></td>
+		<td class="text-right">
+			{%= format_currency(flt(balance_row[("future_amount")]), data[data.length-1]["currency"]) %}
+		</td>
+		<tr class="cvs-footer">
+			<td class="text-left" style="background-color: black;color: white;">{%= __("Payment Required") %}</td>
+
+			<td colspan="6" class="text-right">
+				<b>{%= format_currency(flt(balance_row["outstanding"] - balance_row[("future_amount")]),
+					data[data.length-1]["currency"]) %}</b>
+			</td>
+		</tr>
+	</tbody>
+
+</table>
+{% } %}
+{% } %}
+
+
+
+<br>
+
+{% if(filters.company == "METROPLUS ADVERTISING LLC") { %}
+<p class="text-left text-muted"></p>
+<b>Bank Details:</b>
+<br>Benificiary Name: Metroplus Advertising LLC
+<br>Account Number: 941775920001
+<br>Branch: SHEIKH ZAYED ROAD BRANCH
+<br>SWIFT Code: ADCBAEAA
+<br>IBAN No: AE090030000941775920001</p>
+{% } %}
+
+{% if(filters.company == "IHG INDUSTRY LLC") { %}
+<p class="text-left text-muted"></p>
+<b>Bank Details:</b>
+<br>Benificiary Name: IHG INDUSTRY LLC - please check details
+<br>Account Number: 941775920001
+<br>Branch: SHEIKH ZAYED ROAD BRANCH
+<br>SWIFT Code: ADCBAEAA
+<br>IBAN No: AE090030000941775920001</p>
+{% } %}
+
+<p class="text-right text-muted">{{ __("Printed On ") }}{%=
+	frappe.datetime.str_to_user(frappe.datetime.get_datetime_as_string()) %}</p>
