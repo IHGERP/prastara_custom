@@ -77,16 +77,11 @@ class ReceivablePayableReport(object):
 		self.invoices = set()
 		self.skip_total_row = 0
 
-		# Set default ageing ranges
-		self.filters.setdefault("range1", 30)
-		self.filters.setdefault("range2", 60)
-		self.filters.setdefault("range3", 90)
-		self.filters.setdefault("range4", 120)
-
 		if self.filters.get("group_by_party"):
 			self.previous_party = ""
 			self.total_row_map = {}
 			self.skip_total_row = 1
+
 	def get_data(self):
 		self.get_ple_entries()
 		self.get_sales_invoices_or_customers_based_on_sales_person()

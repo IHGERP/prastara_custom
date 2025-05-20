@@ -3058,49 +3058,125 @@ def get_project_data(branch=None, customer=None, company=None, start_date=None, 
 #             "status": "error",
 #             "message": "Project not found."
 #         }
+
+
+import frappe
+from frappe import _
+
 @frappe.whitelist()
-def get_sales_order_data(statuses=None, display_type='count'):
+def get_sales_order_data(display_type='count', sales_person=None, sales_team=None):
     """
-    Fetch sales orders grouped by month with filter by status for a specific company and non-internal customers.
+    Fetch sales orders for chart (aggregated by month and status) and table (detailed records)
+    with filters for sales person and sales team for a specific company and non-internal customers.
     
     Parameters:
-        statuses (str): Comma-separated list of statuses to filter by.
-        display_type (str): "count" for order count, "amount" for total amount.
+        display_type (str): "count" for order count, "amount" for total amount (for chart).
+        sales_person (str): Name of the sales person to filter by.
+        sales_team (str): Name of the sales team to filter by.
         
     Returns:
-        List of dictionaries with month, status, and respective count or total.
+        Dictionary with 'chart_data' (list of aggregated records) and 'table_data' (list of detailed records).
     """
-    # Convert statuses to a list, or use None if not provided
-    status_list = statuses.split(',') if statuses else None
+    # Log input parameters
+    input_params = f"display_type={display_type}, sales_person={sales_person}, sales_team={sales_team}"
+    frappe.log_error(message=input_params, title="Input Parameters (get_sales_order_data)")
+
+    # Validate display_type
+    if display_type not in ['count', 'amount']:
+        frappe.log_error(message=f"Invalid display_type: {display_type}", title="Invalid Display Type")
+        return {'chart_data': [], 'table_data': []}
+
+    field = "COUNT(DISTINCT `tabSales Order`.name)" if display_type == 'count' else "SUM(`tabSales Order`.grand_total)"
     
-    # Base query to fetch Sales Order data
-    field = "COUNT(name)" if display_type == 'count' else "SUM(grand_total)"
+    # Base conditions for both queries
+    conditions = [
+        "`tabSales Order`.docstatus = 1",
+        "`tabSales Order`.company = 'METROPLUS ADVERTISING LLC'",
+        "`tabSales Order`.is_internal_customer = 0",
+        "`tabSales Order`.delivery_date IS NOT NULL"
+    ]
+    params = {}
     
-    query = f"""
+    # Chart query (aggregated by month and status)
+    chart_query = f"""
         SELECT 
-            DATE_FORMAT(delivery_date, '%%M %%Y') AS month,
-            status,
-            {field} AS value
+            DATE_FORMAT(`tabSales Order`.delivery_date, '%%M %%Y') AS month,
+            `tabSales Order`.status,
+            {field} AS value,
+            MIN(`tabSales Order`.delivery_date) AS min_delivery_date
         FROM 
             `tabSales Order`
-        WHERE 
-            docstatus = 1
-            AND company = 'METROPLUS ADVERTISING LLC'
-            AND is_internal_customer = 0
     """
     
-    # Add status filtering if statuses are provided
-    if status_list:
-        query += " AND status IN %(statuses)s"
+    # Table query (detailed records)
+    table_query = """
+        SELECT 
+            `tabSales Order`.name AS sales_order_id,
+            `tabSales Order`.status,
+            `tabSales Order`.customer AS customer_name,
+            `tabSales Order`.grand_total
+        FROM 
+            `tabSales Order`
+    """
     
-    # Group by month and status and order by month (delivery_date)
-    query += " GROUP BY month, status ORDER BY MIN(delivery_date) ASC"
+    joins = []
     
-    # Execute the query
-    data = frappe.db.sql(query, {'statuses': status_list}, as_dict=True)
+    # Add sales person filter if provided
+    if sales_person:
+        joins.append("INNER JOIN `tabSales Team` st ON st.parent = `tabSales Order`.name")
+        conditions.append("st.sales_person = %(sales_person)s")
+        params['sales_person'] = sales_person
     
-    # Process and return data
-    return data
+    # Add sales team filter if provided
+    if sales_team:
+        joins.append("INNER JOIN `tabSales Team` st2 ON st2.parent = `tabSales Order`.name")
+        conditions.append("st2.sales_person = %(sales_team)s")
+        params['sales_team'] = sales_team
+    
+    # Apply joins and conditions to both queries
+    if joins:
+        chart_query += " " + " ".join(joins)
+        table_query += " " + " ".join(joins)
+    
+    if conditions:
+        chart_query += " WHERE " + " AND ".join(conditions)
+        table_query += " WHERE " + " AND ".join(conditions)
+    
+    chart_query += " GROUP BY DATE_FORMAT(`tabSales Order`.delivery_date, '%%M %%Y'), `tabSales Order`.status"
+    chart_query += " ORDER BY MIN(`tabSales Order`.delivery_date) ASC"
+    
+    table_query += " ORDER BY `tabSales Order`.delivery_date DESC"
+    
+    # Log queries and params
+    frappe.log_error(message=f"Chart Query: {chart_query}\nTable Query: {table_query}\nParams: {params}", title="Query Info (get_sales_order_data)")
+    
+    result = {'chart_data': [], 'table_data': []}
+    
+    try:
+        # Execute chart query
+        chart_data = frappe.db.sql(chart_query, params, as_dict=True)
+        result['chart_data'] = chart_data
+        chart_data_str = str(chart_data)
+        if len(chart_data_str) > 1000:
+            chart_data_str = chart_data_str[:1000] + "... [truncated]"
+        frappe.log_error(message=f"Chart Result: {len(chart_data)} records\nData: {chart_data_str}", title="Chart Query Result")
+        
+        # Execute table query
+        table_data = frappe.db.sql(table_query, params, as_dict=True)
+        result['table_data'] = table_data
+        table_data_str = str(table_data)
+        if len(table_data_str) > 1000:
+            table_data_str = table_data_str[:1000] + "... [truncated]"
+        frappe.log_error(message=f"Table Result: {len(table_data)} records\nData: {table_data_str}", title="Table Query Result")
+        
+        if not chart_data and not table_data:
+            frappe.log_error(message="No records found for the given filters.", title="No Records Found")
+    except Exception as e:
+        frappe.log_error(message=f"Query failed: {str(e)}\nChart Query: {chart_query}\nTable Query: {table_query}\nParams: {params}", title="Query Error")
+        raise
+    
+    return result
+    
 
 @frappe.whitelist()
 def get_project_details1(project_id):
