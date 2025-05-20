@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include prastara_custom *.css
+recursive-include prastara_custom *.csv
+recursive-include prastara_custom *.html
+recursive-include prastara_custom *.ico
+recursive-include prastara_custom *.js
+recursive-include prastara_custom *.json
+recursive-include prastara_custom *.md
+recursive-include prastara_custom *.png
+recursive-include prastara_custom *.py
+recursive-include prastara_custom *.svg
+recursive-include prastara_custom *.txt
+recursive-exclude prastara_custom *.pyc
