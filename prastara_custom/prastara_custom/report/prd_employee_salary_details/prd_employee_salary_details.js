@@ -11,12 +11,6 @@ frappe.query_reports["PRD Employee Salary Details"] = {
 			"options":"Employee",
 		},
 		{
-			"fieldname":"branch",
-			"label":__("Branch"),
-			"fieldtype":"Link",
-			"options":"Branch",
-		},
-		{
 			"fieldname":"company",
 			"label":__("Company"),
 			"fieldtype":"Link",
