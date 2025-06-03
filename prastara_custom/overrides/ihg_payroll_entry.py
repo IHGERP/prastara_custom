@@ -163,6 +163,28 @@ class IHGPayrollEntry(Document):
 				create_salary_slips_for_employees(employees, args, publish_progress=False)
 				# since this method is called via frm.call this doc needs to be updated manually
 				self.reload()
+	@frappe.whitelist()
+	def has_bank_entries(self) -> dict[str, bool]:
+		je = frappe.qb.DocType("Journal Entry")
+		jea = frappe.qb.DocType("Journal Entry Account")
+		bank_entries = (
+			frappe.qb.from_(je)
+			.inner_join(jea)
+			.on(je.name == jea.parent)
+			.select(je.name)
+			.where(
+				(je.voucher_type == "Bank Entry")
+				& (jea.reference_name == self.name)
+				& (jea.reference_type == "Payroll Entry")
+			)
+		).run(as_dict=True)
+		return {
+			"has_bank_entries": bool(bank_entries),
+			"has_bank_entries_for_withheld_salaries": not any(
+				employee.is_salary_withheld for employee in self.employees
+			),
+		}
+
 
 	def get_sal_slip_list(self, ss_status, as_dict=False):
 		"""
@@ -819,27 +841,6 @@ def payroll_entry_has_bank_entries(name):
 
 	return response
 
-@frappe.whitelist()
-def has_bank_entries(self) -> dict[str, bool]:
-    je = frappe.qb.DocType("Journal Entry")
-    jea = frappe.qb.DocType("Journal Entry Account")
-    bank_entries = (
-        frappe.qb.from_(je)
-        .inner_join(jea)
-        .on(je.name == jea.parent)
-        .select(je.name)
-        .where(
-            (je.voucher_type == "Bank Entry")
-            & (jea.reference_name == self.name)
-            & (jea.reference_type == "Payroll Entry")
-        )
-    ).run(as_dict=True)
-    return {
-        "has_bank_entries": bool(bank_entries),
-        "has_bank_entries_for_withheld_salaries": not any(
-            employee.is_salary_withheld for employee in self.employees
-        ),
-    }
 
 def create_salary_slips_for_employees(employees, args, publish_progress=True):
 	salary_slips_exists_for = get_existing_salary_slips(employees, args)
