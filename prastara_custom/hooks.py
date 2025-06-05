@@ -123,13 +123,18 @@ doctype_js = {
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
+doc_events = {
+    "Attendance": {
+		"after_insert": "prastara_custom.controller.attendance_controller.custom_attendance_script",
+		"validate": "prastara_custom.controller.attendance_controller.cal_ot",
+		"before_submit": "prastara_custom.controller.attendance_controller.tardiness_attendance"
+	},
 #	"*": {
 #		"on_update": "method",
 #		"on_cancel": "method",
 #		"on_trash": "method"
 #	}
-# }
+}
 
 # Scheduled Tasks
 # ---------------
@@ -152,11 +157,7 @@ doctype_js = {
 #	],
 # }
 
-"Attendance": {
-		"after_insert": "prastara_custom.controller.attendance_controller.custom_attendance_script",
-		"validate": "prastara_custom.controller.attendance_controller.cal_ot",
-		"before_submit": "prastara_custom.controller.attendance_controller.tardiness_attendance"
-	},
+
 # Testing
 # -------
 
