@@ -152,6 +152,11 @@ doctype_js = {
 #	],
 # }
 
+"Attendance": {
+		"after_insert": "prastara_custom.controller.attendance_controller.custom_attendance_script",
+		"validate": "prastara_custom.controller.attendance_controller.cal_ot",
+		"before_submit": "prastara_custom.controller.attendance_controller.tardiness_attendance"
+	},
 # Testing
 # -------
 
@@ -178,6 +183,7 @@ override_doctype_class = {
     "Salary Slip": "prastara_custom.overrides.ihg_salary_slip.IHGSalarySlip",
     "Loan Repayment": "prastara_custom.overrides.ihg_loan_repayment.IHGLoanRepayment",
 }
+
 
 
 # exempt linked doctypes from being automatically cancelled
