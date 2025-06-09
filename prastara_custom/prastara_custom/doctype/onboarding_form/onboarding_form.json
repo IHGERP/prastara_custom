@@ -1,0 +1,284 @@
+{
+ "actions": [],
+ "allow_events_in_timeline": 1,
+ "allow_rename": 1,
+ "autoname": "ONB-.####",
+ "creation": "2022-02-04 12:25:22.310940",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "employee_name",
+  "nationality",
+  "date_of_birth",
+  "contact_number",
+  "email_id",
+  "refence_details",
+  "visa_status",
+  "column_break_5",
+  "interviewd_by",
+  "company",
+  "department",
+  "department_manager",
+  "designation",
+  "branch",
+  "probation_perio",
+  "probation_policy",
+  "section_break_15",
+  "salary_details",
+  "section_break_17",
+  "facilities_provided",
+  "additional_charges_section",
+  "charges",
+  "section_break_19",
+  "company_property",
+  "section_break_23",
+  "contract_end_benefits",
+  "section_break_25",
+  "documents_submitted"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Select Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Employee Name"
+  },
+  {
+   "fetch_from": "employee.nationality",
+   "fieldname": "nationality",
+   "fieldtype": "Read Only",
+   "label": "Nationality"
+  },
+  {
+   "fetch_from": "employee.date_of_birth",
+   "fieldname": "date_of_birth",
+   "fieldtype": "Read Only",
+   "label": "Date of Birth"
+  },
+  {
+   "fetch_from": "employee.cell_number",
+   "fieldname": "contact_number",
+   "fieldtype": "Read Only",
+   "label": "Contact Number"
+  },
+  {
+   "fetch_from": "employee.company_email",
+   "fieldname": "email_id",
+   "fieldtype": "Read Only",
+   "label": "Email ID"
+  },
+  {
+   "fieldname": "refence_details",
+   "fieldtype": "Data",
+   "label": "Refence Details"
+  },
+  {
+   "fieldname": "visa_status",
+   "fieldtype": "Select",
+   "label": "Visa Status",
+   "options": "Visit Visa\nEmployment Visa\nCancelled Visa"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "employee_name",
+   "fieldname": "interviewd_by",
+   "fieldtype": "Data",
+   "label": "Interviewd By"
+  },
+  {
+   "fetch_from": "employee.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fetch_from": "employee.department",
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fetch_from": "employee.leave_approver",
+   "fieldname": "department_manager",
+   "fieldtype": "Link",
+   "label": "Department Manager",
+   "options": "User"
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fieldname": "designation",
+   "fieldtype": "Data",
+   "label": "Designation"
+  },
+  {
+   "fetch_from": "employee.branch",
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "probation_perio",
+   "fieldtype": "Select",
+   "label": "Probation Period",
+   "options": "3 Months\n6 Months\n1 Year\n2 Year"
+  },
+  {
+   "fieldname": "probation_policy",
+   "fieldtype": "Data",
+   "label": "Probation Policy"
+  },
+  {
+   "fieldname": "section_break_15",
+   "fieldtype": "Section Break",
+   "label": "Salary Details"
+  },
+  {
+   "fieldname": "salary_details",
+   "fieldtype": "Table",
+   "label": "Salary Details",
+   "options": "Offer Letter Salary"
+  },
+  {
+   "fieldname": "section_break_17",
+   "fieldtype": "Section Break",
+   "label": "Facilities Provided"
+  },
+  {
+   "fieldname": "facilities_provided",
+   "fieldtype": "Table",
+   "label": "Facilities Provided",
+   "options": "Facility"
+  },
+  {
+   "fieldname": "additional_charges_section",
+   "fieldtype": "Section Break",
+   "label": "Additional Charges"
+  },
+  {
+   "fieldname": "charges",
+   "fieldtype": "Table",
+   "label": "Charges",
+   "options": "Deductions"
+  },
+  {
+   "fieldname": "section_break_19",
+   "fieldtype": "Section Break",
+   "label": "Company Property"
+  },
+  {
+   "fieldname": "company_property",
+   "fieldtype": "Table",
+   "label": "Company Property",
+   "options": "Company Property"
+  },
+  {
+   "fieldname": "section_break_23",
+   "fieldtype": "Section Break",
+   "label": "Contract end benefits"
+  },
+  {
+   "fieldname": "contract_end_benefits",
+   "fieldtype": "Table",
+   "label": "Contract end benefits",
+   "options": "Contract End Benefits"
+  },
+  {
+   "fieldname": "section_break_25",
+   "fieldtype": "Section Break",
+   "label": "Documents Submitted"
+  },
+  {
+   "fieldname": "documents_submitted",
+   "fieldtype": "Table",
+   "label": "Documents Submitted",
+   "options": "Documents Submitted"
+  }
+ ],
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-06-09 16:19:09.520128",
+ "modified_by": "Administrator",
+ "module": "Prastara Custom",
+ "name": "Onboarding Form",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "if_owner": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "employee_name"
+}
