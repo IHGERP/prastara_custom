@@ -1,0 +1,1256 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "PRD-EMP-SEP-.YYYY.-.#####",
+ "creation": "2025-06-13 12:56:52.279295",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "custom_tab_break_k0zwu",
+  "custom_separation_type",
+  "employee",
+  "employee_name",
+  "company",
+  "department",
+  "designation",
+  "custom_column_break_czpfp",
+  "leave_application",
+  "handovering_to",
+  "custom_previous_department",
+  "custom_new_department",
+  "custom_previous_position",
+  "custom_new_position",
+  "custom_last_working_day",
+  "boarding_begins_on",
+  "custom_leave_details",
+  "custom_leave_reason",
+  "custom_column_break_jbd8l",
+  "custom_start_date",
+  "custom_end_date",
+  "custom_number_of_days",
+  "custom_handover_of_responsibilities",
+  "custom_have_you_completed",
+  "custom_another_team_member",
+  "custom_attach",
+  "custom_column_break_lr020",
+  "custom_responsibilities",
+  "custom_attach_",
+  "table_for_activity",
+  "activities",
+  "credentials",
+  "custom_final_payments_and_benefits",
+  "custom_are_there_any_outstanding_payments_or_",
+  "custom_please_confirm_your_understanding_of_",
+  "custom_handover_completion",
+  "custom_are_there_any_pending_tasks_related",
+  "custom_task",
+  "custom_do_you_confirm_that_all_essential_knowledge",
+  "custom_feedback_on_employment_experience",
+  "custom_how_satisfied_were_you_with_your_overall_",
+  "custom_do_you_have_any_feedback_or",
+  "custom_are_there_any_outstanding",
+  "custom_please_provide_details",
+  "custom_exit_interview",
+  "custom__would_you_be_willing_to_participate",
+  "custom_availability",
+  "custom_contacts_and_relationships",
+  "custom_have_you_provided_contact",
+  "custom_attach___",
+  "custom_are_there_any_ongoing_relationships",
+  "custom_training_and_knowledge_transfer",
+  "custom_colleagues",
+  "custom_is_there_any",
+  "custom_have_you_received",
+  "custom_final_checks",
+  "custom_have_you_ensured_",
+  "custom__acknowledgment",
+  "custom_i_confirm_that_the_information_provided_is_accurate_to",
+  "custom_i_understand",
+  "custom__additional_comments",
+  "custom_any_additiona",
+  "custom__coverage_plan",
+  "custom__name_of_team",
+  "custom_hod",
+  "custom_expectations_during_leave",
+  "custom_any_expectations_or_",
+  "custom_hod_expectations",
+  "custom_hod_expectations_detail",
+  "custom_successor_readiness",
+  "custom_datagyu",
+  "custom_pending_tasks",
+  "custom_are_there_any_pending_tasks_or_projects_",
+  "custom_pending_task",
+  "custom_replacement_confirmation",
+  "custom_has_the_replacement_been",
+  "custom__specify_the_extent_of_the_briefing",
+  "custom_are_there_any_additional_support_or_",
+  "custom_deta",
+  "custom_accounts_dept",
+  "custom_accounts_clearance",
+  "custom__have_all_outstanding",
+  "custom_outstanding_amount",
+  "custom_reason",
+  "custom_are_there_any_disputes_",
+  "custom_details",
+  "custom_petty_cash_and_loans",
+  "custom_has_the_departing_employee_",
+  "custom_please_specify_outstanding_amounts_and_reasons",
+  "custom_cost_centre_change",
+  "custom__has_the_cost_center_",
+  "custom__please_specify_the_necessary_changes",
+  "custom_it_dept",
+  "custom_access_and_permissions",
+  "custom_have_you",
+  "custom_attach__",
+  "custom_revoked_or_transferred",
+  "custom_return_of_company_property",
+  "custom_have_all_companyowned_items_been_",
+  "custom_have_you_transferred",
+  "custom_please_specify",
+  "custom_over_responsibilities_",
+  "custom_ops_dept",
+  "custom_handover_of_vehicle",
+  "custom_has_the_employee",
+  "custom_asset",
+  "custom__has_the_vehi",
+  "custom_tag_employee_to_whom_reassigned",
+  "custom_are_there_any_",
+  "custom_if_yesspecify",
+  "custom_stock_mr_handover",
+  "custom_are_there_any_materials_",
+  "custom_has_there_been_audits_",
+  "custom_attach_the_document",
+  "custom_are_there_any",
+  "custom_hr_dept",
+  "custom_sim_card_return",
+  "custom_has_the_departing_",
+  "custom_queries",
+  "custom_old_questions",
+  "workflow_state",
+  "employee_grade",
+  "column_break_7",
+  "boarding_status",
+  "handovering_to_name",
+  "resignation_letter_date",
+  "project",
+  "employee_separation_template",
+  "notify_users_by_email",
+  "custom_old_question",
+  "section_brk15",
+  "qtn1",
+  "ans1",
+  "qtn2",
+  "a2",
+  "qtn3",
+  "a3",
+  "qtn4",
+  "a4",
+  "qtn5",
+  "a5",
+  "qtn6",
+  "a6",
+  "qtn7",
+  "a7",
+  "qtn8",
+  "a8",
+  "qtn9",
+  "a9",
+  "section_break_14",
+  "exit_interview",
+  "credentials_and_password",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "custom_tab_break_k0zwu",
+   "fieldtype": "Tab Break",
+   "label": "Details"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "custom_separation_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Separation Type",
+   "options": "\nResignation\nTermination\nEmployee Transfer\nAnnual Leave\nEmergency Leave",
+   "reqd": 1,
+   "translatable": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.department",
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Department",
+   "options": "Department",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "custom_column_break_czpfp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\"], doc.custom_separation_type)\n",
+   "fieldname": "leave_application",
+   "fieldtype": "Link",
+   "label": "Leave Application",
+   "mandatory_depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\"], doc.custom_separation_type)\n",
+   "options": "Leave Application"
+  },
+  {
+   "depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\",\"Resignation\",\"Termination\"], doc.custom_separation_type)\n",
+   "fieldname": "handovering_to",
+   "fieldtype": "Link",
+   "label": "Handovering To",
+   "mandatory_depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\",\"Resignation\",\"Termination\"], doc.custom_separation_type)\n",
+   "options": "User"
+  },
+  {
+   "depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_previous_department",
+   "fieldtype": "Link",
+   "label": "Previous Department",
+   "mandatory_depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "options": "Department"
+  },
+  {
+   "depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_new_department",
+   "fieldtype": "Link",
+   "label": "New Department",
+   "mandatory_depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "options": "Department"
+  },
+  {
+   "depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_previous_position",
+   "fieldtype": "Link",
+   "label": "Previous Position",
+   "mandatory_depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "options": "Designation"
+  },
+  {
+   "depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_new_position",
+   "fieldtype": "Link",
+   "label": "New Position",
+   "mandatory_depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "options": "Designation"
+  },
+  {
+   "depends_on": "eval:in_list([\"Resignation\",\"Termination\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_last_working_day",
+   "fieldtype": "Date",
+   "label": "Last Working Day",
+   "mandatory_depends_on": "eval:in_list([\"Resignation\",\"Termination\"], doc.custom_separation_type)\n"
+  },
+  {
+   "fieldname": "boarding_begins_on",
+   "fieldtype": "Date",
+   "label": "Separation Begins On",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_leave_details",
+   "fieldtype": "Section Break",
+   "label": "Leave Details"
+  },
+  {
+   "fetch_from": "leave_application.description",
+   "fieldname": "custom_leave_reason",
+   "fieldtype": "Small Text",
+   "label": "Leave reason",
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_column_break_jbd8l",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "leave_application.from_date",
+   "fieldname": "custom_start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  },
+  {
+   "fetch_from": "leave_application.to_date",
+   "fieldname": "custom_end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
+  },
+  {
+   "fetch_from": "leave_application.total_leave_days",
+   "fieldname": "custom_number_of_days",
+   "fieldtype": "Float",
+   "label": "Number of Days"
+  },
+  {
+   "fieldname": "custom_handover_of_responsibilities",
+   "fieldtype": "Section Break",
+   "label": "Handover of Responsibilities"
+  },
+  {
+   "fieldname": "custom_have_you_completed",
+   "fieldtype": "Select",
+   "label": "Have you completed the handover of your ongoing tasks and projects?",
+   "options": "\nYes\nNo",
+   "reqd": 1,
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_another_team_member",
+   "fieldtype": "Select",
+   "label": "Are there any pending tasks or projects that need to be assigned or completed by another team member?",
+   "options": "\nYes\nNo",
+   "reqd": 1,
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_another_team_member == \"Yes\";",
+   "fieldname": "custom_attach",
+   "fieldtype": "Attach",
+   "label": "Attach",
+   "mandatory_depends_on": "eval:doc.custom_another_team_member == \"Yes\";"
+  },
+  {
+   "fieldname": "custom_column_break_lr020",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "custom_responsibilities",
+   "fieldtype": "Select",
+   "label": "Have you documented essential information and processes for the smooth transition of your ",
+   "options": "\nYes\nNo",
+   "reqd": 1,
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_responsibilities == \"Yes\";",
+   "fieldname": "custom_attach_",
+   "fieldtype": "Attach",
+   "label": "Attach ",
+   "mandatory_depends_on": "eval:doc.custom_responsibilities == \"Yes\";"
+  },
+  {
+   "fieldname": "table_for_activity",
+   "fieldtype": "Section Break",
+   "label": "Separation Activities"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "activities",
+   "fieldtype": "Table",
+   "label": "Activities",
+   "options": "Employee Boarding Activity"
+  },
+  {
+   "fieldname": "credentials",
+   "fieldtype": "Table",
+   "label": "Credentials",
+   "options": "Credentials"
+  },
+  {
+   "depends_on": "eval:in_list([\"Resignation\",\"Termination\",\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_final_payments_and_benefits",
+   "fieldtype": "Section Break",
+   "label": "Final Payments and Benefits"
+  },
+  {
+   "fieldname": "custom_are_there_any_outstanding_payments_or_",
+   "fieldtype": "Select",
+   "label": "Are there any outstanding payments or benefits owed to you?",
+   "mandatory_depends_on": "eval:in_list([\"Resignation\",\"Termination\",\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_please_confirm_your_understanding_of_",
+   "fieldtype": "Small Text",
+   "label": "Please confirm your understanding of the final settlement",
+   "mandatory_depends_on": "eval:in_list([\"Resignation\",\"Termination\",\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_handover_completion",
+   "fieldtype": "Section Break",
+   "label": "Handover Completion"
+  },
+  {
+   "fieldname": "custom_are_there_any_pending_tasks_related",
+   "fieldtype": "Select",
+   "label": "Are there any pending tasks related   to knowledge transfer that the departing employee needs to complete before their transfer?",
+   "mandatory_depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_are_there_any_pending_tasks_related == \"Yes\";",
+   "fieldname": "custom_task",
+   "fieldtype": "Table",
+   "label": "Task",
+   "mandatory_depends_on": "eval:doc.custom_are_there_any_pending_tasks_related == \"Yes\";",
+   "options": "Pending Task"
+  },
+  {
+   "fieldname": "custom_do_you_confirm_that_all_essential_knowledge",
+   "fieldtype": "Select",
+   "label": "Do you confirm that all essential knowledge",
+   "mandatory_depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Resignation\",\"Termination\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_feedback_on_employment_experience",
+   "fieldtype": "Section Break",
+   "label": "Feedback on Employment Experience"
+  },
+  {
+   "fieldname": "custom_how_satisfied_were_you_with_your_overall_",
+   "fieldtype": "Rating",
+   "label": "How satisfied were you with your overall experience at the company?",
+   "mandatory_depends_on": "eval:in_list([\"Resignation\",\"Termination\"], doc.custom_separation_type)\n"
+  },
+  {
+   "fieldname": "custom_do_you_have_any_feedback_or",
+   "fieldtype": "Small Text",
+   "label": "Do you have any feedback or suggestions for improvement?",
+   "mandatory_depends_on": "eval:in_list([\"Resignation\",\"Termination\"], doc.custom_separation_type)\n",
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_are_there_any_outstanding",
+   "fieldtype": "Select",
+   "label": "Are there any outstanding  loans or petty cash transactions that need to be reconciled or transferred to the new department?",
+   "mandatory_depends_on": "eval:in_list([\"Resignation\",\"Termination\"], doc.custom_separation_type)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_are_there_any_outstanding == \"Yes\"",
+   "fieldname": "custom_please_provide_details",
+   "fieldtype": "Data",
+   "label": "Please provide details",
+   "mandatory_depends_on": "eval:doc.custom_are_there_any_outstanding == \"Yes\"",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Resignation\",\"Termination\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_exit_interview",
+   "fieldtype": "Section Break",
+   "label": "Exit Interview"
+  },
+  {
+   "fieldname": "custom__would_you_be_willing_to_participate",
+   "fieldtype": "Select",
+   "label": " Would you be willing to participate in an exit interview to provide further feedback?",
+   "mandatory_depends_on": "eval:in_list([\"Resignation\",\"Termination\"], doc.custom_separation_type)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom__would_you_be_willing_to_participate == \"Yes\";",
+   "fieldname": "custom_availability",
+   "fieldtype": "Date",
+   "label": "Availability",
+   "mandatory_depends_on": "eval:doc.custom__would_you_be_willing_to_participate == \"Yes\";"
+  },
+  {
+   "fieldname": "custom_contacts_and_relationships",
+   "fieldtype": "Section Break",
+   "label": "Contacts and Relationships"
+  },
+  {
+   "fieldname": "custom_have_you_provided_contact",
+   "fieldtype": "Select",
+   "label": "Have you provided contact information for key employees, clients, or vendors you have been liaising with?",
+   "options": "\nYes\nNo",
+   "reqd": 1,
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_have_you_provided_contact == \"Yes\"",
+   "fieldname": "custom_attach___",
+   "fieldtype": "Attach",
+   "label": "Attach   ",
+   "mandatory_depends_on": "eval:doc.custom_have_you_provided_contact == \"Yes\""
+  },
+  {
+   "fieldname": "custom_are_there_any_ongoing_relationships",
+   "fieldtype": "Select",
+   "label": "Are there any ongoing relationships or commitments that need to be handed over to another team member?",
+   "options": "\nYes\nNo",
+   "reqd": 1,
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_training_and_knowledge_transfer",
+   "fieldtype": "Section Break",
+   "label": "Training and Knowledge Transfer"
+  },
+  {
+   "fieldname": "custom_colleagues",
+   "fieldtype": "Select",
+   "label": "Have you conducted any training sessions or knowledge transfer sessions for your replacement or colleagues?",
+   "options": "\nYes\nNo",
+   "reqd": 1,
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_is_there_any",
+   "fieldtype": "Small Text",
+   "label": "Is there any  additional information or training required for a smooth transition?",
+   "reqd": 1,
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_have_you_received",
+   "fieldtype": "Select",
+   "label": "Have you received  adequate training and information for your new role in the new department?",
+   "mandatory_depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_final_checks",
+   "fieldtype": "Section Break",
+   "label": "Final Checks"
+  },
+  {
+   "fieldname": "custom_have_you_ensured_",
+   "fieldtype": "Select",
+   "label": "Have you ensured that there are no outstanding issues that need attention?",
+   "options": "Yes\nNo",
+   "reqd": 1,
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\",\"Resignation\",\"Termination\"], doc.custom_separation_type)\n",
+   "fieldname": "custom__acknowledgment",
+   "fieldtype": "Section Break",
+   "label": " Acknowledgment"
+  },
+  {
+   "default": "0",
+   "fieldname": "custom_i_confirm_that_the_information_provided_is_accurate_to",
+   "fieldtype": "Check",
+   "label": "I confirm that the information provided is accurate to  the best of my knowledge",
+   "mandatory_depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\",\"Resignation\",\"Termination\"], doc.custom_separation_type)\n"
+  },
+  {
+   "default": "0",
+   "fieldname": "custom_i_understand",
+   "fieldtype": "Check",
+   "label": "I understand  the terms of separation and agree to abide by them.",
+   "mandatory_depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\",\"Resignation\",\"Termination\"], doc.custom_separation_type)\n"
+  },
+  {
+   "depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\"], doc.custom_separation_type)\n",
+   "fieldname": "custom__additional_comments",
+   "fieldtype": "Section Break",
+   "label": " Additional Comments"
+  },
+  {
+   "fieldname": "custom_any_additiona",
+   "fieldtype": "Small Text",
+   "label": "Any additional comments or notes related to the leave request",
+   "mandatory_depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\"], doc.custom_separation_type)\n",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\"], doc.custom_separation_type)\n",
+   "fieldname": "custom__coverage_plan",
+   "fieldtype": "Section Break",
+   "label": " Coverage Plan"
+  },
+  {
+   "fieldname": "custom__name_of_team",
+   "fieldtype": "Link",
+   "label": " Name of team member who will cover responsibilities",
+   "mandatory_depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\"], doc.custom_separation_type)\n",
+   "options": "User"
+  },
+  {
+   "depends_on": "eval:in_list([\"Pending Dept Approval\",\"Pending Divisional Manager Approval\",\"Pending Accounts Approval\",\"Pending OPS Approval\",\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "fieldname": "custom_hod",
+   "fieldtype": "Tab Break",
+   "label": "HOD"
+  },
+  {
+   "depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_expectations_during_leave",
+   "fieldtype": "Section Break",
+   "label": "Expectations During Leave"
+  },
+  {
+   "fieldname": "custom_any_expectations_or_",
+   "fieldtype": "Select",
+   "label": "Any expectations or responsibilities during the leave period (e.g., periodic check-ins, updates)",
+   "options": "\nNo expectations\nWFH required\nUpdates on ongoing projects\nResponding to urgent emails only\nFollow the Below Points\nOther",
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_hod_expectations",
+   "fieldtype": "Table MultiSelect",
+   "label": "HOD Expectations",
+   "options": "HOD Expectation Multiselect"
+  },
+  {
+   "fieldname": "custom_hod_expectations_detail",
+   "fieldtype": "Table",
+   "label": "HOD Expectations Detail",
+   "options": "HOD Expectations Detail"
+  },
+  {
+   "depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_successor_readiness",
+   "fieldtype": "Section Break",
+   "label": "Successor Readiness"
+  },
+  {
+   "fieldname": "custom_datagyu",
+   "fieldtype": "Data",
+   "label": " Do you believe the successor in the previous department is adequately prepared to assume the responsibilities of the departing employee?",
+   "mandatory_depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type) && in_list([\"Pending Dept Approval\", \"Pending Divisional Manager Approval\", \"Pending Accounts Approval\", \"Pending OPS Approval\", \"Pending IT Approval\", \"Pending HR Approval\", \"Pending HR Manager Approval\", \"Approved\", \"Rejected\", \"Cancelled\"], doc.workflow_state)\n",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Resignation\",\"Termination\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_pending_tasks",
+   "fieldtype": "Section Break",
+   "label": "Pending Tasks"
+  },
+  {
+   "fieldname": "custom_are_there_any_pending_tasks_or_projects_",
+   "fieldtype": "Select",
+   "label": "Are there any pending tasks or projects that need to be reassigned or completed by another team member upon the departure of the employee?",
+   "mandatory_depends_on": "eval:in_list([\"Resignation\", \"Termination\"], doc.custom_separation_type) && in_list([\"Pending Dept Approval\", \"Pending Divisional Manager Approval\", \"Pending Accounts Approval\", \"Pending OPS Approval\", \"Pending IT Approval\", \"Pending HR Approval\", \"Pending HR Manager Approval\", \"Approved\", \"Rejected\", \"Cancelled\"], doc.workflow_state)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_are_there_any_pending_tasks_or_projects_ == \"Yes\";",
+   "fieldname": "custom_pending_task",
+   "fieldtype": "Table",
+   "label": "Pending Task",
+   "mandatory_depends_on": "eval:doc.custom_are_there_any_pending_tasks_or_projects_ == \"Yes\";",
+   "options": "Pending Task"
+  },
+  {
+   "depends_on": "eval:in_list([\"Resignation\",\"Termination\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_replacement_confirmation",
+   "fieldtype": "Section Break",
+   "label": "Replacement Confirmation"
+  },
+  {
+   "fieldname": "custom_has_the_replacement_been",
+   "fieldtype": "Select",
+   "label": "Has the replacement been  briefed about their new role and responsibilities?",
+   "mandatory_depends_on": "eval:in_list([\"Resignation\",\"Termination\"], doc.custom_separation_type) && in_list([\"Pending Dept Approval\", \"Pending Divisional Manager Approval\", \"Pending Accounts Approval\", \"Pending OPS Approval\", \"Pending IT Approval\", \"Pending HR Approval\", \"Pending HR Manager Approval\", \"Approved\", \"Rejected\", \"Cancelled\"], doc.workflow_state)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_has_the_replacement_been == \"Yes\";",
+   "fieldname": "custom__specify_the_extent_of_the_briefing",
+   "fieldtype": "Data",
+   "label": " Specify the extent of the briefing",
+   "mandatory_depends_on": "eval:doc.custom_has_the_replacement_been == \"Yes\";",
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_are_there_any_additional_support_or_",
+   "fieldtype": "Select",
+   "label": "Are there any additional support or  resources needed to facilitate the replacement's transition?",
+   "mandatory_depends_on": "eval:in_list([\"Resignation\",\"Termination\"], doc.custom_separation_type) && in_list([\"Pending Dept Approval\", \"Pending Divisional Manager Approval\", \"Pending Accounts Approval\", \"Pending OPS Approval\", \"Pending IT Approval\", \"Pending HR Approval\", \"Pending HR Manager Approval\", \"Approved\", \"Rejected\", \"Cancelled\"], doc.workflow_state)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_are_there_any_additional_support_or_ == \"Yes\";",
+   "fieldname": "custom_deta",
+   "fieldtype": "Data",
+   "label": "Deta",
+   "mandatory_depends_on": "eval:doc.custom_are_there_any_additional_support_or_ == \"Yes\";",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Pending Accounts Approval\",\"Pending OPS Approval\",\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "fieldname": "custom_accounts_dept",
+   "fieldtype": "Tab Break",
+   "label": "ACCOUNTS DEPT"
+  },
+  {
+   "depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\",\"Resignation\",\"Termination\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_accounts_clearance",
+   "fieldtype": "Section Break",
+   "label": "Accounts Clearance"
+  },
+  {
+   "fieldname": "custom__have_all_outstanding",
+   "fieldtype": "Select",
+   "label": " Have all outstanding  debts, loans, or petty cash transactions been cleared?",
+   "mandatory_depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\",\"Resignation\",\"Termination\"], doc.custom_separation_type) && in_list([\"Pending Accounts Approval\",\"Pending OPS Approval\",\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom__have_all_outstanding == \"No\";",
+   "fieldname": "custom_outstanding_amount",
+   "fieldtype": "Float",
+   "label": "Outstanding Amount",
+   "mandatory_depends_on": "eval:doc.custom__have_all_outstanding == \"No\";"
+  },
+  {
+   "depends_on": "eval:doc.custom__have_all_outstanding == \"No\";",
+   "fieldname": "custom_reason",
+   "fieldtype": "Small Text",
+   "label": "Reason",
+   "mandatory_depends_on": "eval:doc.custom__have_all_outstanding == \"No\";",
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_are_there_any_disputes_",
+   "fieldtype": "Select",
+   "label": "Are there any disputes, outstanding payments, or other issues related to the clearance of the departing employee that need to be addressed? ",
+   "mandatory_depends_on": "eval:in_list([\"Annual Leave\",\"Emergency Leave\",\"Resignation\",\"Termination\"], doc.custom_separation_type) && in_list([\"Pending Accounts Approval\",\"Pending OPS Approval\",\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_are_there_any_disputes_==\"Yes\";",
+   "fieldname": "custom_details",
+   "fieldtype": "Data",
+   "label": "Details",
+   "mandatory_depends_on": "eval:doc.custom_are_there_any_disputes_==\"Yes\";",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_petty_cash_and_loans",
+   "fieldtype": "Section Break",
+   "label": "Petty Cash and Loans"
+  },
+  {
+   "fieldname": "custom_has_the_departing_employee_",
+   "fieldtype": "Select",
+   "label": "Has the departing employee settled any outstanding petty cash or loans related to their activities in the previous department?",
+   "mandatory_depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type) && in_list([\"Pending Accounts Approval\",\"Pending OPS Approval\",\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_has_the_departing_employee_ == \"No\";",
+   "fieldname": "custom_please_specify_outstanding_amounts_and_reasons",
+   "fieldtype": "Small Text",
+   "label": "Please specify outstanding amounts and reasons",
+   "mandatory_depends_on": "eval:doc.custom_has_the_departing_employee_ == \"No\";",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_cost_centre_change",
+   "fieldtype": "Section Break",
+   "label": "Cost Centre Change"
+  },
+  {
+   "fieldname": "custom__has_the_cost_center_",
+   "fieldtype": "Select",
+   "label": " Has the cost center for the departing employee been updated to reflect their transfer to the new department?",
+   "mandatory_depends_on": "eval:in_list([\"Employee Transfer\"], doc.custom_separation_type) && in_list([\"Pending Accounts Approval\",\"Pending OPS Approval\",\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom__has_the_cost_center_ == \"No\";",
+   "fieldname": "custom__please_specify_the_necessary_changes",
+   "fieldtype": "Data",
+   "label": " Please specify the necessary changes",
+   "mandatory_depends_on": "eval:doc.custom__has_the_cost_center_ == \"No\";",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "fieldname": "custom_it_dept",
+   "fieldtype": "Tab Break",
+   "label": "IT DEPT"
+  },
+  {
+   "fieldname": "custom_access_and_permissions",
+   "fieldtype": "Section Break",
+   "label": "Access and Permissions"
+  },
+  {
+   "fieldname": "custom_have_you",
+   "fieldtype": "Select",
+   "label": "Have you transferred access to necessary accounts, systems, and files to the relevant team members",
+   "mandatory_depends_on": "eval:in_list([\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_have_you == \"Yes\";",
+   "fieldname": "custom_attach__",
+   "fieldtype": "Attach",
+   "label": "Attach  "
+  },
+  {
+   "fieldname": "custom_revoked_or_transferred",
+   "fieldtype": "Small Text",
+   "label": "Are there any additional access privileges that need to be revoked or transferred?",
+   "mandatory_depends_on": "eval:in_list([\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Employee Transfer\",\"Resignation\",\"Termination\"], doc.custom_separation_type)\n",
+   "fieldname": "custom_return_of_company_property",
+   "fieldtype": "Section Break",
+   "label": "Return of Company Property"
+  },
+  {
+   "default": "0",
+   "fieldname": "custom_have_all_companyowned_items_been_",
+   "fieldtype": "Check",
+   "label": "Have all company-owned items been returned? (Laptop, access cards, keys, etc.)",
+   "mandatory_depends_on": "eval:in_list([\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n"
+  },
+  {
+   "fieldname": "custom_have_you_transferred",
+   "fieldtype": "Select",
+   "label": "Have you transferred  access to necessary accounts, systems, and files to the relevant team members?",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_have_you_transferred == \"Yes\";",
+   "fieldname": "custom_please_specify",
+   "fieldtype": "Data",
+   "label": "Please specify",
+   "mandatory_depends_on": "eval:doc.custom_have_you_transferred == \"Yes\";",
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_over_responsibilities_",
+   "fieldtype": "Select",
+   "label": "Have you forwarded all incoming calls and emails to the designated person responsible for taking over responsibilities ?",
+   "mandatory_depends_on": "eval:in_list(([\"Employee Transfer\",\"Resignation\",\"Termination\"], doc.custom_separation_type) && ([\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state))\n",
+   "options": "\nYes\nNo\nN/A",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Pending OPS Approval\",\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "fieldname": "custom_ops_dept",
+   "fieldtype": "Tab Break",
+   "label": "OPS DEPT"
+  },
+  {
+   "fieldname": "custom_handover_of_vehicle",
+   "fieldtype": "Section Break",
+   "label": "Handover of Vehicle"
+  },
+  {
+   "fieldname": "custom_has_the_employee",
+   "fieldtype": "Select",
+   "label": "Has the employee been allocated a company vehicle for official use?",
+   "mandatory_depends_on": "eval:in_list([\"Pending OPS Approval\",\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_has_the_employee == \"Yes\";",
+   "fieldname": "custom_asset",
+   "fieldtype": "Link",
+   "label": "Asset",
+   "mandatory_depends_on": "eval:doc.custom_has_the_employee == \"Yes\";",
+   "options": "Asset"
+  },
+  {
+   "depends_on": "eval:doc.custom_has_the_employee == \"Yes\";",
+   "fieldname": "custom__has_the_vehi",
+   "fieldtype": "Select",
+   "label": " Has the vehicle been returned to the designated department or reassigned to another employee?",
+   "mandatory_depends_on": "eval:doc.custom_has_the_employee == \"Yes\";",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom__has_the_vehi== \"Yes\";",
+   "fieldname": "custom_tag_employee_to_whom_reassigned",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Tag employee to whom reassigned",
+   "mandatory_depends_on": "eval:doc.custom__has_the_vehi== \"Yes\";",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "custom_are_there_any_",
+   "fieldtype": "Select",
+   "label": "Are there any outstanding issues or damages that need to be documented and resolved before the handover is considered complete?",
+   "mandatory_depends_on": "eval:in_list([\"Pending OPS Approval\",\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_are_there_any_== \"Yes\";",
+   "fieldname": "custom_if_yesspecify",
+   "fieldtype": "Data",
+   "label": "If Yes,Specify",
+   "mandatory_depends_on": "eval:doc.custom_are_there_any_== \"Yes\";",
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_stock_mr_handover",
+   "fieldtype": "Section Break",
+   "label": "Stock (MR) Handover"
+  },
+  {
+   "fieldname": "custom_are_there_any_materials_",
+   "fieldtype": "Select",
+   "label": "Are there any materials or stock items (MR) assigned to the departing employee?",
+   "mandatory_depends_on": "eval:in_list([\"Pending OPS Approval\",\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_has_there_been_audits_",
+   "fieldtype": "Select",
+   "label": "Has there been audits conducted to verify the quantity and condition of the stock items?",
+   "mandatory_depends_on": "eval:in_list([\"Pending OPS Approval\",\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:doc.custom_has_there_been_audits_ == \"Yes\";",
+   "fieldname": "custom_attach_the_document",
+   "fieldtype": "Attach",
+   "label": "Attach the document",
+   "mandatory_depends_on": "eval:doc.custom_has_there_been_audits_ == \"Yes\";"
+  },
+  {
+   "fieldname": "custom_are_there_any",
+   "fieldtype": "Select",
+   "label": "Are there any discrepancies or shortages that need to be addressed before the handover?",
+   "mandatory_depends_on": "eval:in_list([\"Pending OPS Approval\",\"Pending IT Approval\",\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "options": "\nYes\nNo",
+   "translatable": 1
+  },
+  {
+   "depends_on": "eval:in_list([\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "fieldname": "custom_hr_dept",
+   "fieldtype": "Tab Break",
+   "label": "HR DEPT"
+  },
+  {
+   "fieldname": "custom_sim_card_return",
+   "fieldtype": "Section Break",
+   "label": "SIM Card Return"
+  },
+  {
+   "depends_on": "eval:in_list([\"Pending HR Approval\",\"Pending HR Manager Approval\",\"Approved\",\"Rejected\",\"Cancelled\"], doc.workflow_state)\n",
+   "fieldname": "custom_has_the_departing_",
+   "fieldtype": "Select",
+   "label": "Has the departing employee returned the company SIM card to the designated department or individual?",
+   "options": "\nReturned\nWith Employee\nHanded over to the employee taking handover\nNo Sim",
+   "translatable": 1
+  },
+  {
+   "fieldname": "custom_queries",
+   "fieldtype": "Tab Break",
+   "label": "Queries"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "custom_old_questions",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Old Questions"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "workflow_state",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Workflow State",
+   "no_copy": 1,
+   "options": "Workflow State"
+  },
+  {
+   "fetch_from": "employee.grade",
+   "fieldname": "employee_grade",
+   "fieldtype": "Link",
+   "label": "Employee Grade",
+   "options": "Employee Grade",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Pending",
+   "fieldname": "boarding_status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nIn Process\nCompleted",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "handovering_to.full_name",
+   "fieldname": "handovering_to_name",
+   "fieldtype": "Read Only",
+   "label": "Handovering To Name"
+  },
+  {
+   "fetch_from": "employee.resignation_letter_date",
+   "fieldname": "resignation_letter_date",
+   "fieldtype": "Date",
+   "label": "Resignation Letter Date",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project"
+  },
+  {
+   "fieldname": "employee_separation_template",
+   "fieldtype": "Link",
+   "label": "Employee Separation Template",
+   "options": "Employee Separation Template"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "notify_users_by_email",
+   "fieldtype": "Check",
+   "label": "Notify users by email"
+  },
+  {
+   "fieldname": "custom_old_question",
+   "fieldtype": "Tab Break",
+   "hidden": 1,
+   "label": "Old Question"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_brk15",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "Details about Project / Active Work Status Report, outlining all projects, ongoing tasks, tips and other open items on which you are currently working.",
+   "fieldname": "qtn1",
+   "fieldtype": "Small Text",
+   "label": "Q1",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ans1",
+   "fieldtype": "Small Text",
+   "label": "A1",
+   "translatable": 1
+  },
+  {
+   "default": "Are there key people (internal/external contacts) other than those identified in the Project/Active Work\nStatus Report to whom we should be introduced before you leave the organization? If yes, please list\nand indicate when we might plan for such introductions.",
+   "fieldname": "qtn2",
+   "fieldtype": "Small Text",
+   "label": "Q2",
+   "read_only": 1,
+   "translatable": 1
+  },
+  {
+   "fieldname": "a2",
+   "fieldtype": "Small Text",
+   "label": "A2",
+   "translatable": 1
+  },
+  {
+   "default": "Do Standard Operating Procedures exist for your role? If yes, are they up to date, and please provide\nthe location and last date of revision.",
+   "fieldname": "qtn3",
+   "fieldtype": "Small Text",
+   "label": "Q3",
+   "read_only": 1,
+   "translatable": 1
+  },
+  {
+   "fieldname": "a3",
+   "fieldtype": "Small Text",
+   "label": "A3",
+   "translatable": 1
+  },
+  {
+   "default": "Identify any internal units/groups or external agencies and regulatory groups (i.e. municipal, provincial,\nfederal) with whom it is necessary for us to interact in order to fulfil the duties of your position.",
+   "fieldname": "qtn4",
+   "fieldtype": "Small Text",
+   "label": "Q4",
+   "read_only": 1,
+   "translatable": 1
+  },
+  {
+   "fieldname": "a4",
+   "fieldtype": "Small Text",
+   "label": "A4",
+   "translatable": 1
+  },
+  {
+   "default": "Are there specific files/records related to your current or past projects that should be retained over a\ndefined period of time? If yes, please list, identify the location of each, and include the retention\nperiod.",
+   "fieldname": "qtn5",
+   "fieldtype": "Small Text",
+   "label": "Q5",
+   "read_only": 1,
+   "translatable": 1
+  },
+  {
+   "fieldname": "a5",
+   "fieldtype": "Small Text",
+   "label": "A5",
+   "translatable": 1
+  },
+  {
+   "default": "List important historical/reference documents, if any, in your possession.",
+   "fieldname": "qtn6",
+   "fieldtype": "Small Text",
+   "label": "Q6",
+   "read_only": 1,
+   "translatable": 1
+  },
+  {
+   "fieldname": "a6",
+   "fieldtype": "Small Text",
+   "label": "A6",
+   "translatable": 1
+  },
+  {
+   "default": "What equipment was assigned to you for your use? Where is the equipment?",
+   "fieldname": "qtn7",
+   "fieldtype": "Small Text",
+   "label": "Q7",
+   "read_only": 1,
+   "translatable": 1
+  },
+  {
+   "fieldname": "a7",
+   "fieldtype": "Small Text",
+   "label": "A7",
+   "translatable": 1
+  },
+  {
+   "default": "We may contact you if we have additional questions. Please provide a contact number should we\nneed to reach you.",
+   "fieldname": "qtn8",
+   "fieldtype": "Small Text",
+   "label": "Q8",
+   "read_only": 1,
+   "translatable": 1
+  },
+  {
+   "fieldname": "a8",
+   "fieldtype": "Small Text",
+   "label": "A8",
+   "translatable": 1
+  },
+  {
+   "default": "Is there other information not requested on this form that you feel it would be helpful for us to know? If\nyes, please provide.",
+   "fieldname": "qtn9",
+   "fieldtype": "Small Text",
+   "label": "Q9",
+   "read_only": 1,
+   "translatable": 1
+  },
+  {
+   "fieldname": "a9",
+   "fieldtype": "Small Text",
+   "label": "A9",
+   "translatable": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_14",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "exit_interview",
+   "fieldtype": "Text Editor",
+   "label": "Exit Interview Summary"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "credentials_and_password",
+   "fieldtype": "Section Break",
+   "label": "Credentials and Password"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Employee Separation",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-06-13 12:56:52.279295",
+ "modified_by": "Administrator",
+ "module": "Prastara Custom",
+ "name": "Employee Separation Document",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
