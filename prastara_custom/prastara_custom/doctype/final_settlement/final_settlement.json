@@ -1,0 +1,490 @@
+{
+ "actions": [],
+ "allow_events_in_timeline": 1,
+ "allow_rename": 1,
+ "autoname": "FSL-.####",
+ "creation": "2022-02-23 19:30:55.305251",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "date",
+  "employee",
+  "employee_name",
+  "designation",
+  "business_unit",
+  "branch",
+  "date_of_joining",
+  "column_break_6",
+  "employee_separation",
+  "settlement_from",
+  "last_working_day",
+  "total_worked_year",
+  "basic_salary",
+  "total_salary_and_allowance",
+  "onboarding_form",
+  "section_break_72uu3",
+  "resignation_letter_or_termination_letter",
+  "offer_letter_or_onboarding_form",
+  "employee_cnrct",
+  "deduction_",
+  "medical_insu",
+  "recommendation",
+  "account_settilement",
+  "column_break_f9tfd",
+  "resignation_or_termination_letter",
+  "reason",
+  "offer_letter_or_on_boarding_form",
+  "reason1",
+  "employment_contract",
+  "reason2",
+  "deduction_details_if_any",
+  "reason3",
+  "medical_insurance_cancellation",
+  "reason4",
+  "hod_recommendations_if_any",
+  "reason5",
+  "employee_account_settlement_report",
+  "leave_taken",
+  "section_break_11",
+  "leave_salary_month_and_year",
+  "salary_for_last_month_notice_period_section",
+  "salary_for_last_month_notice_period",
+  "gratuity_section",
+  "gratuity_details",
+  "addition_section",
+  "addition",
+  "deduction_section",
+  "deduction",
+  "management_section",
+  "declaration",
+  "amended_from",
+  "accounts_managment_section",
+  "comments_from_accounts",
+  "management_approval_section",
+  "comments_from_management"
+ ],
+ "fields": [
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_standard_filter": 1,
+   "label": "Date"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Read Only",
+   "in_standard_filter": 1,
+   "label": "Employee Name"
+  },
+  {
+   "fieldname": "designation",
+   "fieldtype": "Data",
+   "label": "Designation"
+  },
+  {
+   "fieldname": "business_unit",
+   "fieldtype": "Data",
+   "label": "Business Unit "
+  },
+  {
+   "allow_on_submit": 1,
+   "fetch_from": "employee.branch",
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "date_of_joining",
+   "fieldtype": "Date",
+   "label": "Date of Joining"
+  },
+  {
+   "fieldname": "column_break_6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "employee_separation",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee Separation",
+   "options": "Employee Separation",
+   "reqd": 1
+  },
+  {
+   "fieldname": "settlement_from",
+   "fieldtype": "Date",
+   "label": "Settlement From"
+  },
+  {
+   "fieldname": "last_working_day",
+   "fieldtype": "Date",
+   "label": "Last Working Day"
+  },
+  {
+   "fieldname": "total_worked_year",
+   "fieldtype": "Data",
+   "label": "Total Worked Year, Month & Days"
+  },
+  {
+   "fieldname": "basic_salary",
+   "fieldtype": "Data",
+   "label": "Basic Salary"
+  },
+  {
+   "fieldname": "total_salary_and_allowance",
+   "fieldtype": "Data",
+   "label": "Total Salary and Allowance"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "onboarding_form",
+   "fieldtype": "Link",
+   "label": "Onboarding Form",
+   "options": "Onboarding Form"
+  },
+  {
+   "fieldname": "section_break_72uu3",
+   "fieldtype": "Section Break",
+   "label": "Check List"
+  },
+  {
+   "depends_on": "eval:((doc.workflow_state == \"Pending HR Approval\") || (doc.workflow_state ==\"Pending Accounts Approval\")|| (doc.workflow_state ==\"Pending HR Manager Approval\") || (doc.workflow_state ==\"Pending Management Approval\") || (doc.workflow_state ==\"Approved\"));",
+   "fieldname": "resignation_letter_or_termination_letter",
+   "fieldtype": "Select",
+   "label": "Resignation letter or Termination letter ",
+   "mandatory_depends_on": "eval:doc.workflow_state == \"Pending HR Approval\";",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:((doc.workflow_state == \"Pending HR Approval\") || (doc.workflow_state ==\"Pending Accounts Approval\")|| (doc.workflow_state ==\"Pending HR Manager Approval\") || (doc.workflow_state ==\"Pending Management Approval\") || (doc.workflow_state ==\"Approved\"));",
+   "fieldname": "offer_letter_or_onboarding_form",
+   "fieldtype": "Select",
+   "label": "Offer Letter or Onboarding Form ",
+   "mandatory_depends_on": "eval:doc.workflow_state == \"Pending HR Approval\";",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:((doc.workflow_state == \"Pending HR Approval\") || (doc.workflow_state ==\"Pending Accounts Approval\")|| (doc.workflow_state ==\"Pending HR Manager Approval\") || (doc.workflow_state ==\"Pending Management Approval\") || (doc.workflow_state ==\"Approved\"));",
+   "fieldname": "employee_cnrct",
+   "fieldtype": "Select",
+   "label": "Employment Contract",
+   "mandatory_depends_on": "eval:doc.workflow_state == \"Pending HR Approval\";",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:((doc.workflow_state == \"Pending HR Approval\") || (doc.workflow_state ==\"Pending Accounts Approval\")|| (doc.workflow_state ==\"Pending HR Manager Approval\") || (doc.workflow_state ==\"Pending Management Approval\") || (doc.workflow_state ==\"Approved\"));",
+   "fieldname": "deduction_",
+   "fieldtype": "Select",
+   "label": "Deduction details if any",
+   "mandatory_depends_on": "eval:doc.workflow_state == \"Pending HR Approval\";",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:((doc.workflow_state == \"Pending HR Approval\") || (doc.workflow_state ==\"Pending Accounts Approval\")|| (doc.workflow_state ==\"Pending HR Manager Approval\") || (doc.workflow_state ==\"Pending Management Approval\") || (doc.workflow_state ==\"Approved\"));",
+   "fieldname": "medical_insu",
+   "fieldtype": "Select",
+   "label": "Medical Insurance Cancellation",
+   "mandatory_depends_on": "eval:doc.workflow_state == \"Pending HR Approval\";",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:((doc.workflow_state == \"Pending HR Approval\") || (doc.workflow_state ==\"Pending Accounts Approval\")|| (doc.workflow_state ==\"Pending HR Manager Approval\") || (doc.workflow_state ==\"Pending Management Approval\") || (doc.workflow_state ==\"Approved\"));",
+   "fieldname": "recommendation",
+   "fieldtype": "Select",
+   "label": "HOD recommendations if any",
+   "mandatory_depends_on": "eval:doc.workflow_state == \"Pending HR Approval\";",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:((doc.workflow_state ==\"Pending Accounts Approval\")|| (doc.workflow_state ==\"Pending HR Manager Approval\") || (doc.workflow_state ==\"Pending Management Approval\") || (doc.workflow_state ==\"Approved\"));",
+   "fieldname": "account_settilement",
+   "fieldtype": "Select",
+   "label": "Employee Account Settlement Repor",
+   "mandatory_depends_on": "eval:doc.workflow_state == \"Pending Accounts Approval\";",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "column_break_f9tfd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.resignation_letter_or_termination_letter == \"Yes\";",
+   "fieldname": "resignation_or_termination_letter",
+   "fieldtype": "Attach",
+   "label": "Resignation or Termination letter",
+   "mandatory_depends_on": "eval:doc.resignation_letter_or_termination_letter == \"Yes\";"
+  },
+  {
+   "depends_on": "eval:doc.resignation_letter_or_termination_letter == \"No\";",
+   "fieldname": "reason",
+   "fieldtype": "Data",
+   "label": "Reason",
+   "mandatory_depends_on": "eval:doc.resignation_letter_or_termination_letter == \"No\";"
+  },
+  {
+   "depends_on": "eval:doc.offer_letter_or_onboarding_form == \"Yes\";",
+   "fieldname": "offer_letter_or_on_boarding_form",
+   "fieldtype": "Attach",
+   "label": "Offer Letter or On boarding Form",
+   "mandatory_depends_on": "eval:doc.offer_letter_or_onboarding_form == \"Yes\";"
+  },
+  {
+   "depends_on": "eval:doc.offer_letter_or_onboarding_form == \"No\";",
+   "fieldname": "reason1",
+   "fieldtype": "Data",
+   "label": "Reason",
+   "mandatory_depends_on": "eval:doc.offer_letter_or_onboarding_form == \"No\";"
+  },
+  {
+   "depends_on": "eval:doc.employee_cnrct == \"Yes\";",
+   "fieldname": "employment_contract",
+   "fieldtype": "Attach",
+   "label": "Employment Contract",
+   "mandatory_depends_on": "eval:doc.employee_cnrct == \"Yes\";"
+  },
+  {
+   "depends_on": "eval:doc.employee_cnrct == \"No\";",
+   "fieldname": "reason2",
+   "fieldtype": "Data",
+   "label": "Rason",
+   "mandatory_depends_on": "eval:doc.employee_cnrct == \"No\";"
+  },
+  {
+   "depends_on": "eval:doc.deduction_ == \"Yes\";",
+   "fieldname": "deduction_details_if_any",
+   "fieldtype": "Attach",
+   "label": "Deduction details if any",
+   "mandatory_depends_on": "eval:doc.deduction_ == \"Yes\";"
+  },
+  {
+   "depends_on": "eval:doc.deduction_ == \"No\";",
+   "fieldname": "reason3",
+   "fieldtype": "Data",
+   "label": "Reason",
+   "mandatory_depends_on": "eval:doc.deduction_ == \"No\";"
+  },
+  {
+   "depends_on": "eval:doc.medical_insu == \"Yes\";",
+   "fieldname": "medical_insurance_cancellation",
+   "fieldtype": "Attach",
+   "label": "Medical Insurance Cancellation ",
+   "mandatory_depends_on": "eval:doc.medical_insu == \"Yes\";"
+  },
+  {
+   "depends_on": "eval:doc.medical_insu == \"No\";",
+   "fieldname": "reason4",
+   "fieldtype": "Data",
+   "label": "Reason",
+   "mandatory_depends_on": "eval:doc.medical_insu == \"No\";"
+  },
+  {
+   "depends_on": "eval:doc.recommendation == \"Yes\";",
+   "fieldname": "hod_recommendations_if_any",
+   "fieldtype": "Attach",
+   "label": "HOD recommendations if any",
+   "mandatory_depends_on": "eval:doc.recommendation == \"Yes\";"
+  },
+  {
+   "depends_on": "eval:doc.recommendation == \"No\";",
+   "fieldname": "reason5",
+   "fieldtype": "Data",
+   "label": "Reason",
+   "mandatory_depends_on": "eval:doc.recommendation == \"No\";"
+  },
+  {
+   "depends_on": "eval:doc.account_settilement == \"Yes\";",
+   "fieldname": "employee_account_settlement_report",
+   "fieldtype": "Attach",
+   "label": "Employee Account Settlement Report",
+   "mandatory_depends_on": "eval:doc.account_settilement == \"Yes\";"
+  },
+  {
+   "depends_on": "eval:doc.workflow_state == \"Pending HR Approval\";",
+   "fieldname": "leave_taken",
+   "fieldtype": "Float",
+   "label": "Leave taken ",
+   "mandatory_depends_on": "eval:doc.workflow_state == \"Pending HR Approval\";"
+  },
+  {
+   "fieldname": "section_break_11",
+   "fieldtype": "Section Break",
+   "label": "Leave Salary (Month and Year)"
+  },
+  {
+   "fieldname": "leave_salary_month_and_year",
+   "fieldtype": "Table",
+   "label": "Leave Salary Month and Year",
+   "options": "Leave Salary Month and Year"
+  },
+  {
+   "fieldname": "salary_for_last_month_notice_period_section",
+   "fieldtype": "Section Break",
+   "label": "Salary For Last Month Notice Period"
+  },
+  {
+   "fieldname": "salary_for_last_month_notice_period",
+   "fieldtype": "Table",
+   "label": "Salary For Last Month Notice Period",
+   "options": "Salary For Last Month Notice Period"
+  },
+  {
+   "fieldname": "gratuity_section",
+   "fieldtype": "Section Break",
+   "label": "Gratuity"
+  },
+  {
+   "fieldname": "gratuity_details",
+   "fieldtype": "Table",
+   "label": "Gratuity Details",
+   "options": "Gratuity Details"
+  },
+  {
+   "fieldname": "addition_section",
+   "fieldtype": "Section Break",
+   "label": "Addition"
+  },
+  {
+   "fieldname": "addition",
+   "fieldtype": "Table",
+   "label": "Addition",
+   "options": "Addition"
+  },
+  {
+   "fieldname": "deduction_section",
+   "fieldtype": "Section Break",
+   "label": "Deduction"
+  },
+  {
+   "fieldname": "deduction",
+   "fieldtype": "Table",
+   "label": "Deduction",
+   "options": "Deduction",
+   "reqd": 1
+  },
+  {
+   "fieldname": "management_section",
+   "fieldtype": "Table",
+   "label": "Management Section",
+   "options": "Management Section"
+  },
+  {
+   "default": "Recieved From IHG Industry L.L.C the sum of  AED 0.00  towards full and final settlement of my dues upto and declare that i have no further claims whatsoever from the company. \n\n\n\n Employee Name",
+   "fieldname": "declaration",
+   "fieldtype": "Text",
+   "label": "Declaration"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Final Settlement",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "accounts_managment_section",
+   "fieldtype": "Section Break",
+   "label": "Accounts Managment",
+   "permlevel": 2
+  },
+  {
+   "fieldname": "comments_from_accounts",
+   "fieldtype": "Long Text",
+   "label": "Comments From Accounts",
+   "permlevel": 2
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "management_approval_section",
+   "fieldtype": "Section Break",
+   "label": "Management Comments",
+   "permlevel": 2
+  },
+  {
+   "fieldname": "comments_from_management",
+   "fieldtype": "Long Text",
+   "label": "Comments From Management",
+   "permlevel": 2
+  }
+ ],
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-06-18 11:50:16.848194",
+ "modified_by": "Administrator",
+ "module": "Prastara Custom",
+ "name": "Final Settlement",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "if_owner": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "track_seen": 1,
+ "track_views": 1
+}
