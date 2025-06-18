@@ -1,0 +1,283 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "PRD-LE-.employee.-.YY.-.####",
+ "creation": "2025-06-18 11:32:03.066121",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "note",
+  "section_break_2",
+  "employee",
+  "employee_name",
+  "request_title",
+  "reason",
+  "late_and_early_time",
+  "break_in",
+  "break_out",
+  "duration",
+  "column_break_5",
+  "company",
+  "department",
+  "department_manager",
+  "posting_date",
+  "applied_on",
+  "branch",
+  "request_sub",
+  "request_doc",
+  "details_section",
+  "request_details",
+  "amended_from",
+  "hod_approve_by",
+  "hr_approved_by",
+  "approved_by",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "bold": 1,
+   "fieldname": "note",
+   "fieldtype": "HTML",
+   "label": "Please Note",
+   "options": "<p><span style=\"color: #ca0003;\"><b>Please Note: </b>All late coming and early leaving more than 2 hrs. should be applied as a half-day in leave application.</span></p>",
+   "width": "100"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Select Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Employee Name"
+  },
+  {
+   "fieldname": "request_title",
+   "fieldtype": "Select",
+   "label": "Request Type",
+   "options": "Late Coming\nEarly Leaving\nOut Permit\nOvertime Cut",
+   "reqd": 1
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Reason",
+   "options": "Company Transportation Issue\nVehicle Breakdown\nMedical Emergency\nFamily or Personal Issues\nDue to Heavy Traffic\nOvernight Work\nHealth Issue\nBad Weather\nOver Sleeping\nMedical Appointments",
+   "reqd": 1
+  },
+  {
+   "fieldname": "late_and_early_time",
+   "fieldtype": "Select",
+   "label": "Late and Early Time",
+   "options": "15 mins\n30 mins\n1 hr\n2 hr",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.request_title==\"Out Permit\"",
+   "fieldname": "break_in",
+   "fieldtype": "Time",
+   "label": "Break In"
+  },
+  {
+   "depends_on": "eval:doc.request_title==\"Out Permit\"",
+   "fieldname": "break_out",
+   "fieldtype": "Time",
+   "label": "Break Out"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Duration",
+   "hidden": 1,
+   "label": "Duration"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "employee.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fetch_from": "employee.department",
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fetch_from": "employee.leave_approver",
+   "fieldname": "department_manager",
+   "fieldtype": "Link",
+   "label": "Department Manager",
+   "options": "User"
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date"
+  },
+  {
+   "default": "Now",
+   "fieldname": "applied_on",
+   "fieldtype": "Read Only",
+   "label": "Applied On"
+  },
+  {
+   "fetch_from": "employee.branch",
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "request_sub",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Request Subject"
+  },
+  {
+   "fieldname": "request_doc",
+   "fieldtype": "Attach",
+   "label": "Attach Document"
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "More Details"
+  },
+  {
+   "fieldname": "request_details",
+   "fieldtype": "Text Editor"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Late Coming and Early Leaving",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "hod_approve_by",
+   "fieldtype": "Data",
+   "label": "HOD Approve by"
+  },
+  {
+   "fieldname": "hr_approved_by",
+   "fieldtype": "Data",
+   "label": "HR Approved By"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "approved_by",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Approved By"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Employee Late Coming and Early Leaving",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-06-18 11:32:03.066121",
+ "modified_by": "Administrator",
+ "module": "Prastara Custom",
+ "name": "Employee Late Coming and Early Leaving",
+ "name_case": "Title Case",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "if_owner": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "request_sub"
+}
