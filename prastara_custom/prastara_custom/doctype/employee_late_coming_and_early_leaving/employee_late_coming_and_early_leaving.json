@@ -179,7 +179,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Late Coming and Early Leaving",
+   "options": "Employee Late Coming and Early Leaving",
    "print_hide": 1,
    "read_only": 1
   },
