@@ -5612,6 +5612,11 @@ def get_context(context):
     context.csrf_token = frappe.sessions.get_csrf_token()
     return context
 
+import frappe
+from frappe import _
+from frappe.utils import getdate, date_diff
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 @frappe.whitelist()
 def get_sales_data(filters=None):
@@ -5665,7 +5670,7 @@ def get_sales_data(filters=None):
             effective_end = effective_start
         
         # Calculate the number of months spanned
-        delta = relativedelta.relativedelta(effective_end, effective_start)
+        delta = relativedelta(effective_end, effective_start)
         num_months = delta.months + delta.years * 12
         if delta.days > 0 or (effective_start.day == 1 and effective_end.day >= 28):
             num_months += 1
