@@ -1,3 +1,4 @@
+// Ultra-Modern Sales Order Analytics Dashboard - Complete Redesign
 frappe.pages['prd-so-calender'].on_page_load = function(wrapper) {
     var page = frappe.ui.make_app_page({
         parent: wrapper,
@@ -2089,7 +2090,7 @@ navigateSuggestions(direction) {
         }
     }
 }
-   showSearchSuggestions(query) {
+showSearchSuggestions(query) {
     const suggestions = $('#search-suggestions');
     const lowerQuery = query.toLowerCase();
     
@@ -2097,7 +2098,9 @@ navigateSuggestions(direction) {
         order.name.toLowerCase().includes(lowerQuery) ||
         order.customer.toLowerCase().includes(lowerQuery) ||
         (order.sales_person || '').toLowerCase().includes(lowerQuery) ||
-        (order.status || '').toLowerCase().includes(lowerQuery)
+        (order.status || '').toLowerCase().includes(lowerQuery) ||
+        (order.project || '').toLowerCase().includes(lowerQuery) ||
+        (order.project_description || '').toLowerCase().includes(lowerQuery)
     ).slice(0, 8);
     
     if (matches.length === 0) {
@@ -2115,7 +2118,13 @@ navigateSuggestions(direction) {
                 <div style="font-weight: 600; color: var(--text); margin-bottom: var(--space-1);">${order.name}</div>
                 <div style="font-size: 0.875rem; color: var(--text-muted);">
                     ${order.customer} • ${order.sales_person} • ${frappe.format(order.grand_total, {fieldtype: 'Currency'})}
+                    ${order.project ? ` • 📋 ${order.project}` : ''}
                 </div>
+                ${order.project_description ? `
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: var(--space-1);">
+                        ${order.project_description.length > 60 ? order.project_description.substring(0, 60) + '...' : order.project_description}
+                    </div>
+                ` : ''}
             </div>
         `;
     });
@@ -2135,76 +2144,83 @@ navigateSuggestions(direction) {
         }
     });
 }
-    setupFilters() {
-        const filtersHtml = `
-            <div class="filter-field">
-                <label class="filter-label">Customer</label>
-                <select class="filter-control" id="customer-filter">
-                    <option value="">All Customers</option>
-                </select>
+  setupFilters() {
+    const filtersHtml = `
+        <div class="filter-field">
+            <label class="filter-label">Customer</label>
+            <select class="filter-control" id="customer-filter">
+                <option value="">All Customers</option>
+            </select>
+        </div>
+        <div class="filter-field">
+            <label class="filter-label">Sales Person</label>
+            <select class="filter-control" id="sales-person-filter">
+                <option value="">All Sales Persons</option>
+            </select>
+        </div>
+        <div class="filter-field">
+            <label class="filter-label">Project</label>
+            <select class="filter-control" id="project-filter">
+                <option value="">All Projects</option>
+            </select>
+        </div>
+        <div class="filter-field">
+            <label class="filter-label">Branch</label>
+            <select class="filter-control" id="branch-filter">
+                <option value="">All Branches</option>
+            </select>
+        </div>
+        <div class="filter-field">
+            <label class="filter-label">Status</label>
+            <select class="filter-control" id="status-filter">
+                <option value="">All Status</option>
+            </select>
+        </div>
+        <div class="filter-field">
+            <label class="filter-label">Due Date From</label>
+            <input type="date" class="filter-control" id="date-from">
+        </div>
+        <div class="filter-field">
+            <label class="filter-label">Due Date To</label>
+            <input type="date" class="filter-control" id="date-to">
+        </div>
+        <div class="filter-field">
+            <label class="filter-label">Quick Filters</label>
+            <select class="filter-control" id="quick-filter">
+                <option value="">No Filter</option>
+                <option value="overdue">🔴 Overdue Orders</option>
+                <option value="due-today">🟡 Due Today</option>
+                <option value="due-week">🟢 Due This Week</option>
+                <option value="high-value">💎 High Value (>20K)</option>
+                <option value="on-hold">⏸️ On Hold</option>
+                <option value="with-projects">📋 With Projects</option>
+                <option value="without-projects">📋 Without Projects</option>
+            </select>
+        </div>
+        <div class="filter-field">
+            <label class="filter-label">Order Value Range</label>
+            <div style="display: flex; gap: var(--space-2); align-items: center;">
+                <input type="number" class="filter-control" id="value-min" placeholder="Min" style="flex: 1;">
+                <span style="color: var(--text-muted);">to</span>
+                <input type="number" class="filter-control" id="value-max" placeholder="Max" style="flex: 1;">
             </div>
-            <div class="filter-field">
-                <label class="filter-label">Sales Person</label>
-                <select class="filter-control" id="sales-person-filter">
-                    <option value="">All Sales Persons</option>
-                </select>
-            </div>
-            <div class="filter-field">
-                <label class="filter-label">Branch</label>
-                <select class="filter-control" id="branch-filter">
-                    <option value="">All Branches</option>
-                </select>
-            </div>
-            <div class="filter-field">
-                <label class="filter-label">Status</label>
-                <select class="filter-control" id="status-filter">
-                    <option value="">All Status</option>
-                </select>
-            </div>
-            <div class="filter-field">
-                <label class="filter-label">Due Date From</label>
-                <input type="date" class="filter-control" id="date-from">
-            </div>
-            <div class="filter-field">
-                <label class="filter-label">Due Date To</label>
-                <input type="date" class="filter-control" id="date-to">
-            </div>
-            <div class="filter-field">
-                <label class="filter-label">Quick Filters</label>
-                <select class="filter-control" id="quick-filter">
-                    <option value="">No Filter</option>
-                    <option value="overdue">🔴 Overdue Orders</option>
-                    <option value="due-today">🟡 Due Today</option>
-                    <option value="due-week">🟢 Due This Week</option>
-                    <option value="high-value">💎 High Value (>20K)</option>
-                    <option value="on-hold">⏸️ On Hold</option>
-                </select>
-            </div>
-            <div class="filter-field">
-                <label class="filter-label">Order Value Range</label>
-                <div style="display: flex; gap: var(--space-2); align-items: center;">
-                    <input type="number" class="filter-control" id="value-min" placeholder="Min" style="flex: 1;">
-                    <span style="color: var(--text-muted);">to</span>
-                    <input type="number" class="filter-control" id="value-max" placeholder="Max" style="flex: 1;">
-                </div>
-            </div>
-        `;
-        
-        $('#filter-grid').html(filtersHtml);
-        
-        $('.filter-control').on('change', () => {
-            this.applyFilters();
-        });
-        
-        $('#reset-filters').on('click', () => {
-            this.clearAllFilters();
-        });
-        
-        $('#save-filter').on('click', () => {
-            this.saveCurrentFilter();
-        });
-    }
-
+        </div>
+    `;
+    
+    $('#filter-grid').html(filtersHtml);
+    
+    $('.filter-control').on('change', () => {
+        this.applyFilters();
+    });
+    
+    $('#reset-filters').on('click', () => {
+        this.clearAllFilters();
+    });
+    
+    $('#save-filter').on('click', () => {
+        this.saveCurrentFilter();
+    });
+}
     setupViewSwitcher() {
         const views = [
             { id: 'dashboard', icon: 'fa-dashboard', label: 'Dashboard', badge: '' },
@@ -2838,64 +2854,76 @@ handleQuickAction(action) {
         this.content_area.html(html);
         this.setupOrderCardHandlers();
     }
-
-    renderModernOrderCard(order) {
-        const billedPercent = parseFloat(order.per_billed || 0);
-        const deliveredPercent = parseFloat(order.per_delivered || 0);
-        
-        return `
-            <div class="order-card-modern" data-order="${order.name}">
-                <div class="order-card-status-bar ${order.due_status}"></div>
-                
-                <div class="order-card-header">
-                    <div class="order-card-number">${order.name}</div>
-                    <div class="order-card-customer">${order.customer}</div>
+renderModernOrderCard(order) {
+    const billedPercent = parseFloat(order.per_billed || 0);
+    const deliveredPercent = parseFloat(order.per_delivered || 0);
+    
+    return `
+        <div class="order-card-modern" data-order="${order.name}">
+            <div class="order-card-status-bar ${order.due_status}"></div>
+            
+            <div class="order-card-header">
+                <div class="order-card-number">${order.name}</div>
+                <div class="order-card-customer">${order.customer}</div>
+                ${order.project ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: var(--space-1);">📋 ${order.project}</div>` : ''}
+            </div>
+            
+            <div class="order-card-body">
+                <div class="order-info-grid">
+                    <div class="order-info-item">
+                        <div class="order-info-label">Sales Person</div>
+                        <div class="order-info-value">${order.sales_person}</div>
+                    </div>
+                    <div class="order-info-item">
+                        <div class="order-info-label">Delivery Date</div>
+                        <div class="order-info-value">${frappe.datetime.str_to_user(order.delivery_date)}</div>
+                    </div>
+                    ${order.project ? `
+                        <div class="order-info-item">
+                            <div class="order-info-label">Project</div>
+                            <div class="order-info-value">${order.project}</div>
+                        </div>
+                    ` : ''}
+                    ${order.project_description ? `
+                        <div class="order-info-item">
+                            <div class="order-info-label">Project Description</div>
+                            <div class="order-info-value" title="${order.project_description}">${order.project_description.length > 30 ? order.project_description.substring(0, 30) + '...' : order.project_description}</div>
+                        </div>
+                    ` : ''}
+                    <div class="order-info-item">
+                        <div class="order-info-label">Grand Total</div>
+                        <div class="order-info-value">${frappe.format(order.grand_total, {fieldtype: 'Currency'})}</div>
+                    </div>
+                    <div class="order-info-item">
+                        <div class="order-info-label">Remaining</div>
+                        <div class="order-info-value">${frappe.format(order.remaining_amount, {fieldtype: 'Currency'})}</div>
+                    </div>
                 </div>
                 
-                <div class="order-card-body">
-                    <div class="order-info-grid">
-                        <div class="order-info-item">
-                            <div class="order-info-label">Sales Person</div>
-                            <div class="order-info-value">${order.sales_person}</div>
+                <div class="progress-container">
+                    <div class="progress-item">
+                        <div class="progress-header">
+                            <span class="progress-label">Billing Progress</span>
+                            <span class="progress-value">${billedPercent.toFixed(1)}%</span>
                         </div>
-                        <div class="order-info-item">
-                            <div class="order-info-label">Delivery Date</div>
-                            <div class="order-info-value">${frappe.datetime.str_to_user(order.delivery_date)}</div>
-                        </div>
-                        <div class="order-info-item">
-                            <div class="order-info-label">Grand Total</div>
-                            <div class="order-info-value">${frappe.format(order.grand_total, {fieldtype: 'Currency'})}</div>
-                        </div>
-                        <div class="order-info-item">
-                            <div class="order-info-label">Remaining</div>
-                            <div class="order-info-value">${frappe.format(order.remaining_amount, {fieldtype: 'Currency'})}</div>
+                        <div class="progress-bar-modern">
+                            <div class="progress-fill-modern" style="width: ${billedPercent}%"></div>
                         </div>
                     </div>
-                    
-                    <div class="progress-container">
-                        <div class="progress-item">
-                            <div class="progress-header">
-                                <span class="progress-label">Billing Progress</span>
-                                <span class="progress-value">${billedPercent.toFixed(1)}%</span>
-                            </div>
-                            <div class="progress-bar-modern">
-                                <div class="progress-fill-modern" style="width: ${billedPercent}%"></div>
-                            </div>
+                    <div class="progress-item">
+                        <div class="progress-header">
+                            <span class="progress-label">Delivery Progress</span>
+                            <span class="progress-value">${deliveredPercent.toFixed(1)}%</span>
                         </div>
-                        <div class="progress-item">
-                            <div class="progress-header">
-                                <span class="progress-label">Delivery Progress</span>
-                                <span class="progress-value">${deliveredPercent.toFixed(1)}%</span>
-                            </div>
-                            <div class="progress-bar-modern">
-                                <div class="progress-fill-modern" style="width: ${deliveredPercent}%"></div>
-                            </div>
+                        <div class="progress-bar-modern">
+                            <div class="progress-fill-modern" style="width: ${deliveredPercent}%"></div>
                         </div>
                     </div>
                 </div>
             </div>
-        `;
-    }
+        </div>
+    `;
+}
 
     renderModernCalendar() {
         const currentDate = this.calendar_date;
@@ -2986,42 +3014,44 @@ handleQuickAction(action) {
         });
     }
 
-    extractFilterOptions() {
-        const customers = new Set();
-        const sales_persons = new Set();
-        const branches = new Set();
-        const statuses = new Set();
+ extractFilterOptions() {
+    const customers = new Set();
+    const sales_persons = new Set();
+    const branches = new Set();
+    const statuses = new Set();
+    const projects = new Set();
+    
+    this.all_orders.forEach(order => {
+        if (order.customer) customers.add(order.customer);
+        if (order.sales_person) sales_persons.add(order.sales_person);
+        if (order.branch) branches.add(order.branch);
+        if (order.status) statuses.add(order.status);
+        if (order.project) projects.add(order.project);
+    });
+    
+    this.filter_options = {
+        customers: Array.from(customers).sort(),
+        sales_persons: Array.from(sales_persons).sort(),
+        branches: Array.from(branches).sort(),
+        statuses: Array.from(statuses).sort(),
+        projects: Array.from(projects).sort()
+    };
+}
+  populateFilterOptions() {
+    ['customers', 'sales_persons', 'branches', 'statuses', 'projects'].forEach(type => {
+        const filterId = type === 'customers' ? 'customer-filter' :
+                        type === 'sales_persons' ? 'sales-person-filter' :
+                        type === 'branches' ? 'branch-filter' : 
+                        type === 'projects' ? 'project-filter' : 'status-filter';
         
-        this.all_orders.forEach(order => {
-            if (order.customer) customers.add(order.customer);
-            if (order.sales_person) sales_persons.add(order.sales_person);
-            if (order.branch) branches.add(order.branch);
-            if (order.status) statuses.add(order.status);
-        });
+        const filter = $(`#${filterId}`);
+        filter.find('option:not(:first)').remove();
         
-        this.filter_options = {
-            customers: Array.from(customers).sort(),
-            sales_persons: Array.from(sales_persons).sort(),
-            branches: Array.from(branches).sort(),
-            statuses: Array.from(statuses).sort()
-        };
-    }
-
-    populateFilterOptions() {
-        ['customers', 'sales_persons', 'branches', 'statuses'].forEach(type => {
-            const filterId = type === 'customers' ? 'customer-filter' :
-                            type === 'sales_persons' ? 'sales-person-filter' :
-                            type === 'branches' ? 'branch-filter' : 'status-filter';
-            
-            const filter = $(`#${filterId}`);
-            filter.find('option:not(:first)').remove();
-            
-            this.filter_options[type].forEach(option => {
-                filter.append(`<option value="${option}">${option}</option>`);
-            });
+        this.filter_options[type].forEach(option => {
+            filter.append(`<option value="${option}">${option}</option>`);
         });
-    }
-
+    });
+}
 applyFilters() {
     const globalSearch = $('#global-search').val().toLowerCase();
     
@@ -3034,6 +3064,7 @@ applyFilters() {
     
     const customer = $('#customer-filter').val();
     const salesPerson = $('#sales-person-filter').val();
+    const project = $('#project-filter').val();
     const branch = $('#branch-filter').val();
     const status = $('#status-filter').val();
     const dateFrom = $('#date-from').val();
@@ -3047,6 +3078,7 @@ applyFilters() {
     
     if (customer) filtered = filtered.filter(order => order.customer === customer);
     if (salesPerson) filtered = filtered.filter(order => order.sales_person === salesPerson);
+    if (project) filtered = filtered.filter(order => order.project === project);
     if (branch) filtered = filtered.filter(order => order.branch === branch);
     if (status) filtered = filtered.filter(order => order.status === status);
     
@@ -3085,6 +3117,12 @@ applyFilters() {
             case 'on-hold':
                 filtered = filtered.filter(order => (order.status || '').toLowerCase().includes('hold'));
                 break;
+            case 'with-projects':
+                filtered = filtered.filter(order => order.project && order.project.trim() !== '');
+                break;
+            case 'without-projects':
+                filtered = filtered.filter(order => !order.project || order.project.trim() === '');
+                break;
         }
     }
     
@@ -3093,21 +3131,26 @@ applyFilters() {
             order.name.toLowerCase().includes(globalSearch) ||
             order.customer.toLowerCase().includes(globalSearch) ||
             (order.sales_person || '').toLowerCase().includes(globalSearch) ||
-            (order.status || '').toLowerCase().includes(globalSearch)
+            (order.status || '').toLowerCase().includes(globalSearch) ||
+            (order.project || '').toLowerCase().includes(globalSearch) ||
+            (order.project_description || '').toLowerCase().includes(globalSearch)
         );
     }
-     this.showHeaderStatsLoading();
+    
+    this.showHeaderStatsLoading();
     this.filtered_orders = filtered;
     this.processData();
     this.updateActiveFilters();
-    this.updateHeaderStats(); // Add this line to update header stats
+    this.updateHeaderStats();
     this.renderView();
 }
 hasActiveFilters() {
     return $('#customer-filter').val() || $('#sales-person-filter').val() ||
-           $('#branch-filter').val() || $('#status-filter').val() ||
-           $('#date-from').val() || $('#date-to').val() || $('#quick-filter').val() ||
-           $('#value-min').val() || $('#value-max').val() || $('#customer-type-filter').val();
+           $('#project-filter').val() || $('#branch-filter').val() ||
+           $('#status-filter').val() || $('#date-from').val() || 
+           $('#date-to').val() || $('#quick-filter').val() ||
+           $('#value-min').val() || $('#value-max').val() || 
+           $('#customer-type-filter').val();
 }
 updateActiveFilters() {
     const activeFiltersContainer = $('#active-filters');
@@ -3116,9 +3159,10 @@ updateActiveFilters() {
     const filterMappings = [
         { id: 'customer-filter', label: 'Customer' },
         { id: 'sales-person-filter', label: 'Sales Person' },
+        { id: 'project-filter', label: 'Project' },
         { id: 'branch-filter', label: 'Branch' },
         { id: 'status-filter', label: 'Status' },
-        { id: 'customer-type-filter', label: 'Customer Type' }, // Add this line
+        { id: 'customer-type-filter', label: 'Customer Type' },
         { id: 'date-from', label: 'From Date' },
         { id: 'date-to', label: 'To Date' },
         { id: 'quick-filter', label: 'Quick Filter' },
@@ -3126,55 +3170,54 @@ updateActiveFilters() {
         { id: 'value-max', label: 'Max Value' }
     ];
     
-
-        filterMappings.forEach(mapping => {
-            const value = $(`#${mapping.id}`).val();
-            if (value) {
-                filters.push({
-                    id: mapping.id,
-                    label: mapping.label,
-                    value: value
-                });
-            }
-        });
-        
-        const globalSearch = $('#global-search').val();
-        if (globalSearch) {
+    filterMappings.forEach(mapping => {
+        const value = $(`#${mapping.id}`).val();
+        if (value) {
             filters.push({
-                id: 'global-search',
-                label: 'Search',
-                value: globalSearch
+                id: mapping.id,
+                label: mapping.label,
+                value: value
             });
         }
-        
-        if (filters.length > 0) {
-            let html = '<div style="display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4);">';
-            filters.forEach(filter => {
-                html += `
-                    <div style="display: inline-flex; align-items: center; gap: var(--space-2); background: var(--primary); color: white; padding: var(--space-2) var(--space-4); border-radius: var(--radius-full); font-size: 0.875rem; font-weight: 600;">
-                        <span>${filter.label}: ${filter.value}</span>
-                        <button style="background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;" 
-                                onclick="$('#${filter.id}').val(''); frappe.sales_order_dashboard.applyFilters();">
-                            ×
-                        </button>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            
-            activeFiltersContainer.html(html).show();
-        } else {
-            activeFiltersContainer.hide();
-        }
+    });
+    
+    const globalSearch = $('#global-search').val();
+    if (globalSearch) {
+        filters.push({
+            id: 'global-search',
+            label: 'Search',
+            value: globalSearch
+        });
     }
+    
+    if (filters.length > 0) {
+        let html = '<div style="display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4);">';
+        filters.forEach(filter => {
+            html += `
+                <div style="display: inline-flex; align-items: center; gap: var(--space-2); background: var(--primary); color: white; padding: var(--space-2) var(--space-4); border-radius: var(--radius-full); font-size: 0.875rem; font-weight: 600;">
+                    <span>${filter.label}: ${filter.value}</span>
+                    <button style="background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;" 
+                            onclick="$('#${filter.id}').val(''); frappe.sales_order_dashboard.applyFilters();">
+                        ×
+                    </button>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        activeFiltersContainer.html(html).show();
+    } else {
+        activeFiltersContainer.hide();
+    }
+}
 clearAllFilters() {
     $('.filter-control').val('');
     $('#global-search').val('');
     $('#customer-type-filter').val('');
-    this.applyFilters(); // This will now call updateHeaderStats()
+    $('#project-filter').val(''); // Add this line
+    this.applyFilters();
     this.showToast('All filters cleared', 'success');
 }
-
     saveCurrentFilter() {
         // Implement filter saving logic
         this.showToast('Filter saved successfully', 'success');
@@ -3624,103 +3667,110 @@ clearAllFilters() {
         `;
     }
 
-    renderModernList() {
-        if (!this.filtered_orders.length) {
-            this.content_area.html(this.renderEmptyState('No orders found', 'Try adjusting your filters or search criteria'));
-            return;
-        }
-        
-        const totalValue = this.filtered_orders.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0);
-        const totalRemaining = this.filtered_orders.reduce((sum, order) => sum + parseFloat(order.remaining_amount || 0), 0);
-        
-        const html = `
-            <div class="table-modern-container">
-                <div class="table-modern-header">
-                    <div class="table-modern-title">All Orders (${this.filtered_orders.length} orders)</div>
-                    <div class="table-toolbar">
-                        <div class="table-search-box">
-                            <i class="fa fa-search table-search-icon"></i>
-                            <input type="text" class="table-search-input" placeholder="Search orders..." id="list-search">
-                        </div>
-                        <div class="table-actions">
-                            <button class="btn btn-ghost btn-sm" onclick="frappe.sales_order_dashboard.exportData()">
-                                <i class="fa fa-download"></i>
-                                Export
-                            </button>
-                        </div>
+renderModernList() {
+    if (!this.filtered_orders.length) {
+        this.content_area.html(this.renderEmptyState('No orders found', 'Try adjusting your filters or search criteria'));
+        return;
+    }
+    
+    const totalValue = this.filtered_orders.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0);
+    const totalRemaining = this.filtered_orders.reduce((sum, order) => sum + parseFloat(order.remaining_amount || 0), 0);
+    
+    const html = `
+        <div class="table-modern-container">
+            <div class="table-modern-header">
+                <div class="table-modern-title">All Orders (${this.filtered_orders.length} orders)</div>
+                <div class="table-toolbar">
+                    <div class="table-search-box">
+                        <i class="fa fa-search table-search-icon"></i>
+                        <input type="text" class="table-search-input" placeholder="Search orders, projects..." id="list-search">
                     </div>
-                </div>
-                <div class="table-body">
-                    <table class="data-table" id="orders-table">
-                        <thead>
-                            <tr>
-                                <th>Order #</th>
-                                <th>Customer</th>
-                                <th>Sales Person</th>
-                                <th>Delivery Date</th>
-                                <th>Status</th>
-                                <th>Grand Total</th>
-                                <th>Progress</th>
-                                <th>Remaining</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${this.filtered_orders.map(order => this.renderModernOrderRow(order)).join('')}
-                        </tbody>
-                    </table>
-                </div>
-                <div style="padding: var(--space-6); background: var(--surface-alt); border-top: 2px solid var(--primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4);">
-                    <div style="display: flex; gap: var(--space-8); flex-wrap: wrap;">
-                        <div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Orders</div>
-                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${this.filtered_orders.length}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Value</div>
-                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${frappe.format(totalValue, {fieldtype: 'Currency'})}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Remaining</div>
-                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${frappe.format(totalRemaining, {fieldtype: 'Currency'})}</div>
-                        </div>
+                    <div class="table-actions">
+                        <button class="btn btn-ghost btn-sm" onclick="frappe.sales_order_dashboard.exportData()">
+                            <i class="fa fa-download"></i>
+                            Export
+                        </button>
                     </div>
                 </div>
             </div>
-        `;
-        
-        this.content_area.html(html);
-        this.setupListHandlers();
-    }
-
-    renderModernOrderRow(order) {
-        const billedPercent = parseFloat(order.per_billed || 0);
-        const deliveredPercent = parseFloat(order.per_delivered || 0);
-        const avgProgress = (billedPercent + deliveredPercent) / 2;
-        
-        return `
-            <tr data-order="${order.name}" style="cursor: pointer;">
-                <td><strong style="color: var(--primary);">${order.name}</strong></td>
-                <td>${order.customer}</td>
-                <td>${order.sales_person}</td>
-                <td>
-                    ${frappe.datetime.str_to_user(order.delivery_date)}
-                    ${this.getDueBadge(order.due_status, order.due_days_text)}
-                </td>
-                <td>${order.status || 'Unknown'}</td>
-                <td><strong>${frappe.format(order.grand_total, {fieldtype: 'Currency'})}</strong></td>
-                <td>
-                    <div style="display: flex; align-items: center; gap: var(--space-3);">
-                        <div class="progress-bar-modern" style="flex: 1;">
-                            <div class="progress-fill-modern" style="width: ${avgProgress}%"></div>
-                        </div>
-                        <span style="font-size: 0.75rem; font-weight: 600;">${avgProgress.toFixed(0)}%</span>
+            <div class="table-body">
+                <table class="data-table" id="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Project</th>
+                            <th>Sales Person</th>
+                            <th>Delivery Date</th>
+                            <th>Status</th>
+                            <th>Grand Total</th>
+                            <th>Progress</th>
+                            <th>Remaining</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${this.filtered_orders.map(order => this.renderModernOrderRow(order)).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <div style="padding: var(--space-6); background: var(--surface-alt); border-top: 2px solid var(--primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4);">
+                <div style="display: flex; gap: var(--space-8); flex-wrap: wrap;">
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Orders</div>
+                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${this.filtered_orders.length}</div>
                     </div>
-                </td>
-                <td><strong>${frappe.format(order.remaining_amount, {fieldtype: 'Currency'})}</strong></td>
-            </tr>
-        `;
-    }
-
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Value</div>
+                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${frappe.format(totalValue, {fieldtype: 'Currency'})}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Remaining</div>
+                        <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${frappe.format(totalRemaining, {fieldtype: 'Currency'})}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    this.content_area.html(html);
+    this.setupListHandlers();
+}
+renderModernOrderRow(order) {
+    const billedPercent = parseFloat(order.per_billed || 0);
+    const deliveredPercent = parseFloat(order.per_delivered || 0);
+    const avgProgress = (billedPercent + deliveredPercent) / 2;
+    
+    return `
+        <tr data-order="${order.name}" style="cursor: pointer;">
+            <td><strong style="color: var(--primary);">${order.name}</strong></td>
+            <td>${order.customer}</td>
+            <td>
+                ${order.project ? `
+                    <div>
+                        <div style="font-weight: 600;">${order.project}</div>
+                        ${order.project_description ? `<div style="font-size: 0.75rem; color: var(--text-muted);" title="${order.project_description}">${order.project_description.length > 25 ? order.project_description.substring(0, 25) + '...' : order.project_description}</div>` : ''}
+                    </div>
+                ` : `<span style="color: var(--text-muted);">No Project</span>`}
+            </td>
+            <td>${order.sales_person}</td>
+            <td>
+                ${frappe.datetime.str_to_user(order.delivery_date)}
+                ${this.getDueBadge(order.due_status, order.due_days_text)}
+            </td>
+            <td>${order.status || 'Unknown'}</td>
+            <td><strong>${frappe.format(order.grand_total, {fieldtype: 'Currency'})}</strong></td>
+            <td>
+                <div style="display: flex; align-items: center; gap: var(--space-3);">
+                    <div class="progress-bar-modern" style="flex: 1;">
+                        <div class="progress-fill-modern" style="width: ${avgProgress}%"></div>
+                    </div>
+                    <span style="font-size: 0.75rem; font-weight: 600;">${avgProgress.toFixed(0)}%</span>
+                </div>
+            </td>
+            <td><strong>${frappe.format(order.remaining_amount, {fieldtype: 'Currency'})}</strong></td>
+        </tr>
+    `;
+}
     getDueBadge(status, text) {
         const colors = {
             'overdue': 'var(--error)',
@@ -3771,62 +3821,74 @@ clearAllFilters() {
                     </div>
                 </div>
                 <div class="table-body">
-                    <table class="data-table" id="salesperson-table">
-                        <thead>
-                            <tr>
-                                <th>Sales Person</th>
-                                <th>Orders</th>
-                                <th>Total Value</th>
-                                <th>Remaining</th>
-                                <th>Overdue</th>
-                                <th>Avg Completion</th>
-                                <th>Efficiency</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${salesPersonData.map(sp => `
-                                <tr data-salesperson="${sp.name}">
-                                    <td>
-                                        <div style="display: flex; align-items: center; gap: var(--space-3);">
-                                            <img src="${sp.image}" style="width: 35px; height: 35px; border-radius: var(--radius-full); object-fit: cover;"
-                                                 onerror="this.src='/assets/frappe/images/ui/avatar.png'">
-                                            <strong>${sp.name}</strong>
-                                        </div>
-                                    </td>
-                                    <td>${sp.orders.length}</td>
-                                    <td><strong>${frappe.format(sp.total_value, {fieldtype: 'Currency'})}</strong></td>
-                                    <td><strong>${frappe.format(sp.total_remaining, {fieldtype: 'Currency'})}</strong></td>
-                                    <td>
-                                        <span style="color: ${sp.overdue_count > 0 ? 'var(--error)' : 'var(--success)'}; font-weight: 600;">
-                                            ${sp.overdue_count}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div style="display: flex; align-items: center; gap: var(--space-3);">
-                                            <div class="progress-bar-modern" style="flex: 1; height: 6px;">
-                                                <div class="progress-fill-modern" style="width: ${sp.avg_completion}%"></div>
-                                            </div>
-                                            <span style="font-size: 0.75rem;">${sp.avg_completion.toFixed(0)}%</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span style="padding: 4px 8px; background: ${sp.efficiency_score > 80 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'}; 
-                                                     color: ${sp.efficiency_score > 80 ? 'var(--success)' : 'var(--error)'}; 
-                                                     border-radius: var(--radius); font-size: 0.75rem; font-weight: 600;">
-                                            ${sp.efficiency_score.toFixed(0)}%
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-primary btn-sm" data-action="view-sp-orders" data-salesperson="${sp.name}">
-                                            View Orders
-                                        </button>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
+    <table class="data-table" id="salesperson-table">
+        <thead>
+            <tr>
+                <th>Sales Person</th>
+                <th>Orders</th>
+                <th>Projects</th>
+                <th>Total Value</th>
+                <th>Remaining</th>
+                <th>Overdue</th>
+                <th>Avg Completion</th>
+                <th>Efficiency</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${salesPersonData.map(sp => {
+                const uniqueProjects = [...new Set(sp.orders.filter(o => o.project).map(o => o.project))];
+                return `
+                    <tr data-salesperson="${sp.name}">
+                        <td>
+                            <div style="display: flex; align-items: center; gap: var(--space-3);">
+                                <img src="${sp.image}" style="width: 35px; height: 35px; border-radius: var(--radius-full); object-fit: cover;"
+                                     onerror="this.src='/assets/frappe/images/ui/avatar.png'">
+                                <strong>${sp.name}</strong>
+                            </div>
+                        </td>
+                        <td>${sp.orders.length}</td>
+                        <td>
+                            <div style="font-weight: 600;">${uniqueProjects.length}</div>
+                            ${uniqueProjects.length > 0 ? `
+                                <div style="font-size: 0.75rem; color: var(--text-muted);" title="${uniqueProjects.join(', ')}">
+                                    ${uniqueProjects.length === 1 ? uniqueProjects[0] : `${uniqueProjects[0]} +${uniqueProjects.length - 1} more`}
+                                </div>
+                            ` : `<div style="font-size: 0.75rem; color: var(--text-muted);">No projects</div>`}
+                        </td>
+                        <td><strong>${frappe.format(sp.total_value, {fieldtype: 'Currency'})}</strong></td>
+                        <td><strong>${frappe.format(sp.total_remaining, {fieldtype: 'Currency'})}</strong></td>
+                        <td>
+                            <span style="color: ${sp.overdue_count > 0 ? 'var(--error)' : 'var(--success)'}; font-weight: 600;">
+                                ${sp.overdue_count}
+                            </span>
+                        </td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: var(--space-3);">
+                                <div class="progress-bar-modern" style="flex: 1; height: 6px;">
+                                    <div class="progress-fill-modern" style="width: ${sp.avg_completion}%"></div>
+                                </div>
+                                <span style="font-size: 0.75rem;">${sp.avg_completion.toFixed(0)}%</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span style="padding: 4px 8px; background: ${sp.efficiency_score > 80 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'}; 
+                                         color: ${sp.efficiency_score > 80 ? 'var(--success)' : 'var(--error)'}; 
+                                         border-radius: var(--radius); font-size: 0.75rem; font-weight: 600;">
+                                ${sp.efficiency_score.toFixed(0)}%
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" data-action="view-sp-orders" data-salesperson="${sp.name}">
+                                View Orders
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('')}
+        </tbody>
+    </table>
+</div>
             </div>
         `;
         
@@ -3881,102 +3943,123 @@ clearAllFilters() {
                     </div>
                 </div>
                 <div class="table-body">
-                    <table class="data-table" id="customer-table">
-                        <thead>
-                            <tr>
-                                <th>Customer</th>
-                                <th>Type</th>
-                                <th>Orders</th>
-                                <th>Total Value</th>
-                                <th>Remaining</th>
-                                <th>Overdue</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${customerData.map(customer => `
-                                <tr data-customer="${customer.name}">
-                                    <td><strong>${customer.name}</strong></td>
-                                    <td>
-                                        <span style="padding: 4px 8px; background: ${customer.is_internal ? 'rgba(99, 102, 241, 0.1)' : 'rgba(139, 92, 246, 0.1)'}; 
-                                                     color: ${customer.is_internal ? 'var(--primary)' : 'var(--secondary)'}; 
-                                                     border-radius: var(--radius); font-size: 0.75rem; font-weight: 600;">
-                                            ${customer.is_internal ? 'Internal' : 'External'}
-                                        </span>
-                                    </td>
-                                    <td>${customer.orders.length}</td>
-                                    <td><strong>${frappe.format(customer.total_value, {fieldtype: 'Currency'})}</strong></td>
-                                    <td><strong>${frappe.format(customer.total_remaining, {fieldtype: 'Currency'})}</strong></td>
-                                    <td>
-                                        <span style="color: ${customer.overdue_count > 0 ? 'var(--error)' : 'var(--success)'}; font-weight: 600;">
-                                            ${customer.overdue_count}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-primary btn-sm" data-action="view-customer-orders" data-customer="${customer.name}">
-                                            View Orders
-                                        </button>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
+    <table class="data-table" id="customer-table">
+        <thead>
+            <tr>
+                <th>Customer</th>
+                <th>Type</th>
+                <th>Orders</th>
+                <th>Projects</th>
+                <th>Total Value</th>
+                <th>Remaining</th>
+                <th>Overdue</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${customerData.map(customer => {
+                const uniqueProjects = [...new Set(customer.orders.filter(o => o.project).map(o => o.project))];
+                return `
+                    <tr data-customer="${customer.name}">
+                        <td><strong>${customer.name}</strong></td>
+                        <td>
+                            <span style="padding: 4px 8px; background: ${customer.is_internal ? 'rgba(99, 102, 241, 0.1)' : 'rgba(139, 92, 246, 0.1)'}; 
+                                         color: ${customer.is_internal ? 'var(--primary)' : 'var(--secondary)'}; 
+                                         border-radius: var(--radius); font-size: 0.75rem; font-weight: 600;">
+                                ${customer.is_internal ? 'Internal' : 'External'}
+                            </span>
+                        </td>
+                        <td>${customer.orders.length}</td>
+                        <td>
+                            <div style="font-weight: 600;">${uniqueProjects.length}</div>
+                            ${uniqueProjects.length > 0 ? `
+                                <div style="font-size: 0.75rem; color: var(--text-muted);" title="${uniqueProjects.join(', ')}">
+                                    ${uniqueProjects.length === 1 ? uniqueProjects[0] : `${uniqueProjects[0]} +${uniqueProjects.length - 1} more`}
+                                </div>
+                            ` : `<div style="font-size: 0.75rem; color: var(--text-muted);">No projects</div>`}
+                        </td>
+                        <td><strong>${frappe.format(customer.total_value, {fieldtype: 'Currency'})}</strong></td>
+                        <td><strong>${frappe.format(customer.total_remaining, {fieldtype: 'Currency'})}</strong></td>
+                        <td>
+                            <span style="color: ${customer.overdue_count > 0 ? 'var(--error)' : 'var(--success)'}; font-weight: 600;">
+                                ${customer.overdue_count}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" data-action="view-customer-orders" data-customer="${customer.name}">
+                                View Orders
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('')}
+        </tbody>
+    </table>
+</div>
             </div>
         `;
         
         this.content_area.html(html);
         this.setupCustomerHandlers();
     }
-
-    renderCalendarGrid(year, month) {
-        const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        let html = '';
+renderCalendarGrid(year, month) {
+    const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    let html = '';
+    
+    // Day headers
+    dayHeaders.forEach(day => {
+        html += `<div class="calendar-day-header">${day}</div>`;
+    });
+    
+    // Calendar days
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    
+    const today = new Date();
+    const deliveryDates = this.data.calendar_data.delivery_dates;
+    
+    for (let i = 0; i < 42; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
         
-        // Day headers
-        dayHeaders.forEach(day => {
-            html += `<div class="calendar-day-header">${day}</div>`;
-        });
+        const dateStr = frappe.datetime.obj_to_str(date);
+        const isToday = date.toDateString() === today.toDateString();
+        const isCurrentMonth = date.getMonth() === month;
+        const deliveryCount = deliveryDates[dateStr] || 0;
         
-        // Calendar days
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const startDate = new Date(firstDay);
-        startDate.setDate(startDate.getDate() - firstDay.getDay());
+        // Get orders for this date to show project info
+        const ordersForDate = this.filtered_orders.filter(order => 
+            frappe.datetime.obj_to_str(new Date(order.delivery_date)) === dateStr
+        );
         
-        const today = new Date();
-        const deliveryDates = this.data.calendar_data.delivery_dates;
+        const hasOrders = deliveryCount > 0;
+        const isOverdue = date < today && hasOrders;
+        const uniqueProjects = [...new Set(ordersForDate.filter(o => o.project).map(o => o.project))];
         
-        for (let i = 0; i < 42; i++) {
-            const date = new Date(startDate);
-            date.setDate(startDate.getDate() + i);
-            
-            const dateStr = frappe.datetime.obj_to_str(date);
-            const isToday = date.toDateString() === today.toDateString();
-            const isCurrentMonth = date.getMonth() === month;
-            const deliveryCount = deliveryDates[dateStr] || 0;
-            
-            const hasOrders = deliveryCount > 0;
-            const isOverdue = date < today && hasOrders;
-            
-            html += `
-                <div class="calendar-day ${isToday ? 'today' : ''} ${!isCurrentMonth ? 'other-month' : ''}"
-                     data-date="${dateStr}" ${hasOrders ? 'style="cursor: pointer;"' : ''}>
-                    <div class="calendar-day-number">${date.getDate()}</div>
-                    <div class="calendar-day-events">
-                        ${deliveryCount > 0 ? `
-                            <div class="calendar-event" style="${isOverdue ? 'background: var(--gradient-warm);' : ''}">
-                                ${deliveryCount} ${deliveryCount === 1 ? 'order' : 'orders'}
+        html += `
+            <div class="calendar-day ${isToday ? 'today' : ''} ${!isCurrentMonth ? 'other-month' : ''}"
+                 data-date="${dateStr}" ${hasOrders ? 'style="cursor: pointer;"' : ''}>
+                <div class="calendar-day-number">${date.getDate()}</div>
+                <div class="calendar-day-events">
+                    ${deliveryCount > 0 ? `
+                        <div class="calendar-event" style="${isOverdue ? 'background: var(--gradient-warm);' : ''}">
+                            ${deliveryCount} ${deliveryCount === 1 ? 'order' : 'orders'}
+                        </div>
+                        ${uniqueProjects.length > 0 ? `
+                            <div class="calendar-event" style="background: var(--gradient-cool); font-size: 0.55rem; margin-top: 2px;">
+                                📋 ${uniqueProjects.length} ${uniqueProjects.length === 1 ? 'project' : 'projects'}
                             </div>
                         ` : ''}
-                    </div>
+                    ` : ''}
                 </div>
-            `;
-        }
-        
-        return html;
+            </div>
+        `;
     }
-
+    
+    return html;
+}
     // Event Handlers
     setupDashboardHandlers() {
         $('.metric-card-modern[data-drill]').on('click', (e) => {
@@ -4183,45 +4266,54 @@ clearAllFilters() {
             const totalRemaining = orders.reduce((sum, order) => sum + parseFloat(order.remaining_amount || 0), 0);
             
             const html = `
-                <div class="table-modern-container" style="box-shadow: none; margin: 0;">
-                    <div class="table-toolbar" style="padding: var(--space-4); background: var(--surface-alt); border-radius: var(--radius-lg); margin-bottom: var(--space-4);">
-                        <div class="table-search-box">
-                            <i class="fa fa-search table-search-icon"></i>
-                            <input type="text" class="table-search-input" placeholder="Search orders..." id="modal-search" style="background: var(--surface); color: var(--text);">
-                        </div>
-                    </div>
-                    <div class="table-body">
-                        <table class="data-table" id="modal-orders-table">
-                            <thead>
-                                <tr>
-                                    <th>Order #</th>
-                                    <th>Customer</th>
-                                    <th>Sales Person</th>
-                                    <th>Delivery Date</th>
-                                    <th>Grand Total</th>
-                                    <th>Remaining</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${orders.map(order => `
-                                    <tr data-order="${order.name}" style="cursor: pointer;">
-                                        <td><strong style="color: var(--primary);">${order.name}</strong></td>
-                                        <td>${order.customer}</td>
-                                        <td>${order.sales_person}</td>
-                                        <td>
-                                            ${frappe.datetime.str_to_user(order.delivery_date)}
-                                            ${this.getDueBadge(order.due_status, order.due_days_text)}
-                                        </td>
-                                        <td><strong>${frappe.format(order.grand_total, {fieldtype: 'Currency'})}</strong></td>
-                                        <td><strong>${frappe.format(order.remaining_amount, {fieldtype: 'Currency'})}</strong></td>
-                                        <td>${order.status || 'Unknown'}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div style="padding: var(--space-6); background: var(--surface-alt); border-top: 2px solid var(--primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4);">
+    <div class="table-modern-container" style="box-shadow: none; margin: 0;">
+        <div class="table-toolbar" style="padding: var(--space-4); background: var(--surface-alt); border-radius: var(--radius-lg); margin-bottom: var(--space-4);">
+            <div class="table-search-box">
+                <i class="fa fa-search table-search-icon"></i>
+                <input type="text" class="table-search-input" placeholder="Search orders, projects..." id="modal-search" style="background: var(--surface); color: var(--text);">
+            </div>
+        </div>
+        <div class="table-body">
+            <table class="data-table" id="modal-orders-table">
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>Customer</th>
+                        <th>Project</th>
+                        <th>Sales Person</th>
+                        <th>Delivery Date</th>
+                        <th>Grand Total</th>
+                        <th>Remaining</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${orders.map(order => `
+                        <tr data-order="${order.name}" style="cursor: pointer;">
+                            <td><strong style="color: var(--primary);">${order.name}</strong></td>
+                            <td>${order.customer}</td>
+                            <td>
+                                ${order.project ? `
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 0.85rem;">${order.project}</div>
+                                        ${order.project_description ? `<div style="font-size: 0.7rem; color: var(--text-muted);" title="${order.project_description}">${order.project_description.length > 20 ? order.project_description.substring(0, 20) + '...' : order.project_description}</div>` : ''}
+                                    </div>
+                                ` : `<span style="color: var(--text-muted); font-size: 0.8rem;">No Project</span>`}
+                            </td>
+                            <td>${order.sales_person}</td>
+                            <td>
+                                ${frappe.datetime.str_to_user(order.delivery_date)}
+                                ${this.getDueBadge(order.due_status, order.due_days_text)}
+                            </td>
+                            <td><strong>${frappe.format(order.grand_total, {fieldtype: 'Currency'})}</strong></td>
+                            <td><strong>${frappe.format(order.remaining_amount, {fieldtype: 'Currency'})}</strong></td>
+                            <td>${order.status || 'Unknown'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+          <div style="padding: var(--space-6); background: var(--surface-alt); border-top: 2px solid var(--primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4);">
                         <div style="display: flex; gap: var(--space-8); flex-wrap: wrap;">
                             <div>
                                 <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Orders</div>
@@ -5157,41 +5249,42 @@ setupDetailTabHandlers() {
         $(`.detail-content[data-content="${tabId}"]`).show();
     });
 }
-    exportData() {
-        // Prepare data for export
-        const headers = ['Order #', 'Customer', 'Sales Person', 'Delivery Date', 'Status', 'Grand Total', 'Remaining Amount', 'Billing %', 'Delivery %'];
-        const rows = this.filtered_orders.map(order => [
-            order.name,
-            order.customer,
-            order.sales_person,
-            order.delivery_date,
-            order.status || 'Unknown',
-            order.grand_total,
-            order.remaining_amount,
-            order.per_billed,
-            order.per_delivered
-        ]);
-        
-        // Create CSV content
-        let csvContent = headers.join(',') + '\n';
-        rows.forEach(row => {
-            csvContent += row.map(cell => `"${cell}"`).join(',') + '\n';
-        });
-        
-        // Download CSV
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `sales_orders_${frappe.datetime.now_datetime().replace(/[^0-9]/g, '')}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        
-        this.showToast('Data exported successfully', 'success');
-    }
-
+   exportData() {
+    // Prepare data for export
+    const headers = ['Order #', 'Customer', 'Project', 'Project Description', 'Sales Person', 'Delivery Date', 'Status', 'Grand Total', 'Remaining Amount', 'Billing %', 'Delivery %'];
+    const rows = this.filtered_orders.map(order => [
+        order.name,
+        order.customer,
+        order.project || '',
+        order.project_description || '',
+        order.sales_person,
+        order.delivery_date,
+        order.status || 'Unknown',
+        order.grand_total,
+        order.remaining_amount,
+        order.per_billed,
+        order.per_delivered
+    ]);
+    
+    // Create CSV content
+    let csvContent = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csvContent += row.map(cell => `"${cell}"`).join(',') + '\n';
+    });
+    
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sales_orders_${frappe.datetime.now_datetime().replace(/[^0-9]/g, '')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    this.showToast('Data exported successfully', 'success');
+}
     showSettingsModal() {
         // Placeholder for settings modal
         this.showToast('Settings panel coming soon', 'info');
@@ -5240,7 +5333,7 @@ setupDetailTabHandlers() {
         return months[month];
     }
 
-  applyGlobalFilter(query) {
+applyGlobalFilter(query) {
     if (!query) {
         this.applyFilters();
         return;
@@ -5261,18 +5354,20 @@ setupDetailTabHandlers() {
         }
     }
     
-    // Then apply global search filter
+    // Then apply global search filter - INCLUDING PROJECT FIELDS
     this.filtered_orders = filtered.filter(order =>
         order.name.toLowerCase().includes(lowerQuery) ||
         order.customer.toLowerCase().includes(lowerQuery) ||
         (order.sales_person || '').toLowerCase().includes(lowerQuery) ||
         (order.status || '').toLowerCase().includes(lowerQuery) ||
-        (order.branch || '').toLowerCase().includes(lowerQuery)
+        (order.branch || '').toLowerCase().includes(lowerQuery) ||
+        (order.project || '').toLowerCase().includes(lowerQuery) ||
+        (order.project_description || '').toLowerCase().includes(lowerQuery)
     );
     
     this.processData();
     this.updateActiveFilters();
-    this.updateHeaderStats(); // Add this line
+    this.updateHeaderStats();
     this.renderView();
 }
 }

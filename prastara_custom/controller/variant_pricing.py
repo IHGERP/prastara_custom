@@ -5824,7 +5824,6 @@ def get_conditions(filters):
 
 
 
-
 import frappe
 from frappe import _
 from frappe.utils import flt, getdate, date_diff, today, add_days, get_first_day, get_last_day, add_months
@@ -5953,6 +5952,8 @@ def get_sales_order_list(
                 so.per_billed as percent_amount_billed,
                 so.per_delivered as percent_amount_delivered,
                 so.status,
+                so.project,
+                so.project_description,
                 (so.grand_total * (100 - COALESCE(so.per_billed, 0)) / 100) as balance_to_bill_amount,
                 so.transaction_date as date,
                 so.delivery_date,
@@ -5961,7 +5962,7 @@ def get_sales_order_list(
             LEFT JOIN `tabSales Team` st ON st.parent = so.name AND st.parenttype = 'Sales Order'
             LEFT JOIN `tabSales Person` sp ON sp.name = st.sales_person
             LEFT JOIN `tabEmployee` e ON e.name = sp.employee
-            WHERE {where_clause}
+            WHERE {where_clause} 
             ORDER BY 
                 CASE WHEN '{sort_by}' = 'sales_person' THEN COALESCE(st.sales_person, 'Unassigned') END {sort_order},
                 CASE WHEN '{sort_by}' = 'name' THEN so.name END {sort_order},
@@ -6132,7 +6133,7 @@ def get_sales_order_details(sales_order_name):
             SELECT 
                 name
        
-            FROM `tabPermit`
+            FROM `tabPermit Form`
             WHERE sales_order = %s 
             ORDER BY creation
         """, sales_order_name, as_dict=True)
@@ -6201,6 +6202,9 @@ def get_sales_order_details(sales_order_name):
                     "customer_name": safe_get_attr(order, 'customer_name'),
                     "transaction_date": safe_get_attr(order, 'transaction_date'),
                     "delivery_date": safe_get_attr(order, 'delivery_date'),
+                    "company": safe_get_attr(order, 'company'),
+                    "project_description": safe_get_attr(order, 'project_description'),
+                    "project": safe_get_attr(order, 'project'),
                     "status": safe_get_attr(order, 'status'),
                     "net_total": safe_get_attr(order, 'net_total', 0),
                     "grand_total": safe_get_attr(order, 'grand_total', 0),
