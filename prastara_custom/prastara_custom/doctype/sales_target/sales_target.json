@@ -1,0 +1,108 @@
+{
+ "actions": [],
+ "allow_auto_repeat": 1,
+ "allow_rename": 1,
+ "autoname": "Sales Target-.#####",
+ "creation": "2024-12-14 12:19:04.778649",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "from_date",
+  "sales_person",
+  "trade_margin_target",
+  "company",
+  "column_break_3",
+  "to_date",
+  "branch",
+  "achievement",
+  "monthly_target",
+  "actual_percentage"
+ ],
+ "fields": [
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "fieldname": "sales_person",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Sales Person",
+   "options": "Sales Person"
+  },
+  {
+   "fieldname": "trade_margin_target",
+   "fieldtype": "Float",
+   "label": "Trade Margin Target"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date"
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "achievement",
+   "fieldtype": "Float",
+   "label": "Achievement"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "monthly_target",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Monthly Target",
+   "reqd": 1
+  },
+  {
+   "fieldname": "actual_percentage",
+   "fieldtype": "Float",
+   "label": "Actual Percentage"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-06-24 12:12:03.015587",
+ "modified_by": "Administrator",
+ "module": "Prastara Custom",
+ "name": "Sales Target",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

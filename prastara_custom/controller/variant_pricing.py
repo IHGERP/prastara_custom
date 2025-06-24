@@ -5600,3 +5600,219 @@ def endpoint():
 
 # Set this as the main function for the API
 response = endpoint()
+
+
+
+
+@frappe.whitelist()
+def get_context(context):
+    """Prepare context for the sales-performance page."""
+    filters = frappe.form_dict  # Get filters from URL query params
+    context.sales_data = get_sales_data(filters)
+    context.csrf_token = frappe.sessions.get_csrf_token()
+    return context
+
+
+@frappe.whitelist()
+def get_sales_data(filters=None):
+    """Fetch sales target data with HTTPS image URLs, including HOD and company targets."""
+    # Handle stringified filters from frontend
+    if isinstance(filters, str):
+        filters = json.loads(filters)
+    if not filters:
+        filters = {}
+    
+    conditions = get_conditions(filters)
+    from_date = getdate(filters.get("from_date")) if filters.get("from_date") else getdate().replace(day=1)
+    to_date = getdate(filters.get("to_date")) if filters.get("to_date") else getdate()
+    
+    # Fetch and aggregate sales targets by sales person
+    sales_targets = frappe.db.sql(f"""
+        SELECT 
+            sp.name as sales_person, 
+            sp.parent_sales_person as sales_team,
+            st.company, 
+            st.branch, 
+            SUM(st.monthly_target) as monthly_target,
+            MIN(st.from_date) as from_date,
+            MAX(st.to_date) as to_date,
+            AVG(st.custom_hod_target) as custom_hod_target,
+            AVG(st.custom_company_target) as custom_company_target
+        FROM 
+            `tabSales Target` st
+        JOIN `tabSales Person` sp ON sp.name = st.sales_person
+        WHERE 
+            {conditions}
+            AND st.to_date >= %(from_date)s 
+            AND st.from_date <= %(to_date)s
+        GROUP BY 
+            sp.name, sp.parent_sales_person, st.company, st.branch
+    """, {"from_date": from_date, "to_date": to_date, **filters}, as_dict=1)
+    
+    result = []
+    site_url = get_url()  # Ensures HTTPS if site is configured for it
+    
+    for target in sales_targets:
+        sales_person = target.sales_person
+        sales_team = target.sales_team
+        entry_from = getdate(target.from_date)
+        entry_to = getdate(target.to_date)
+        
+        # Calculate effective date range
+        effective_start = max(from_date, entry_from)
+        effective_end = min(to_date, entry_to)
+        if effective_start > effective_end:
+            effective_end = effective_start
+        
+        # Calculate the number of months spanned
+        delta = relativedelta.relativedelta(effective_end, effective_start)
+        num_months = delta.months + delta.years * 12
+        if delta.days > 0 or (effective_start.day == 1 and effective_end.day >= 28):
+            num_months += 1
+        
+        # Fetch sales and payment data
+        sales_data = frappe.db.sql("""
+            WITH SalesData AS (
+                SELECT 
+                    si.name,
+                    si.base_net_total
+                FROM `tabSales Invoice` si
+                JOIN `tabSales Team` st ON st.parent = si.name
+                WHERE 
+                    si.docstatus = 1
+                    AND si.posting_date BETWEEN %(effective_start)s AND %(effective_end)s
+                    AND st.sales_person = %(sales_person)s
+                GROUP BY si.name, si.base_net_total
+            ),
+            PaymentData AS (
+                SELECT 
+                    p.against_voucher_no,
+                    SUM(CAST(p.amount AS DECIMAL(10, 2))) AS payment_total
+                FROM `tabPayment Ledger Entry` p
+                WHERE p.docstatus = 1
+                GROUP BY p.against_voucher_no
+            )
+            SELECT 
+                SUM(s.base_net_total) AS total_sales,
+                COALESCE(SUM(p.payment_total), 0) AS total_payment
+            FROM SalesData s
+            LEFT JOIN PaymentData p ON p.against_voucher_no = s.name
+        """, {
+            "effective_start": effective_start,
+            "effective_end": effective_end,
+            "sales_person": sales_person
+        }, as_dict=1)
+        
+        # Fetch overall payment data
+        overall_payment_data = frappe.db.sql("""
+            SELECT COALESCE(SUM(CAST(p.amount AS DECIMAL(10, 2))), 0) AS overall_total_payment
+            FROM `tabPayment Ledger Entry` p
+            LEFT JOIN `tabSales Invoice` si ON p.against_voucher_no = si.name
+            LEFT JOIN `tabSales Team` st ON st.parent = si.name
+            WHERE 
+                p.docstatus = 1
+                AND st.sales_person = %(sales_person)s
+        """, {"sales_person": sales_person}, as_dict=1)
+        
+        total_sales = flt(sales_data[0].total_sales, 2) if sales_data and sales_data[0].total_sales else 0
+        total_payment = flt(sales_data[0].total_payment, 2) if sales_data else 0
+        overall_total_payment = flt(overall_payment_data[0].overall_total_payment, 2) if overall_payment_data else 0
+        
+        # Calculate HOD and company targets
+        hod_target = flt(target.monthly_target - ((target.monthly_target * target.custom_hod_target) / 100), 2) if target.monthly_target and target.custom_hod_target else 0
+        company_target = flt(target.monthly_target - ((target.monthly_target * target.custom_company_target) / 100), 2) if target.monthly_target and target.custom_company_target else 0
+        
+        # Fetch employee image
+        employee = frappe.db.get_value("Sales Person", sales_person, "employee")
+        employee_image = f"{site_url}/files/default-avatar.png"
+        if employee:
+            image = frappe.db.get_value("Employee", employee, "image")
+            if image and not image.startswith(('http://', 'https://')):
+                employee_image = f"{site_url}{image}"
+            elif image:
+                employee_image = image
+        
+        # Build result row
+        row = {
+            'sales_person': sales_person,
+            'sales_team': sales_team,
+            'company': target.company,
+            'branch': target.branch,
+            'hod_pe': target.custom_hod_target,
+            'company_pe': target.custom_company_target,
+            'target': flt(target.monthly_target, 2),
+            'hod_target': hod_target,
+            'company_target': company_target,
+            'month_count': num_months,
+            'total_target': flt(target.monthly_target * num_months, 2),
+            'hod_total_target': flt(hod_target * num_months, 2),
+            'company_total_target': flt(company_target * num_months, 2),
+            'total_sales': total_sales,
+            'total_payment': total_payment,
+            'overall_total_payment': overall_total_payment,
+            'period_start': effective_start,
+            'period_end': effective_end,
+            'achievement': flt((total_sales / (target.monthly_target * num_months) * 100), 2) if (target.monthly_target * num_months) else 0,
+            'hod_achievement': flt((total_sales / (hod_target * num_months) * 100), 2) if (hod_target * num_months) else 0,
+            'company_achievement': flt((total_sales / (company_target * num_months) * 100), 2) if (company_target * num_months) else 0,
+            'employee_image': employee_image
+        }
+        result.append(row)
+    
+    # Add total row
+    if result:
+        target_sum = flt(sum(d['target'] for d in result), 2)
+        hod_target_sum = flt(sum(d['hod_target'] for d in result), 2)
+        company_target_sum = flt(sum(d['company_target'] for d in result), 2)
+        month_count_sum = sum(d['month_count'] for d in result)
+        total_target_sum = flt(sum(d['total_target'] for d in result), 2)
+        hod_total_target_sum = flt(sum(d['hod_total_target'] for d in result), 2)
+        company_total_target_sum = flt(sum(d['company_total_target'] for d in result), 2)
+        total_sales_sum = flt(sum(d['total_sales'] for d in result), 2)
+        total_payment_sum = flt(sum(d['total_payment'] for d in result), 2)
+        overall_total_payment_sum = flt(sum(d['overall_total_payment'] for d in result), 2)
+        
+        avg_achievement = flt((total_sales_sum / total_target_sum) * 100, 2) if total_target_sum else 0
+        avg_hod_achievement = flt((total_sales_sum / hod_total_target_sum) * 100, 2) if hod_total_target_sum else 0
+        avg_company_achievement = flt((total_sales_sum / company_total_target_sum) * 100, 2) if company_total_target_sum else 0
+        
+        result.append({
+            'sales_person': 'Total',
+            'sales_team': '',
+            'company': '',
+            'branch': '',
+            'hod_pe': '',
+            'company_pe': '',
+            'target': target_sum,
+            'hod_target': hod_target_sum,
+            'company_target': company_target_sum,
+            'month_count': month_count_sum,
+            'total_target': total_target_sum,
+            'hod_total_target': hod_total_target_sum,
+            'company_total_target': company_total_target_sum,
+            'total_sales': total_sales_sum,
+            'total_payment': total_payment_sum,
+            'overall_total_payment': overall_total_payment_sum,
+            'achievement': avg_achievement,
+            'hod_achievement': avg_hod_achievement,
+            'company_achievement': avg_company_achievement,
+            'period_start': '',
+            'period_end': '',
+            'employee_image': ''
+        })
+    
+    return result
+
+@frappe.whitelist()
+def get_conditions(filters):
+    conditions = []
+    if filters.get("company"):
+        conditions.append("st.company = %(company)s")
+    if filters.get("branch"):
+        conditions.append("st.branch = %(branch)s")
+    if filters.get("sales_person"):
+        conditions.append("st.sales_person = %(sales_person)s")
+    if filters.get("team"):
+        conditions.append("sp.parent_sales_person = %(team)s")
+    return " AND ".join(conditions) if conditions else "1=1"
+
