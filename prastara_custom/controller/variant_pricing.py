@@ -4288,8 +4288,8 @@ def create_additional_salary(leave_salary_request, method):
 		new_doc.save()
 		new_doc.submit()
 
-		frappe.db.set_value("Leave Salary Request",leave_salary_request.name,"workflow_state","Pending Employee Signature")
-		frappe.db.set_value("Leave Salary Request",leave_salary_request.name,"custom_additional_salary",new_doc.name)
+		frappe.db.set_value("Leave Salary Request Form",leave_salary_request.name,"workflow_state","Pending Employee Signature")
+		frappe.db.set_value("Leave Salary Request Form",leave_salary_request.name,"custom_additional_salary",new_doc.name)
 		leave_salary_request.reload()
 
 
@@ -4309,8 +4309,8 @@ def create_additional_salary_for_airticket(airticket_request_form, method):
 		new_doc.save()
 		new_doc.submit()
 
-		frappe.db.set_value("Airticket Request Form",airticket_request_form.name,"workflow_state","Pending Employee Signature")
-		frappe.db.set_value("Airticket Request Form",airticket_request_form.name,"custom_additional_salary",new_doc.name)
+		frappe.db.set_value("Air Ticket Request Form",airticket_request_form.name,"workflow_state","Pending Employee Signature")
+		frappe.db.set_value("Air Ticket Request Form",airticket_request_form.name,"custom_additional_salary",new_doc.name)
 		
 		airticket_request_form.reload()
 
@@ -5961,7 +5961,7 @@ def get_sales_order_list(
             LEFT JOIN `tabSales Team` st ON st.parent = so.name AND st.parenttype = 'Sales Order'
             LEFT JOIN `tabSales Person` sp ON sp.name = st.sales_person
             LEFT JOIN `tabEmployee` e ON e.name = sp.employee
-            WHERE {where_clause} and so.company = 'LED WORLD LLC'
+            WHERE {where_clause}
             ORDER BY 
                 CASE WHEN '{sort_by}' = 'sales_person' THEN COALESCE(st.sales_person, 'Unassigned') END {sort_order},
                 CASE WHEN '{sort_by}' = 'name' THEN so.name END {sort_order},

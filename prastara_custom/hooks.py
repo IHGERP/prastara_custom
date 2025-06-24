@@ -129,6 +129,12 @@ doc_events = {
 		"validate": "prastara_custom.controller.attendance_controller.cal_ot",
 		"before_submit": "prastara_custom.controller.attendance_controller.tardiness_attendance"
 	},
+	"Leave Salary Request Form": {
+		"on_submit": "prastara_custom.controller.variant_pricing.create_additional_salary"
+	},
+	"Air Ticket Request Form": {
+		"on_submit": "prastara_custom.controller.variant_pricing.create_additional_salary_for_airticket"
+	},
 #	"*": {
 #		"on_update": "method",
 #		"on_cancel": "method",
