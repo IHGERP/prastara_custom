@@ -5821,3 +5821,430 @@ def get_conditions(filters):
         conditions.append("sp.parent_sales_person = %(team)s")
     return " AND ".join(conditions) if conditions else "1=1"
 
+
+
+
+
+import frappe
+from frappe import _
+from frappe.utils import flt, getdate, date_diff, today, add_days, get_first_day, get_last_day, add_months
+from datetime import datetime, timedelta
+
+@frappe.whitelist(allow_guest=True)
+def get_sales_order_list(
+    search=None,
+    customer=None,
+    sales_person=None,
+    branch=None,
+    delivery_date_from=None,
+    delivery_date_to=None,
+    date_from=None,
+    date_to=None,
+    status=None,
+    delivery_filter=None,
+    is_internal_customer=None,
+    sort_by="delivery_date",
+    sort_order="ASC"
+):
+    """
+    API to fetch Sales Order list with filtering and sorting.
+    Returns key fields for dashboard display including sales person image.
+    
+    Parameters:
+    - search: String to search in sales order name, customer, or sales person
+    - customer: Filter by customer name or ID
+    - sales_person: Filter by sales person name
+    - branch: Filter by branch
+    - delivery_date_from: Start date for delivery date filter
+    - delivery_date_to: End date for delivery date filter
+    - date_from: Start date for transaction date filter
+    - date_to: End date for transaction date filter
+    - delivery_filter: Predefined filter ('today', 'yesterday', 'this_month', 'due', 'next_month')
+    - sort_by: Field to sort by (e.g., 'name', 'customer', 'sales_person', 'transaction_date', 'delivery_date', 'grand_total')
+    - sort_order: 'ASC' or 'DESC'
+    
+    Returns: JSON response with sales order list
+    """
+    try:
+        current_date = getdate(today())
+        
+        # Validate inputs
+        sort_by = sort_by if sort_by in ['name', 'customer', 'sales_person', 'transaction_date', 'delivery_date', 'grand_total', 'per_billed', 'per_delivered'] else 'delivery_date'
+        sort_order = sort_order.upper() if sort_order.upper() in ['ASC', 'DESC'] else 'ASC'
+        
+        # Build SQL conditions
+        conditions = ["so.status NOT IN ('Completed', 'Closed')", "so.docstatus = 1"]
+        params = []
+        
+        if search:
+            search = f"%{search}%"
+            conditions.append("(so.name LIKE %s OR so.customer LIKE %s OR COALESCE(st.sales_person, 'Unassigned') LIKE %s)")
+            params.extend([search, search, search])
+        
+        if customer:
+            conditions.append("so.customer = %s")
+            params.append(customer)
+        if is_internal_customer is not None:
+            conditions.append("so.is_internal_customer = %s")
+            params.append(1 if is_internal_customer else 0)
+        
+        if sales_person:
+            if sales_person == 'Unassigned':
+                conditions.append("st.sales_person IS NULL")
+            else:
+                conditions.append("st.sales_person = %s")
+                params.append(sales_person)
+        
+        if branch:
+            conditions.append("so.branch = %s")
+            params.append(branch)
+        
+        if delivery_date_from:
+            conditions.append("so.delivery_date >= %s")
+            params.append(getdate(delivery_date_from))
+        if delivery_date_to:
+            conditions.append("so.delivery_date <= %s")
+            params.append(getdate(delivery_date_to))
+        
+        if date_from:
+            conditions.append("so.transaction_date >= %s")
+            params.append(getdate(date_from))
+        if date_to:
+            conditions.append("so.transaction_date <= %s")
+            params.append(getdate(date_to))
+        
+        if delivery_filter:
+            if delivery_filter == 'today':
+                conditions.append("so.delivery_date = %s")
+                params.append(current_date)
+            elif delivery_filter == 'yesterday':
+                conditions.append("so.delivery_date = %s")
+                params.append(add_days(current_date, -1))
+            elif delivery_filter == 'this_month':
+                conditions.append("so.delivery_date BETWEEN %s AND %s")
+                params.extend([get_first_day(current_date), get_last_day(current_date)])
+            elif delivery_filter == 'due':
+                conditions.append("so.delivery_date <= %s")
+                params.append(current_date)
+            elif delivery_filter == 'next_month':
+                next_month = add_months(current_date, 1)
+                conditions.append("so.delivery_date BETWEEN %s AND %s")
+                params.extend([get_first_day(next_month), get_last_day(next_month)])
+        if status:
+            if isinstance(status, str):
+                conditions.append("so.status = %s")
+                params.append(status)
+            elif isinstance(status, list):
+                placeholders = ','.join(['%s'] * len(status))
+                conditions.append(f"so.status IN ({placeholders})")
+                params.extend(status)
+        
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+        
+        sales_orders_query = f"""
+            SELECT 
+                so.name as sales_order_number,
+                so.company,
+                so.branch,
+                so.customer,
+                COALESCE(st.sales_person, 'Unassigned') as sales_person,
+                COALESCE(e.image, '') as sales_person_image,
+                so.grand_total,
+                so.per_billed as percent_amount_billed,
+                so.per_delivered as percent_amount_delivered,
+                so.status,
+                (so.grand_total * (100 - COALESCE(so.per_billed, 0)) / 100) as balance_to_bill_amount,
+                so.transaction_date as date,
+                so.delivery_date,
+                so.is_internal_customer
+            FROM `tabSales Order` so
+            LEFT JOIN `tabSales Team` st ON st.parent = so.name AND st.parenttype = 'Sales Order'
+            LEFT JOIN `tabSales Person` sp ON sp.name = st.sales_person
+            LEFT JOIN `tabEmployee` e ON e.name = sp.employee
+            WHERE {where_clause} and so.company = 'LED WORLD LLC'
+            ORDER BY 
+                CASE WHEN '{sort_by}' = 'sales_person' THEN COALESCE(st.sales_person, 'Unassigned') END {sort_order},
+                CASE WHEN '{sort_by}' = 'name' THEN so.name END {sort_order},
+                CASE WHEN '{sort_by}' = 'customer' THEN so.customer END {sort_order},
+                CASE WHEN '{sort_by}' = 'transaction_date' THEN so.transaction_date END {sort_order},
+                CASE WHEN '{sort_by}' = 'delivery_date' THEN so.delivery_date END {sort_order},
+                CASE WHEN '{sort_by}' = 'grand_total' THEN so.grand_total END {sort_order},
+                CASE WHEN '{sort_by}' = 'per_billed' THEN so.per_billed END {sort_order},
+                CASE WHEN '{sort_by}' = 'per_delivered' THEN so.per_delivered END {sort_order}
+        """
+        
+        sales_orders = frappe.db.sql(sales_orders_query, params, as_dict=True)
+
+        for order in sales_orders:
+            if order.date:
+                order['formatted_date'] = frappe.utils.formatdate(order.date)
+            if order.delivery_date:
+                order['formatted_delivery_date'] = frappe.utils.formatdate(order.delivery_date)
+
+        return {
+            "status": "success",
+            "data": {
+                "orders": sales_orders,
+                "filters_applied": {
+                    "search": search,
+                    "customer": customer,
+                    "sales_person": sales_person,
+                    "branch": branch,
+                    "delivery_date_from": delivery_date_from,
+                    "delivery_date_to": delivery_date_to,
+                    "date_from": date_from,
+                    "date_to": date_to,
+                    "delivery_filter": delivery_filter
+                },
+                "sort_info": {
+                    "sort_by": sort_by,
+                    "sort_order": sort_order
+                }
+            }
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Sales Order List API Error: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"An error occurred while fetching sales order list: {str(e)}",
+            "data": {
+                "orders": [],
+                "filters_applied": {},
+                "sort_info": {}
+            }
+        }
+@frappe.whitelist(allow_guest=True)
+def get_sales_order_details(sales_order_name):
+    """
+    Get detailed information for a specific sales order including all related data,
+    invoices, delivery notes, payment entries, quotations, opportunities, site visits,
+    design requests, permits directly linked to the sales order, and item images.
+    
+    Parameters:
+    - sales_order_name: str, The name/ID of the sales order
+    
+    Returns: dict, JSON response with detailed sales order information
+    """
+    from frappe.utils import getdate, flt, today, date_diff
+    import frappe
+
+    try:
+        order = frappe.get_doc("Sales Order", sales_order_name)
+        
+        # Get sales team details
+        sales_team = []
+        for team_member in order.sales_team:
+            employee_details = frappe.db.get_value(
+                "Employee",
+                {"name": frappe.db.get_value("Sales Person", team_member.sales_person, "employee")},
+                ["employee_name", "image", "branch"],
+                as_dict=True
+            ) or {}
+            
+            sales_team.append({
+                "sales_person": team_member.sales_person,
+                "allocated_percentage": team_member.allocated_percentage,
+                "allocated_amount": team_member.allocated_amount,
+                "employee_name": employee_details.get("employee_name"),
+                "image": employee_details.get("image"),
+                "branch": employee_details.get("branch")
+            })
+        
+        # Get item details with images
+        items = []
+        for item in order.items:
+            item_image = frappe.db.get_value("Item", item.item_code, "image") or ""
+            items.append({
+                "item_code": item.item_code,
+                "item_name": item.item_name,
+                "qty": item.qty,
+                "rate": item.rate,
+                "amount": item.amount,
+                "delivered_qty": item.delivered_qty,
+                "billed_amt": item.billed_amt or 0,
+                "pending_qty": item.qty - item.delivered_qty,
+                "pending_amount": item.amount - (item.billed_amt or 0),
+                "image": item_image
+            })
+        
+        # Get invoice details
+        invoices = frappe.db.sql("""
+            SELECT 
+                si.name,
+                si.posting_date,
+                si.grand_total,
+                si.outstanding_amount,
+                si.status
+            FROM `tabSales Invoice` si
+            JOIN `tabSales Invoice Item` sii ON sii.parent = si.name
+            WHERE sii.sales_order = %s AND si.docstatus = 1
+            GROUP BY si.name
+            ORDER BY si.posting_date
+        """, sales_order_name, as_dict=True)
+        
+        # Get delivery note details
+        delivery_notes = frappe.db.sql("""
+            SELECT 
+                dn.name,
+                dn.posting_date,
+                dn.grand_total,
+                dn.status
+            FROM `tabDelivery Note` dn
+            JOIN `tabDelivery Note Item` dni ON dni.parent = dn.name
+            WHERE dni.against_sales_order = %s AND dn.docstatus = 1
+            GROUP BY dn.name
+            ORDER BY dn.posting_date
+        """, sales_order_name, as_dict=True)
+        
+        # Get payment entry details
+        payments = frappe.db.sql("""
+            SELECT 
+                pe.name,
+                pe.posting_date,
+                pe.paid_amount,
+                pe.mode_of_payment,
+                pe.reference_no,
+                pe.reference_date,
+                pe.status
+            FROM `tabPayment Entry` pe
+            JOIN `tabPayment Entry Reference` per ON per.parent = pe.name
+            WHERE per.reference_doctype = 'Sales Order' AND per.reference_name = %s 
+            AND pe.docstatus = 1
+            ORDER BY pe.posting_date
+        """, sales_order_name, as_dict=True)
+        
+        # Get quotation details from sales order items
+        quotations = frappe.db.sql("""
+            SELECT DISTINCT 
+                q.name,
+                q.grand_total,
+                q.status,
+                q.opportunity
+            FROM `tabQuotation` q
+            JOIN `tabSales Order Item` soi ON soi.prevdoc_docname = q.name
+            WHERE soi.parent = %s AND q.docstatus = 1
+        
+        """, sales_order_name, as_dict=True)
+        
+        # Get permit details directly linked to the sales order
+        permits = frappe.db.sql("""
+            SELECT 
+                name
+       
+            FROM `tabPermit`
+            WHERE sales_order = %s 
+            ORDER BY creation
+        """, sales_order_name, as_dict=True)
+        
+        # Get opportunity details and related documents (Site Visit, Design Request)
+        opportunities = []
+        for quotation in quotations:
+            opportunity_name = quotation.get("opportunity")
+            if opportunity_name:
+                opportunity = frappe.db.get_value(
+                    "Opportunity",
+                    opportunity_name,
+                    ["name", "opportunity_from", "party_name", "status"],
+                    as_dict=True
+                ) or {}
+                
+                # Get Site Visit details
+                site_visits = frappe.db.sql("""
+                    SELECT 
+                        name
+  
+                    FROM `tabSite Visit`
+                    WHERE opportunity = %s 
+                 
+                """, opportunity_name, as_dict=True)
+                
+                # Get Design Request details
+                design_requests = frappe.db.sql("""
+                    SELECT 
+                        name
+               
+                    FROM `tabDesign Request`
+                    WHERE opportunity = %s 
+           
+                """, opportunity_name, as_dict=True)
+                
+                opportunities.append({
+                    "opportunity": opportunity,
+                    "site_visits": site_visits,
+                    "design_requests": design_requests
+                })
+        
+        # Calculate balance to bill amount
+        balance_to_bill_amount = flt(order.grand_total) - flt(order.advance_paid or 0) - sum([flt(inv.grand_total) for inv in invoices])
+        
+        # Get primary sales person from sales team (first one or the one with highest allocation)
+        primary_sales_person = None
+        if sales_team:
+            # Sort by allocated percentage (descending) and take the first one
+            sorted_team = sorted(sales_team, key=lambda x: x.get('allocated_percentage', 0), reverse=True)
+            primary_sales_person = sorted_team[0].get('sales_person') if sorted_team else None
+        
+        # Safely get fields that might not exist
+        def safe_get_attr(obj, attr, default=None):
+            try:
+                return getattr(obj, attr, default)
+            except AttributeError:
+                return default
+        
+        return {
+            "status": "success",
+            "data": {
+                "order": {
+                    "name": order.name,
+                    "customer": safe_get_attr(order, 'customer'),
+                    "customer_name": safe_get_attr(order, 'customer_name'),
+                    "transaction_date": safe_get_attr(order, 'transaction_date'),
+                    "delivery_date": safe_get_attr(order, 'delivery_date'),
+                    "status": safe_get_attr(order, 'status'),
+                    "net_total": safe_get_attr(order, 'net_total', 0),
+                    "grand_total": safe_get_attr(order, 'grand_total', 0),
+                    "balance_to_bill_amount": balance_to_bill_amount,
+                    "per_billed": safe_get_attr(order, 'per_billed', 0),
+                    "per_delivered": safe_get_attr(order, 'per_delivered', 0),
+                    "percent_amount_billed": safe_get_attr(order, 'per_billed', 0),
+                    "percent_amount_delivered": safe_get_attr(order, 'per_delivered', 0),
+                    "advance_paid": safe_get_attr(order, 'advance_paid', 0),
+                    "project": safe_get_attr(order, 'project'),
+                    "branch": safe_get_attr(order, 'branch'),
+                    "sales_person": primary_sales_person,  # Get from sales team instead
+                    "is_overdue": bool(order.delivery_date and getdate(order.delivery_date) < getdate(today())),
+                    "billing_status": 'Fully Billed' if flt(safe_get_attr(order, 'per_billed', 0)) >= 100 else 'Pending',
+                    "delivery_status": 'Fully Delivered' if flt(safe_get_attr(order, 'per_delivered', 0)) >= 100 else 'Pending',
+                    "days_until_delivery": 999999 if not order.delivery_date else date_diff(order.delivery_date, getdate(today())),
+                    "formatted_transaction_date": frappe.utils.formatdate(order.transaction_date) if order.transaction_date else None,
+                    "formatted_delivery_date": frappe.utils.formatdate(order.delivery_date) if order.delivery_date else None
+                },
+                "sales_team": sales_team,
+                "items": items,
+                "invoices": invoices,
+                "delivery_notes": delivery_notes,
+                "payment_entries": payments,
+                "quotations": quotations,
+                "permits": permits,
+                "opportunities": opportunities
+            }
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Sales Order Details API Error: {str(e)}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "data": {
+                "order": {},
+                "sales_team": [],
+                "items": [],
+                "invoices": [],
+                "delivery_notes": [],
+                "payment_entries": [],
+                "quotations": [],
+                "permits": [],
+                "opportunities": []
+            }
+        }

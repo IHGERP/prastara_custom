@@ -1,0 +1,5281 @@
+frappe.pages['prd-so-calender'].on_page_load = function(wrapper) {
+    var page = frappe.ui.make_app_page({
+        parent: wrapper,
+        title: 'Sales Order Pending',
+        single_column: true
+    });
+    
+    frappe.sales_order_dashboard = new UltraModernSalesOrderDashboard(wrapper);
+}
+
+class UltraModernSalesOrderDashboard {
+    constructor(wrapper) {
+        this.wrapper = wrapper;
+        this.page = wrapper.page;
+        this.current_view = 'dashboard';
+        this.filters = {};
+        this.sort_config = { field: 'delivery_date', order: 'ASC' };
+        this.data = {};
+        this.all_orders = [];
+        this.filtered_orders = [];
+        this.calendar_date = new Date();
+        this.filter_options = { customers: [], sales_persons: [], branches: [], statuses: [] };
+        this.search_timeout = null;
+        this.theme = 'light'; // Can be extended for dark mode
+        
+        this.initialize();
+    }
+
+    initialize() {
+        this.setupStyles();
+        this.setupLayout();
+        this.setupGlobalSearch();
+        this.setupFilters();
+        this.setupViewSwitcher();
+        this.setupModals();
+        this.setupFloatingActionButton();
+        this.loadData();
+    }
+
+    setupStyles() {
+        $(`<style>
+            /* Ultra-Modern Sales Dashboard Styles */
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+            
+           :root {
+    /* Enhanced Color Palette */
+    --primary: #4338ca;
+    --primary-light: #6366f1;
+    --primary-dark: #312e81;
+    --primary-glass: rgba(67, 56, 202, 0.12);
+    --secondary: #7c3aed;
+    --secondary-light: #8b5cf6;
+    --accent: #dc2626;
+    --success: #059669;
+    --warning: #d97706;
+    --error: #dc2626;
+    --info: #0284c7;
+    
+    /* Light Surface Colors */
+    --surface: #ffffff;
+    --surface-glass: rgba(255, 255, 255, 0.9);
+    --surface-alt: #f8fafc;
+    --surface-hover: #f1f5f9;
+    --surface-dark: #e2e8f0;
+    --surface-elevated: #ffffff;
+    --surface-card: #ffffff;
+    --glass-border: rgba(67, 56, 202, 0.15);
+    
+    /* Enhanced Dark Text Colors */
+    --text: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #475569;
+    --text-light: #64748b;
+    --text-inverse: #ffffff;
+    
+    /* Enhanced Borders & Shadows */
+    --border: #cbd5e1;
+    --border-light: #e2e8f0;
+    --border-dark: #94a3b8;
+    --border-subtle: #f1f5f9;
+    --shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.08);
+    --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.12);
+    --shadow-lg: 0 10px 15px -3px rgb(15 23 42 / 0.15);
+    --shadow-xl: 0 20px 25px -5px rgb(15 23 42 / 0.18);
+    --shadow-2xl: 0 25px 50px -12px rgb(15 23 42 / 0.25);
+    --shadow-inner: inset 0 2px 4px 0 rgb(15 23 42 / 0.08);
+    --shadow-glow: 0 0 25px rgba(67, 56, 202, 0.15);
+    --shadow-color: 0 0 20px rgba(67, 56, 202, 0.12);
+    
+    /* Sophisticated Gradients */
+    --gradient-primary: linear-gradient(135deg, #4338ca 0%, #7c3aed 100%);
+    --gradient-secondary: linear-gradient(135deg, #7c3aed 0%, #dc2626 100%);
+    --gradient-success: linear-gradient(135deg, #059669 0%, #0284c7 100%);
+    --gradient-warm: linear-gradient(135deg, #dc2626 0%, #d97706 100%);
+    --gradient-cool: linear-gradient(135deg, #0284c7 0%, #4338ca 100%);
+    --gradient-dark: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+    --gradient-surface: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(67, 56, 202, 0.05) 0%, rgba(124, 58, 237, 0.05) 100%);
+    
+    /* Enhanced Light Backgrounds */
+    --bg-primary: var(--surface);
+    --bg-secondary: var(--surface-alt);
+    --bg-tertiary: var(--surface-elevated);
+    --bg-glass: rgba(255, 255, 255, 0.8);
+    --bg-blur: rgba(255, 255, 255, 0.9);
+    
+    /* Spacing & Sizing (unchanged) */
+    --radius: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.25rem;
+    --radius-full: 9999px;
+    --space-1: 0.2rem;
+    --space-2: 0.4rem;
+    --space-3: 0.6rem;
+    --space-4: 0.8rem;
+    --space-5: 1rem;
+    --space-6: 1.2rem;
+    --space-8: 1.6rem;
+    --space-10: 2rem;
+    --space-12: 2.4rem;
+    --space-16: 3.2rem;
+    
+    /* Enhanced Animations */
+    --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    
+    /* Special Light Theme Effects */
+    --glow-subtle: 0 0 10px rgba(67, 56, 202, 0.08);
+    --glow-medium: 0 0 20px rgba(67, 56, 202, 0.12);
+    --glow-strong: 0 0 30px rgba(67, 56, 202, 0.15);
+    --backdrop-blur: blur(8px);
+    --backdrop-saturate: saturate(120%);
+    
+    /* Interactive States */
+    --hover-overlay: rgba(67, 56, 202, 0.06);
+    --focus-ring: 0 0 0 3px rgba(67, 56, 202, 0.15);
+    --active-overlay: rgba(67, 56, 202, 0.12);
+    
+    /* Enhanced Status Indicators */
+    --status-online: #059669;
+    --status-away: #d97706;
+    --status-busy: #dc2626;
+    --status-offline: #64748b;
+    
+    /* Dark Element Overlays for Contrast */
+    --dark-overlay-1: rgba(15, 23, 42, 0.05);
+    --dark-overlay-2: rgba(15, 23, 42, 0.08);
+    --dark-overlay-3: rgba(15, 23, 42, 0.12);
+    
+    /* Typography Enhancements */
+    --text-contrast: #020617;
+    --text-heading: #0f172a;
+    --text-body: #334155;
+    --text-caption: #475569;
+}
+            /* Global Styles */
+            .ultra-modern-dashboard {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                background: #f0f2f5;
+                min-height: 100vh;
+                color: var(--text);
+                line-height: 1.6;
+                position: relative;
+                overflow-x: hidden;
+            }
+
+            .ultra-modern-dashboard::before {
+                content: '';
+                position: fixed;
+                top: -50%;
+                right: -50%;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(circle, rgba(99, 102, 241, 0.05) 0%, transparent 70%);
+                animation: float 20s ease-in-out infinite;
+                z-index: -1;
+            }
+
+            @keyframes float {
+                0%, 100% { transform: translate(0, 0) rotate(0deg); }
+                33% { transform: translate(-30px, -30px) rotate(120deg); }
+                66% { transform: translate(30px, -30px) rotate(240deg); }
+            }
+
+            /* Glassmorphism Base */
+            .glass {
+                background: var(--surface-glass);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid var(--glass-border);
+            }
+
+            /* Enhanced Header Section */
+.dashboard-header-section {
+    
+    padding: var(--space-8) 0;
+    margin-bottom: var(--space-6);
+    position: relative;
+    overflow: hidden;
+}
+
+            .dashboard-header-section::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                right: -50%;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+                animation: pulse 4s ease-in-out infinite;
+            }
+
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); opacity: 0.3; }
+                50% { transform: scale(1.1); opacity: 0.1; }
+            }
+
+            .dashboard-header-content {
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 0 var(--space-8);
+                position: relative;
+                z-index: 1;
+            }
+
+            .header-title {
+                font-size: 3.5rem;
+                font-weight: 800;
+                color: white;
+                margin-bottom: var(--space-3);
+                letter-spacing: -0.02em;
+                text-align: center;
+                text-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+
+            .header-subtitle {
+                color: rgba(255, 255, 255, 0.9);
+                font-size: 1.25rem;
+                text-align: center;
+                font-weight: 500;
+                margin-bottom: var(--space-10);
+            }
+
+.header-stats {
+
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+}
+.header-stat {
+box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    transition: var(--transition);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+.header-stat-icon {
+    width: 35px;
+    height: 35px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1rem;
+    margin-bottom: var(--space-3);
+    box-shadow: var(--shadow-md);
+}
+
+.header-stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: black;
+    margin-bottom: var(--space-1);
+    line-height: 1;
+}
+.header-stat::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.header-stat:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+}
+
+.header-stat:hover::before {
+    opacity: 1;
+}
+.header-stat-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: black;
+    font-size: 1.25rem;
+    margin-bottom: var(--space-4);
+    box-shadow: var(--shadow-md);
+}
+
+.header-stat-content {
+    position: relative;
+    z-index: 1;
+}
+    
+.header-stat-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: black;
+    margin-bottom: var(--space-1);
+    line-height: 1;
+}
+
+.header-stat-label {
+    color: rgba(34, 34, 34, 0.9);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--space-2);
+}
+
+.header-stat-amount {
+    color: rgba(28, 28, 28, 0.8);
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.1);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius);
+    display: inline-block;
+}
+
+.header-stat-summary {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.header-stat-summary .header-stat-value {
+    background: linear-gradient(135deg,rgb(51, 51, 51) 0%, #f0f9ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .header-stats {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .header-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-4);
+    }
+    
+    .header-stat {
+        padding: var(--space-4);
+    }
+    
+    .header-stat-value {
+        font-size: 1.75rem;
+    }
+    
+    .header-stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+            .header-stat-value {
+                font-size: 1.75rem;
+                font-weight: 700;
+                color: black;
+                margin-bottom: var(--space-1);
+            }
+
+            .header-stat-label {
+                color: rgba(38, 38, 38, 0.9);
+                font-size: 0.875rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+            /* Floating Search Bar */
+       .floating-search-container {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--surface-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-border);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-lg);
+}
+            .search-inner {
+                max-width: 1400px;
+                margin: 0 auto;
+                display: flex;
+                gap: var(--space-4);
+                align-items: center;
+            }
+
+            .search-wrapper {
+                flex: 1;
+                position: relative;
+            }
+
+            .search-input {
+                width: 100%;
+                padding: var(--space-4) var(--space-6) var(--space-4) 3.5rem;
+                border: 2px solid transparent;
+                border-radius: var(--radius-2xl);
+                font-size: 1rem;
+                font-weight: 500;
+                background: var(--surface);
+                transition: var(--transition);
+                box-shadow: var(--shadow-md);
+            }
+
+            .search-input:focus {
+                outline: none;
+                border-color: var(--primary);
+                box-shadow: 0 0 0 4px var(--primary-glass), var(--shadow-lg);
+                transform: translateY(-1px);
+            }
+
+            .search-icon {
+                position: absolute;
+                left: 1.5rem;
+                top: 50%;
+                transform: translateY(-50%);
+                color: var(--text-muted);
+                font-size: 1.25rem;
+                pointer-events: none;
+            }
+
+            .search-shortcuts {
+                position: absolute;
+                right: 1rem;
+                top: 50%;
+                transform: translateY(-50%);
+                display: flex;
+                gap: var(--space-2);
+            }
+
+            .shortcut-key {
+                background: var(--surface-hover);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                padding: var(--space-1) var(--space-2);
+                font-size: 0.75rem;
+                font-weight: 600;
+                color: var(--text-muted);
+            }
+
+            /* Advanced Filter Bar */
+    .filter-bar {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    margin-bottom: var(--space-6);
+    box-shadow: var(--shadow-md);
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+}
+
+            .filter-title {
+                font-size: 1.125rem;
+                font-weight: 700;
+                color: var(--text);
+                display: flex;
+                align-items: center;
+                gap: var(--space-3);
+            }
+
+            .filter-quick-actions {
+                display: flex;
+                gap: var(--space-3);
+            }
+
+            .filter-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: var(--space-4);
+            }
+
+            .filter-field {
+                position: relative;
+            }
+
+            .filter-label {
+                display: block;
+                font-weight: 600;
+                color: var(--text-secondary);
+                margin-bottom: var(--space-2);
+                font-size: 0.875rem;
+            }
+
+            .filter-control {
+                width: 100%;
+                padding: var(--space-3) var(--space-4);
+                border: 2px solid var(--border);
+                border-radius: var(--radius-lg);
+                background: var(--surface);
+                font-size: 0.9rem;
+                font-weight: 500;
+                transition: var(--transition-fast);
+                appearance: none;
+                cursor: pointer;
+            }
+
+            .filter-control:hover {
+                border-color: var(--primary-light);
+            }
+
+            .filter-control:focus {
+                outline: none;
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px var(--primary-glass);
+            }
+
+            /* View Navigation Pills */
+            .view-navigation {
+                display: flex;
+                justify-content: center;
+                margin-bottom: var(--space-8);
+                position: sticky;
+                top: 88px;
+                z-index: 90;
+                background: var(--surface-glass);
+                backdrop-filter: blur(20px);
+                padding: var(--space-4) 0;
+            }
+
+            .view-pills {
+                display: flex;
+                background: var(--surface);
+                border-radius: var(--radius-2xl);
+                padding: var(--space-2);
+                gap: var(--space-2);
+                box-shadow: var(--shadow-lg);
+                overflow-x: auto;
+                max-width: 100%;
+            }
+
+            .view-pill {
+                padding: var(--space-3) var(--space-6);
+                border: none;
+                background: transparent;
+                border-radius: var(--radius-xl);
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+                transition: var(--transition-fast);
+                white-space: nowrap;
+                display: flex;
+                align-items: center;
+                gap: var(--space-2);
+                position: relative;
+            }
+
+            .view-pill:hover {
+                color: var(--primary);
+                background: var(--primary-glass);
+            }
+
+            .view-pill.active {
+                background: var(--gradient-primary);
+                color: white;
+                box-shadow: var(--shadow-md);
+            }
+
+            .view-pill i {
+                font-size: 1.125rem;
+            }
+
+            .view-pill-badge {
+                position: absolute;
+                top: -4px;
+                right: -4px;
+                background: var(--error);
+                color: white;
+                font-size: 0.625rem;
+                font-weight: 700;
+                padding: 2px 6px;
+                border-radius: var(--radius-full);
+                box-shadow: var(--shadow-sm);
+            }
+
+            /* Content Container */
+            .content-container {
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 0 var(--space-8) var(--space-12);
+                min-height: 600px;
+            }
+
+            /* Modern Metric Cards */
+          .metrics-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+}
+
+.metric-card-modern {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    position: relative;
+    overflow: hidden;
+    transition: var(--transition);
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-light);
+}
+
+.metric-card-icon {
+    width: 45px;
+    height: 45px;
+    background: var(--gradient-primary);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    margin-bottom: var(--space-4);
+    box-shadow: var(--shadow-lg);
+}
+
+.metric-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: var(--space-2);
+}
+
+            .metric-card-modern:hover {
+                transform: translateY(-4px);
+                box-shadow: var(--shadow-xl);
+                border-color: var(--primary-light);
+            }
+
+            .metric-card-modern::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 4px;
+                background: var(--gradient-primary);
+            }
+
+           
+            .metric-card-content {
+                display: flex;
+                flex-direction: column;
+                gap: var(--space-2);
+            }
+
+            .metric-value {
+                font-size: 1.5rem;
+                font-weight: 800;
+                color: var(--text);
+                line-height: 1;
+                margin-bottom: var(--space-2);
+            }
+
+            .metric-label {
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+            .metric-trend {
+                display: flex;
+                align-items: center;
+                gap: var(--space-2);
+                margin-top: var(--space-4);
+                padding: var(--space-2) var(--space-3);
+                background: var(--surface-alt);
+                border-radius: var(--radius);
+                width: fit-content;
+                font-size: 0.875rem;
+                font-weight: 600;
+            }
+
+            .metric-trend.positive {
+                color: var(--success);
+                background: rgba(16, 185, 129, 0.1);
+            }
+
+            .metric-trend.negative {
+                color: var(--error);
+                background: rgba(239, 68, 68, 0.1);
+            }
+
+            /* Data Tables Modern */
+            .table-modern-container {
+                background: var(--surface);
+                border-radius: var(--radius-xl);
+                overflow: hidden;
+                box-shadow: var(--shadow-lg);
+                margin-bottom: var(--space-8);
+            }
+
+            .table-modern-header {
+                background: var(--gradient-primary);
+                padding: var(--space-6);
+                color: white;
+            }
+
+            .table-modern-title {
+                font-size: 1.25rem;
+                font-weight: 700;
+                margin-bottom: var(--space-4);
+            }
+
+            .table-toolbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: var(--space-4);
+                flex-wrap: wrap;
+            }
+
+            .table-search-box {
+                position: relative;
+                flex: 1;
+                min-width: 300px;
+            }
+
+            .table-search-input {
+                width: 100%;
+                padding: var(--space-3) var(--space-4) var(--space-3) 2.5rem;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: var(--radius-lg);
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(10px);
+                color: white;
+                font-size: 0.9rem;
+                transition: var(--transition-fast);
+            }
+
+            .table-search-input::placeholder {
+                color: rgba(255, 255, 255, 0.7);
+            }
+
+            .table-search-input:focus {
+                outline: none;
+                border-color: white;
+                background: rgba(255, 255, 255, 0.2);
+            }
+
+            .table-search-icon {
+                position: absolute;
+                left: 0.75rem;
+                top: 50%;
+                transform: translateY(-50%);
+                color: rgba(255, 255, 255, 0.8);
+            }
+
+            .table-actions {
+                display: flex;
+                gap: var(--space-3);
+            }
+
+            .table-body {
+                overflow-x: auto;
+                max-height: 600px;
+                overflow-y: auto;
+            }
+
+            .data-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+.data-table th {
+    background: var(--surface-alt);
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    font-weight: 700;
+    color: var(--text);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 2px solid var(--border);
+}
+
+.data-table td {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text);
+    font-size: 0.85rem;
+}
+
+            .data-table tbody tr {
+                transition: var(--transition-fast);
+                cursor: pointer;
+            }
+
+            .data-table tbody tr:hover {
+                background: var(--surface-hover);
+            }
+
+            .data-table tbody tr:nth-child(even) {
+                background: var(--surface-alt);
+            }
+
+            /* Interactive Order Cards */
+           .orders-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-4);
+}
+
+      .order-card-modern {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    transition: var(--transition);
+    cursor: pointer;
+    position: relative;
+    border: 1px solid var(--border-light);
+}
+    .order-card-header {
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.order-card-body {
+    padding: var(--space-4);
+}
+
+            .order-card-modern:hover {
+                transform: translateY(-4px) scale(1.02);
+                box-shadow: var(--shadow-xl);
+                border-color: var(--primary-light);
+            }
+
+            .order-card-status-bar {
+                height: 6px;
+                background: var(--gradient-primary);
+            }
+
+            .order-card-status-bar.overdue {
+                background: var(--gradient-warm);
+            }
+
+            .order-card-status-bar.due-today {
+                background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+            }
+
+        
+
+            .order-card-number {
+                font-size: 1.125rem;
+                font-weight: 700;
+                color: var(--primary);
+                margin-bottom: var(--space-2);
+            }
+
+            .order-card-customer {
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+                font-weight: 500;
+            }
+
+        
+            .order-info-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: var(--space-4);
+                margin-bottom: var(--space-6);
+            }
+
+            .order-info-item {
+                display: flex;
+                flex-direction: column;
+                gap: var(--space-1);
+            }
+
+            .order-info-label {
+                font-size: 0.75rem;
+                color: var(--text-muted);
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+            .order-info-value {
+                font-size: 0.9rem;
+                color: var(--text);
+                font-weight: 600;
+            }
+
+            /* Progress Indicators */
+            .progress-container {
+                margin-top: var(--space-6);
+            }
+
+            .progress-item {
+                margin-bottom: var(--space-4);
+            }
+
+            .progress-header {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: var(--space-2);
+                font-size: 0.875rem;
+            }
+
+            .progress-label {
+                font-weight: 600;
+                color: var(--text-secondary);
+            }
+
+            .progress-value {
+                font-weight: 700;
+                color: var(--text);
+            }
+
+            .progress-bar-modern {
+                width: 100%;
+                height: 8px;
+                background: var(--surface-hover);
+                border-radius: var(--radius-full);
+                overflow: hidden;
+                position: relative;
+            }
+            
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-4);
+}
+
+.quick-action-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-light);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.quick-action-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+    border-color: var(--primary-light);
+}
+
+.quick-action-icon {
+    width: 45px;
+    height: 45px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+.quick-action-content {
+    flex: 1;
+}
+
+.quick-action-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: var(--space-1);
+}
+
+.quick-action-subtitle {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2);
+}
+
+.quick-action-count {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--primary-glass);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius);
+    display: inline-block;
+}
+
+/* Analytics Cards */
+.analytics-card {
+    background: var(--surface);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-light);
+}
+
+.analytics-header {
+    background: var(--surface-alt);
+    padding: var(--space-6);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.analytics-header h4 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.analytics-header h4 i {
+    color: var(--primary);
+}
+
+.analytics-content {
+    padding: var(--space-4);
+}
+
+.analytics-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    margin-bottom: var(--space-2);
+}
+    .search-suggestion.highlighted {
+    background: var(--primary-glass) !important;
+    color: var(--primary) !important;
+}
+
+.analytics-item:hover {
+    background: var(--surface-hover);
+}
+
+.analytics-item:last-child {
+    margin-bottom: 0;
+}
+
+.analytics-rank {
+    width: 30px;
+    height: 30px;
+    background: var(--primary-glass);
+    color: var(--primary);
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+
+.analytics-info {
+    flex: 1;
+}
+
+.analytics-name {
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: var(--space-1);
+}
+
+.analytics-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.analytics-value {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+/* Enhanced Metric Cards */
+.metric-card-primary {
+    border-left: 4px solid var(--primary);
+}
+
+.metric-card-warning {
+    border-left: 4px solid var(--warning);
+}
+
+.metric-card-info {
+    border-left: 4px solid var(--info);
+}
+
+.metric-card-modern .metric-description {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: var(--space-2);
+    font-weight: 500;
+}
+
+/* Responsive Design for Quick Actions */
+@media (max-width: 768px) {
+    .quick-actions-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .quick-action-card {
+        padding: var(--space-4);
+    }
+    
+    .quick-action-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.25rem;
+    }
+    
+    .analytics-card {
+        margin-bottom: var(--space-6);
+    }
+    
+    div[style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+
+            .progress-fill-modern {
+                height: 100%;
+                background: var(--gradient-primary);
+                border-radius: var(--radius-full);
+                transition: width 0.5s ease;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .progress-fill-modern::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+                animation: shimmer 2s infinite;
+            }
+
+            @keyframes shimmer {
+                0% { transform: translateX(-100%); }
+                100% { transform: translateX(100%); }
+            }
+
+            /* Calendar Modern */
+    .calendar-modern {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    box-shadow: var(--shadow-lg);
+}
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-5);
+}
+    #customer-type-filter {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    color: var(--text);
+    transition: var(--transition-fast);
+}
+
+#customer-type-filter:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glass);
+}
+            .calendar-title {
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: var(--text);
+            }
+
+            .calendar-nav {
+                display: flex;
+                gap: var(--space-3);
+            }
+
+            .calendar-nav-btn {
+                padding: var(--space-3) var(--space-6);
+                border: 2px solid var(--border);
+                background: var(--surface);
+                color: var(--text);
+                border-radius: var(--radius-lg);
+                cursor: pointer;
+                transition: var(--transition-fast);
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: var(--space-2);
+            }
+
+            .calendar-nav-btn:hover {
+                background: var(--primary);
+                color: white;
+                border-color: var(--primary);
+                transform: translateY(-1px);
+            }
+
+            .calendar-grid {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 2px;
+                background: var(--border-light);
+                border-radius: var(--radius-lg);
+                overflow: hidden;
+            }
+
+            .calendar-day-header {
+                background: var(--surface-alt);
+                padding: var(--space-4);
+                text-align: center;
+                font-weight: 700;
+                font-size: 0.875rem;
+                color: var(--text);
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+          .calendar-day {
+    background: var(--surface);
+    padding: var(--space-3);
+    min-height: 80px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    position: relative;
+}
+
+            .calendar-day:hover {
+                background: var(--surface-hover);
+                z-index: 1;
+                box-shadow: var(--shadow-md);
+            }
+
+            .calendar-day.other-month {
+                background: var(--surface-alt);
+                color: var(--text-light);
+            }
+
+            .calendar-day.today {
+                background: var(--primary-glass);
+                border: 2px solid var(--primary);
+            }
+
+            .calendar-day-number {
+                font-weight: 700;
+                font-size: 0.9rem;
+                margin-bottom: var(--space-2);
+            }
+
+            .calendar-day-events {
+                display: flex;
+                flex-direction: column;
+                gap: var(--space-1);
+            }
+
+            .calendar-event {
+                background: var(--gradient-primary);
+                color: white;
+                border-radius: var(--radius);
+                padding: 2px 6px;
+                font-size: 0.625rem;
+                font-weight: 600;
+                text-align: center;
+            }
+
+            /* Enhanced Modals */
+            .modal-backdrop {
+                display: none;
+                position: fixed;
+                z-index: 1000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                backdrop-filter: blur(5px);
+                animation: fadeIn 0.3s ease;
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+
+            .modal-container {
+                background: var(--surface);
+                margin: 2% auto;
+                border-radius: var(--radius-2xl);
+                width: 95%;
+                max-width: 1200px;
+                max-height: 90vh;
+                overflow: hidden;
+                box-shadow: var(--shadow-2xl);
+                animation: slideUp 0.3s ease;
+            }
+
+            @keyframes slideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(50px) scale(0.95);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+
+            .modal-header {
+                background: var(--gradient-primary);
+                padding: var(--space-8);
+                color: white;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .modal-title {
+                font-size: 1.5rem;
+                font-weight: 700;
+            }
+
+            .modal-close-btn {
+                background: rgba(255, 255, 255, 0.2);
+                border: none;
+                color: white;
+                width: 40px;
+                height: 40px;
+                border-radius: var(--radius-lg);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: var(--transition-fast);
+                font-size: 1.5rem;
+            }
+
+            .modal-close-btn:hover {
+                background: rgba(255, 255, 255, 0.3);
+                transform: scale(1.1);
+            }
+
+            .modal-body {
+                padding: var(--space-8);
+                max-height: 70vh;
+                overflow-y: auto;
+            }
+
+            /* Floating Action Button */
+            .fab-container {
+                position: fixed;
+                bottom: var(--space-8);
+                right: var(--space-8);
+                z-index: 100;
+            }
+
+            .fab {
+                width: 60px;
+                height: 60px;
+                border-radius: var(--radius-full);
+                background: var(--gradient-primary);
+                color: white;
+                border: none;
+                box-shadow: var(--shadow-xl);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.5rem;
+                transition: var(--transition);
+                position: relative;
+            }
+
+            .fab:hover {
+                transform: scale(1.1);
+                box-shadow: var(--shadow-2xl);
+            }
+
+            .fab-menu {
+                position: absolute;
+                bottom: 70px;
+                right: 0;
+                display: none;
+                flex-direction: column;
+                gap: var(--space-3);
+            }
+
+            .fab-menu.active {
+                display: flex;
+            }
+
+            .fab-menu-item {
+                background: var(--surface);
+                border-radius: var(--radius-lg);
+                padding: var(--space-3) var(--space-6);
+                box-shadow: var(--shadow-lg);
+                white-space: nowrap;
+                cursor: pointer;
+                transition: var(--transition-fast);
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: var(--space-3);
+            }
+
+            .fab-menu-item:hover {
+                transform: translateX(-5px);
+                background: var(--primary);
+                color: white;
+            }
+
+            /* Loading States */
+            .skeleton {
+                background: linear-gradient(90deg, var(--surface-hover) 25%, var(--surface-dark) 50%, var(--surface-hover) 75%);
+                background-size: 200% 100%;
+                animation: loading 1.5s ease-in-out infinite;
+                border-radius: var(--radius);
+            }
+
+            @keyframes loading {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
+
+            .skeleton-text {
+                height: 1rem;
+                margin-bottom: var(--space-2);
+            }
+
+            .skeleton-title {
+                height: 1.5rem;
+                width: 60%;
+                margin-bottom: var(--space-4);
+            }
+
+            /* Empty States */
+            .empty-state {
+                text-align: center;
+                padding: var(--space-16) var(--space-8);
+            }
+
+            .empty-state-icon {
+                font-size: 6rem;
+                color: var(--text-light);
+                margin-bottom: var(--space-6);
+            }
+
+            .empty-state-title {
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: var(--text);
+                margin-bottom: var(--space-3);
+            }
+
+            .empty-state-message {
+                font-size: 1rem;
+                color: var(--text-secondary);
+                margin-bottom: var(--space-8);
+            }
+
+            /* Buttons Modern */
+            .btn {
+                padding: var(--space-3) var(--space-6);
+                border: none;
+                border-radius: var(--radius-lg);
+                font-weight: 600;
+                font-size: 0.9rem;
+                cursor: pointer;
+                transition: var(--transition-fast);
+                display: inline-flex;
+                align-items: center;
+                gap: var(--space-2);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .btn::before {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 0;
+                height: 0;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.3);
+                transform: translate(-50%, -50%);
+                transition: width 0.3s, height 0.3s;
+            }
+
+            .btn:active::before {
+                width: 300px;
+                height: 300px;
+            }
+
+            .btn-primary {
+                background: var(--gradient-primary);
+                color: white;
+                box-shadow: var(--shadow-md);
+            }
+
+            .btn-primary:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-lg);
+            }
+
+            .btn-secondary {
+                background: var(--surface);
+                color: var(--text);
+                border: 2px solid var(--border);
+            }
+
+            .btn-secondary:hover {
+                background: var(--surface-hover);
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+
+            .btn-ghost {
+                background: transparent;
+                color: var(--text-secondary);
+                padding: var(--space-2) var(--space-4);
+            }
+
+            .btn-ghost:hover {
+                background: var(--surface-hover);
+                color: var(--text);
+            }
+
+            .btn-sm {
+                padding: var(--space-2) var(--space-4);
+                font-size: 0.8rem;
+            }
+
+            .btn-lg {
+                padding: var(--space-4) var(--space-8);
+                font-size: 1rem;
+            }
+
+            /* Toast Notifications */
+            .toast-container {
+                position: fixed;
+                bottom: var(--space-8);
+                left: var(--space-8);
+                z-index: 1100;
+                display: flex;
+                flex-direction: column;
+                gap: var(--space-3);
+            }
+
+            .toast {
+                background: var(--surface);
+                border-radius: var(--radius-lg);
+                padding: var(--space-4) var(--space-6);
+                box-shadow: var(--shadow-xl);
+                display: flex;
+                align-items: center;
+                gap: var(--space-4);
+                min-width: 300px;
+                animation: slideInLeft 0.3s ease;
+            }
+
+            @keyframes slideInLeft {
+                from {
+                    opacity: 0;
+                    transform: translateX(-50px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+
+            .toast-icon {
+                font-size: 1.5rem;
+            }
+
+            .toast-success .toast-icon {
+                color: var(--success);
+            }
+
+            .toast-error .toast-icon {
+                color: var(--error);
+            }
+
+            .toast-info .toast-icon {
+                color: var(--info);
+            }
+
+            .toast-content {
+                flex: 1;
+            }
+
+            .toast-title {
+                font-weight: 700;
+                color: var(--text);
+                margin-bottom: var(--space-1);
+            }
+
+            .toast-message {
+                font-size: 0.875rem;
+                color: var(--text-secondary);
+            }
+
+            /* Responsive Design */
+            @media (max-width: 1024px) {
+                .header-title {
+                    font-size: 2.5rem;
+                }
+                
+                .metrics-container {
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                }
+                
+                .filter-grid {
+                    grid-template-columns: 1fr;
+                }
+                
+                .view-pills {
+                    flex-wrap: wrap;
+                }
+            }
+
+            @media (max-width: 768px) {
+                .header-title {
+                    font-size: 2rem;
+                }
+                
+                .header-stats {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+                
+                .search-inner {
+                    flex-direction: column;
+                }
+                
+                .table-toolbar {
+                    flex-direction: column;
+                    align-items: stretch;
+                }
+                
+                .orders-card-grid {
+                    grid-template-columns: 1fr;
+                }
+                
+                .calendar-grid {
+                    font-size: 0.8rem;
+                }
+                
+                .calendar-day {
+                    min-height: 80px;
+                    padding: var(--space-2);
+                }
+                
+                .fab {
+                    width: 50px;
+                    height: 50px;
+                    font-size: 1.25rem;
+                }
+            }
+
+            /* Custom Scrollbar */
+            ::-webkit-scrollbar {
+                width: 12px;
+                height: 12px;
+            }
+
+            ::-webkit-scrollbar-track {
+                background: var(--surface-alt);
+                border-radius: var(--radius);
+            }
+
+            ::-webkit-scrollbar-thumb {
+                background: var(--primary-light);
+                border-radius: var(--radius);
+                border: 2px solid var(--surface-alt);
+            }
+
+            ::-webkit-scrollbar-thumb:hover {
+                background: var(--primary);
+            }
+
+            /* Print Styles */
+            @media print {
+                .floating-search-container,
+                .view-navigation,
+                .fab-container,
+                .modal-backdrop {
+                    display: none !important;
+                }
+                
+                .dashboard-header-section {
+                    background: none;
+                    color: var(--text);
+                }
+                
+                .header-title,
+                .header-subtitle {
+                    color: var(--text);
+                }
+            }
+        </style>`).appendTo('head');
+    }
+
+    setupLayout() {
+        this.page.main.addClass('ultra-modern-dashboard');
+        
+        this.container = $(`
+            <div class="dashboard-wrapper">
+                <!-- Header Section -->
+                <div class="dashboard-header-section">
+                    <div class="dashboard-header-content">
+                        <div class="header-stats" id="header-stats">
+                            <!-- Dynamic stats will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Floating Search Bar -->
+                <div class="floating-search-container">
+    <div class="search-inner">
+        <div class="search-wrapper">
+            <i class="fa fa-search search-icon"></i>
+            <input type="text" class="search-input" 
+                   placeholder="Search orders, customers, sales persons, or any keyword..." 
+                   id="global-search">
+            <div class="search-shortcuts">
+                <span class="shortcut-key">⌘</span>
+                <span class="shortcut-key">K</span>
+            </div>
+            <div class="search-suggestions" id="search-suggestions"></div>
+        </div>
+        
+        <!-- Add Customer Type Filter Dropdown -->
+        <select class="filter-control1" id="customer-type-filter" style="min-width: 140px;height: 40px; margin-right: var(--space-4);">
+            <option value="">All Customers</option>
+            <option value="internal">Internal Only</option>
+            <option value="external">External Only</option>
+        </select>
+        
+        <button class="btn btn-secondary" id="advanced-search-btn">
+            <i class="fa fa-sliders"></i>
+            Advanced Search
+        </button>
+    </div>
+</div>
+                
+                <!-- Filter Bar -->
+                <div class="filter-bar" id="filter-bar" style="display: none;">
+                    <div class="filter-header">
+                        <div class="filter-title">
+                            <i class="fa fa-filter"></i>
+                            Advanced Filters
+                        </div>
+                        <div class="filter-quick-actions">
+                            <button class="btn btn-ghost btn-sm" id="reset-filters">
+                                <i class="fa fa-refresh"></i>
+                                Reset
+                            </button>
+                            <button class="btn btn-ghost btn-sm" id="save-filter">
+                                <i class="fa fa-save"></i>
+                                Save Filter
+                            </button>
+                        </div>
+                    </div>
+                    <div class="filter-grid" id="filter-grid">
+                        <!-- Filters will be dynamically added here -->
+                    </div>
+                    <div class="active-filters" id="active-filters" style="margin-top: var(--space-4); display: none;">
+                        <!-- Active filter chips -->
+                    </div>
+                </div>
+                
+                <!-- View Navigation -->
+                <div class="view-navigation">
+                    <div class="view-pills" id="view-pills">
+                        <!-- View pills will be dynamically added here -->
+                    </div>
+                </div>
+                
+                <!-- Main Content Area -->
+                <div class="content-container" id="content-area">
+                    <!-- Dynamic content will be loaded here -->
+                </div>
+                
+                <!-- Toast Container -->
+                <div class="toast-container" id="toast-container"></div>
+            </div>
+        `).appendTo(this.page.main);
+        
+        this.content_area = $('#content-area');
+        this.setupKeyboardShortcuts();
+    }
+
+    setupKeyboardShortcuts() {
+        $(document).on('keydown', (e) => {
+            // Cmd/Ctrl + K for search focus
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                $('#global-search').focus();
+            }
+            
+            // Escape to close modals
+            if (e.key === 'Escape') {
+                $('.modal-backdrop').hide();
+                $('#search-suggestions').hide();
+            }
+        });
+    }
+
+    setupFloatingActionButton() {
+        const fabHtml = `
+            <div class="fab-container">
+                <div class="fab-menu" id="fab-menu">
+                    <div class="fab-menu-item" data-action="export">
+                        <i class="fa fa-download"></i>
+                        Export Data
+                    </div>
+                    <div class="fab-menu-item" data-action="refresh">
+                        <i class="fa fa-refresh"></i>
+                        Refresh
+                    </div>
+                    <div class="fab-menu-item" data-action="settings">
+                        <i class="fa fa-cog"></i>
+                        Settings
+                    </div>
+                </div>
+                <button class="fab" id="fab">
+                    <i class="fa fa-plus"></i>
+                </button>
+            </div>
+        `;
+        
+        $(fabHtml).appendTo('body');
+        
+        $('#fab').on('click', function() {
+            $(this).find('i').toggleClass('fa-plus fa-times');
+            $('#fab-menu').toggleClass('active');
+        });
+        
+        $('.fab-menu-item').on('click', (e) => {
+            const action = $(e.currentTarget).data('action');
+            this.handleFabAction(action);
+            $('#fab').click(); // Close menu
+        });
+    }
+
+    handleFabAction(action) {
+        switch(action) {
+            case 'export':
+                this.exportData();
+                break;
+            case 'refresh':
+                this.loadData();
+                this.showToast('Data refreshed successfully', 'success');
+                break;
+            case 'settings':
+                this.showSettingsModal();
+                break;
+        }
+    }
+
+    showToast(message, type = 'info', title = '') {
+        const toastId = `toast-${Date.now()}`;
+        const toastHtml = `
+            <div class="toast toast-${type}" id="${toastId}">
+                <div class="toast-icon">
+                    <i class="fa ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+                </div>
+                <div class="toast-content">
+                    ${title ? `<div class="toast-title">${title}</div>` : ''}
+                    <div class="toast-message">${message}</div>
+                </div>
+            </div>
+        `;
+        
+        $('#toast-container').append(toastHtml);
+        
+        setTimeout(() => {
+            $(`#${toastId}`).fadeOut(300, function() {
+                $(this).remove();
+            });
+        }, 3000);
+    }
+
+    setupGlobalSearch() {
+    const searchInput = $('#global-search');
+    const suggestions = $('#search-suggestions');
+    
+    // Style for suggestions dropdown
+    suggestions.css({
+        position: 'absolute',
+        top: '100%',
+        left: '0',
+        right: '0',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: 'var(--shadow-xl)',
+        maxHeight: '400px',
+        overflowY: 'auto',
+        zIndex: '1000',
+        display: 'none',
+        marginTop: 'var(--space-2)'
+    });
+    
+    // Input event for suggestions and auto-filtering
+    searchInput.on('input', (e) => {
+        clearTimeout(this.search_timeout);
+        const query = e.target.value.trim();
+        
+        if (query.length < 2) {
+            suggestions.hide();
+            this.applyGlobalFilter('');
+            return;
+        }
+        
+        this.search_timeout = setTimeout(() => {
+            this.showSearchSuggestions(query);
+            this.applyGlobalFilter(query);
+        }, 300);
+    });
+    
+    // Add Enter key event for immediate filtering
+    searchInput.on('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Prevent form submission if any
+            clearTimeout(this.search_timeout); // Cancel any pending timeout
+            
+            const query = e.target.value.trim();
+            
+            // Hide suggestions dropdown
+            suggestions.hide();
+            
+            // Apply filter immediately
+            if (query.length >= 1) { // Allow even single character search on Enter
+                this.applyGlobalFilter(query);
+                this.showToast(`Filtered by: "${query}"`, 'success');
+            } else {
+                this.applyGlobalFilter('');
+                this.showToast('Search filter cleared', 'info');
+            }
+            
+            // Blur the input to remove focus
+            searchInput.blur();
+        }
+        
+        // Handle Escape key to clear search and hide suggestions
+        if (e.key === 'Escape') {
+            suggestions.hide();
+            searchInput.val('');
+            this.applyGlobalFilter('');
+            searchInput.blur();
+        }
+        
+        // Handle Arrow keys for suggestion navigation (optional enhancement)
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            this.navigateSuggestions(e.key === 'ArrowDown' ? 'down' : 'up');
+        }
+    });
+    
+    // Add customer type filter handler
+    $('#customer-type-filter').on('change', () => {
+        // Add a small delay to ensure smooth transition
+        setTimeout(() => {
+            this.applyFilters(); // This will now update header stats
+        }, 100);
+    });
+    
+    $('#advanced-search-btn').on('click', () => {
+        $('#filter-bar').slideToggle();
+    });
+    
+    // Hide suggestions when clicking outside
+    $(document).on('click', (e) => {
+        if (!$(e.target).closest('.search-wrapper').length) {
+            suggestions.hide();
+        }
+    });
+}
+
+showHeaderStatsLoading() {
+    const loadingHtml = `
+        <div class="header-stat">
+            <div class="skeleton skeleton-title" style="height: 60px; margin-bottom: var(--space-2);"></div>
+            <div class="skeleton skeleton-text" style="height: 20px; margin-bottom: var(--space-2);"></div>
+            <div class="skeleton skeleton-text" style="height: 16px; width: 70%;"></div>
+        </div>
+    `.repeat(6);
+    
+    $('#header-stats').html(loadingHtml);
+}
+
+navigateSuggestions(direction) {
+    const suggestions = $('#search-suggestions');
+    const items = suggestions.find('.search-suggestion');
+    
+    if (!items.length) return;
+    
+    let currentIndex = items.index(items.filter('.highlighted'));
+    
+    // Remove current highlight
+    items.removeClass('highlighted');
+    
+    if (direction === 'down') {
+        currentIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+    } else {
+        currentIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+    }
+    
+    // Add highlight to new item
+    const newItem = items.eq(currentIndex);
+    newItem.addClass('highlighted');
+    
+    // Update search input with highlighted suggestion
+    const orderName = newItem.data('order');
+    if (orderName) {
+        const order = this.all_orders.find(o => o.name === orderName);
+        if (order) {
+            $('#global-search').val(order.name);
+        }
+    }
+}
+   showSearchSuggestions(query) {
+    const suggestions = $('#search-suggestions');
+    const lowerQuery = query.toLowerCase();
+    
+    const matches = this.all_orders.filter(order => 
+        order.name.toLowerCase().includes(lowerQuery) ||
+        order.customer.toLowerCase().includes(lowerQuery) ||
+        (order.sales_person || '').toLowerCase().includes(lowerQuery) ||
+        (order.status || '').toLowerCase().includes(lowerQuery)
+    ).slice(0, 8);
+    
+    if (matches.length === 0) {
+        suggestions.hide();
+        return;
+    }
+    
+    let html = '';
+    matches.forEach(order => {
+        html += `
+            <div style="padding: var(--space-4); border-bottom: 1px solid var(--border-light); cursor: pointer; transition: var(--transition-fast);"
+                 class="search-suggestion" data-order="${order.name}"
+                 onmouseover="this.style.background='var(--surface-hover)'"
+                 onmouseout="this.style.background='transparent'">
+                <div style="font-weight: 600; color: var(--text); margin-bottom: var(--space-1);">${order.name}</div>
+                <div style="font-size: 0.875rem; color: var(--text-muted);">
+                    ${order.customer} • ${order.sales_person} • ${frappe.format(order.grand_total, {fieldtype: 'Currency'})}
+                </div>
+            </div>
+        `;
+    });
+    
+    suggestions.html(html).show();
+    
+    suggestions.find('.search-suggestion').on('click', (e) => {
+        const orderName = $(e.currentTarget).data('order');
+        this.showOrderDetails(orderName);
+        suggestions.hide();
+    });
+    
+    // Add Enter key handling for suggestions
+    suggestions.find('.search-suggestion').on('keydown', (e) => {
+        if (e.key === 'Enter') {
+            $(e.currentTarget).click();
+        }
+    });
+}
+    setupFilters() {
+        const filtersHtml = `
+            <div class="filter-field">
+                <label class="filter-label">Customer</label>
+                <select class="filter-control" id="customer-filter">
+                    <option value="">All Customers</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="filter-label">Sales Person</label>
+                <select class="filter-control" id="sales-person-filter">
+                    <option value="">All Sales Persons</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="filter-label">Branch</label>
+                <select class="filter-control" id="branch-filter">
+                    <option value="">All Branches</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="filter-label">Status</label>
+                <select class="filter-control" id="status-filter">
+                    <option value="">All Status</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="filter-label">Due Date From</label>
+                <input type="date" class="filter-control" id="date-from">
+            </div>
+            <div class="filter-field">
+                <label class="filter-label">Due Date To</label>
+                <input type="date" class="filter-control" id="date-to">
+            </div>
+            <div class="filter-field">
+                <label class="filter-label">Quick Filters</label>
+                <select class="filter-control" id="quick-filter">
+                    <option value="">No Filter</option>
+                    <option value="overdue">🔴 Overdue Orders</option>
+                    <option value="due-today">🟡 Due Today</option>
+                    <option value="due-week">🟢 Due This Week</option>
+                    <option value="high-value">💎 High Value (>20K)</option>
+                    <option value="on-hold">⏸️ On Hold</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="filter-label">Order Value Range</label>
+                <div style="display: flex; gap: var(--space-2); align-items: center;">
+                    <input type="number" class="filter-control" id="value-min" placeholder="Min" style="flex: 1;">
+                    <span style="color: var(--text-muted);">to</span>
+                    <input type="number" class="filter-control" id="value-max" placeholder="Max" style="flex: 1;">
+                </div>
+            </div>
+        `;
+        
+        $('#filter-grid').html(filtersHtml);
+        
+        $('.filter-control').on('change', () => {
+            this.applyFilters();
+        });
+        
+        $('#reset-filters').on('click', () => {
+            this.clearAllFilters();
+        });
+        
+        $('#save-filter').on('click', () => {
+            this.saveCurrentFilter();
+        });
+    }
+
+    setupViewSwitcher() {
+        const views = [
+            { id: 'dashboard', icon: 'fa-dashboard', label: 'Dashboard', badge: '' },
+            { id: 'summary', icon: 'fa-chart-pie', label: 'Summary', badge: '' },
+            { id: 'grid', icon: 'fa-th-large', label: 'Grid', badge: '' },
+            { id: 'list', icon: 'fa-list-ul', label: 'List', badge: '' },
+            { id: 'sales-person', icon: 'fa-user-tie', label: 'Sales Team', badge: '' },
+            { id: 'customer', icon: 'fa-building', label: 'Customers', badge: '' },
+            { id: 'calendar', icon: 'fa-calendar-alt', label: 'Calendar', badge: '' }
+        ];
+        
+        let html = '';
+        views.forEach((view, index) => {
+            html += `
+                <button class="view-pill ${index === 0 ? 'active' : ''}" data-view="${view.id}">
+                    <i class="fa ${view.icon}"></i>
+                    <span>${view.label}</span>
+                    ${view.badge ? `<span class="view-pill-badge">${view.badge}</span>` : ''}
+                </button>
+            `;
+        });
+        
+        $('#view-pills').html(html);
+        
+        $('.view-pill').on('click', (e) => {
+            const view = $(e.currentTarget).data('view');
+            this.switchView(view);
+        });
+    }
+
+    setupModals() {
+        // Enhanced modal structure
+        this.main_modal = $(`
+            <div class="modal-backdrop" id="main-modal">
+                <div class="modal-container">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Details</h2>
+                        <button class="modal-close-btn">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="skeleton">
+                            <div class="skeleton-title"></div>
+                            <div class="skeleton-text"></div>
+                            <div class="skeleton-text"></div>
+                            <div class="skeleton-text"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).appendTo('body');
+        
+        this.detail_modal = $(`
+            <div class="modal-backdrop" id="detail-modal">
+                <div class="modal-container">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Order Details</h2>
+                        <button class="modal-close-btn">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="skeleton">
+                            <div class="skeleton-title"></div>
+                            <div class="skeleton-text"></div>
+                            <div class="skeleton-text"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).appendTo('body');
+        
+        $('.modal-close-btn').on('click', (e) => {
+            $(e.target).closest('.modal-backdrop').fadeOut(300);
+        });
+        
+        $('.modal-backdrop').on('click', (e) => {
+            if (e.target === e.currentTarget) {
+                $(e.currentTarget).fadeOut(300);
+            }
+        });
+    }
+loadData() {
+    this.showLoading();
+    
+    frappe.call({
+        method: 'prastara_custom.controller.variant_pricing.get_sales_order_list',
+        args: {
+            sort_by: this.sort_config.field,
+            sort_order: this.sort_config.order
+        },
+        callback: (r) => {
+            if (r.message && r.message.status === 'success') {
+                this.all_orders = r.message.data.orders || [];
+                this.processOrdersData();
+                this.extractFilterOptions();
+                this.populateFilterOptions();
+                this.applyFilters(); // This will now call updateHeaderStats()
+            } else {
+                this.showError('Failed to load data');
+            }
+        },
+        error: () => {
+            this.showError('Failed to load data');
+        }
+    });
+}
+   updateHeaderStats() {
+    const valueRanges = this.calculateValueRangeMetrics();
+    
+    const statsHtml = `
+        <div class="header-stat" data-range="below-10k">
+            <div class="header-stat-icon">
+                <i class="fa fa-shopping-basket"></i>
+            </div>
+            <div class="header-stat-content">
+                <div class="header-stat-value">${valueRanges.below10k.count}</div>
+                <div class="header-stat-label">Below AED 10K</div>
+                <div class="header-stat-amount">${frappe.format(valueRanges.below10k.total, {fieldtype: 'Currency'})}</div>
+            </div>
+        </div>
+        <div class="header-stat" data-range="10k-25k">
+            <div class="header-stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <i class="fa fa-shopping-basket"></i>
+            </div>
+            <div class="header-stat-content">
+                <div class="header-stat-value">${valueRanges.range10k25k.count}</div>
+                <div class="header-stat-label">AED 10K - AED 25K</div>
+                <div class="header-stat-amount">${frappe.format(valueRanges.range10k25k.total, {fieldtype: 'Currency'})}</div>
+            </div>
+        </div>
+        <div class="header-stat" data-range="25k-50k">
+            <div class="header-stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <i class="fa fa-shopping-basket"></i>
+            </div>
+            <div class="header-stat-content">
+                <div class="header-stat-value">${valueRanges.range25k50k.count}</div>
+                <div class="header-stat-label">AED 25K - AED 50K</div>
+                <div class="header-stat-amount">${frappe.format(valueRanges.range25k50k.total, {fieldtype: 'Currency'})}</div>
+            </div>
+        </div>
+        <div class="header-stat" data-range="50k-100k">
+            <div class="header-stat-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                <i class="fa fa-shopping-basket"></i>
+            </div>
+            <div class="header-stat-content">
+                <div class="header-stat-value">${valueRanges.range50k100k.count}</div>
+                <div class="header-stat-label">AED 50K - AED 100K</div>
+                <div class="header-stat-amount">${frappe.format(valueRanges.range50k100k.total, {fieldtype: 'Currency'})}</div>
+            </div>
+        </div>
+        <div class="header-stat" data-range="above-100k">
+            <div class="header-stat-icon" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                <i class="fa fa-shopping-basket"></i>
+            </div>
+            <div class="header-stat-content">
+                <div class="header-stat-value">${valueRanges.above100k.count}</div>
+                <div class="header-stat-label">Above AED 100K</div>
+                <div class="header-stat-amount">${frappe.format(valueRanges.above100k.total, {fieldtype: 'Currency'})}</div>
+            </div>
+        </div>
+        <div class="header-stat header-stat-summary">
+            <div class="header-stat-icon" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+                <i class="fa fa-shopping-basket"></i>
+            </div>
+            <div class="header-stat-content">
+                <div class="header-stat-value">${this.filtered_orders.length}</div>
+                <div class="header-stat-label">Total Orders</div>
+                <div class="header-stat-amount">${frappe.format(valueRanges.grandTotal, {fieldtype: 'Currency'})}</div>
+            </div>
+        </div>
+    `;
+    
+    $('#header-stats').html(statsHtml);
+    
+    // Add click handlers for drill-down functionality
+    $('.header-stat[data-range]').on('click', (e) => {
+        const range = $(e.currentTarget).data('range');
+        this.showValueRangeOrders(range);
+    });
+}
+calculateValueRangeMetrics() {
+    const ranges = {
+        below10k: { count: 0, total: 0, orders: [] },
+        range10k25k: { count: 0, total: 0, orders: [] },
+        range25k50k: { count: 0, total: 0, orders: [] },
+        range50k100k: { count: 0, total: 0, orders: [] },
+        above100k: { count: 0, total: 0, orders: [] }
+    };
+    
+    this.filtered_orders.forEach(order => {
+        const value = parseFloat(order.grand_total || 0);
+        
+        if (value < 10000) {
+            ranges.below10k.count++;
+            ranges.below10k.total += value;
+            ranges.below10k.orders.push(order);
+        } else if (value >= 10000 && value < 25000) {
+            ranges.range10k25k.count++;
+            ranges.range10k25k.total += value;
+            ranges.range10k25k.orders.push(order);
+        } else if (value >= 25000 && value < 50000) {
+            ranges.range25k50k.count++;
+            ranges.range25k50k.total += value;
+            ranges.range25k50k.orders.push(order);
+        } else if (value >= 50000 && value < 100000) {
+            ranges.range50k100k.count++;
+            ranges.range50k100k.total += value;
+            ranges.range50k100k.orders.push(order);
+        } else if (value >= 100000) {
+            ranges.above100k.count++;
+            ranges.above100k.total += value;
+            ranges.above100k.orders.push(order);
+        }
+    });
+    
+    ranges.grandTotal = this.filtered_orders.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0);
+    
+    return ranges;
+}
+
+// Add this new method to show orders for a specific value range
+showValueRangeOrders(range) {
+    const valueRanges = this.calculateValueRangeMetrics();
+    let orders = [];
+    let title = '';
+    
+    switch(range) {
+        case 'below-10k':
+            orders = valueRanges.below10k.orders;
+            title = 'Orders Below AED 10,000';
+            break;
+        case '10k-25k':
+            orders = valueRanges.range10k25k.orders;
+            title = 'Orders AED 10,000 - AED 25,000';
+            break;
+        case '25k-50k':
+            orders = valueRanges.range25k50k.orders;
+            title = 'Orders AED 25,000 - AED 50,000';
+            break;
+        case '50k-100k':
+            orders = valueRanges.range50k100k.orders;
+            title = 'Orders AED 50,000 - AED 100,000';
+            break;
+        case 'above-100k':
+            orders = valueRanges.above100k.orders;
+            title = 'Orders Above AED 100,000';
+            break;
+    }
+    
+    if (orders.length > 0) {
+        this.showOrdersModal(orders, title);
+    } else {
+        this.showToast(`No orders found in ${title.toLowerCase()}`, 'info');
+    }
+}
+
+    renderView() {
+        switch (this.current_view) {
+            case 'dashboard':
+                this.renderModernDashboard();
+                break;
+            case 'summary':
+                this.renderModernSummary();
+                break;
+            case 'grid':
+                this.renderModernGrid();
+                break;
+            case 'list':
+                this.renderModernList();
+                break;
+            case 'sales-person':
+                this.renderModernSalesPersonView();
+                break;
+            case 'customer':
+                this.renderModernCustomerView();
+                break;
+            case 'calendar':
+                this.renderModernCalendar();
+                break;
+        }
+    }
+
+  renderModernDashboard() {
+    const summary = this.data.summary;
+    const valueRanges = this.calculateValueRangeMetrics();
+    
+    const html = `
+        <!-- Value Range Overview Cards -->
+        <div class="metrics-container">
+            <div class="metric-card-modern metric-card-primary">
+                <div class="metric-card-icon">
+                    <i class="fa fa-chart-bar"></i>
+                </div>
+                <div class="metric-card-content">
+                    <div class="metric-value">${summary.total_orders}</div>
+                    <div class="metric-label">Total Active Orders</div>
+                    <div class="metric-description">Currently tracking ${summary.total_orders} orders across all value ranges</div>
+                </div>
+            </div>
+            
+            <div class="metric-card-modern metric-card-warning">
+                <div class="metric-card-icon">
+                    <i class="fa fa-exclamation-triangle"></i>
+                </div>
+                <div class="metric-card-content">
+                    <div class="metric-value">${summary.overdue_count}</div>
+                    <div class="metric-label">Overdue Orders</div>
+                    <div class="metric-description">Orders requiring immediate attention</div>
+                </div>
+            </div>
+            
+            <div class="metric-card-modern metric-card-info">
+                <div class="metric-card-icon">
+                    <i class="fa fa-clock"></i>
+                </div>
+                <div class="metric-card-content">
+                    <div class="metric-value">${summary.due_today_count}</div>
+                    <div class="metric-label">Due Today</div>
+                    <div class="metric-description">Orders scheduled for delivery today</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Action Cards -->
+        <div class="quick-actions-section" style="margin: var(--space-10) 0;">
+            <h3 style="color: var(--text); margin-bottom: var(--space-6); text-align: center; font-size: 1.5rem; font-weight: 700;">
+                Quick Actions
+            </h3>
+            <div class="quick-actions-grid">
+                <div class="quick-action-card" data-action="high-priority">
+                    <div class="quick-action-icon" style="background: var(--gradient-warm);">
+                        <i class="fa fa-fire"></i>
+                    </div>
+                    <div class="quick-action-content">
+                        <div class="quick-action-title">High Priority</div>
+                        <div class="quick-action-subtitle">View overdue & high-value orders</div>
+                        <div class="quick-action-count">${summary.overdue_count + valueRanges.above100k.count} orders</div>
+                    </div>
+                </div>
+                
+                <div class="quick-action-card" data-action="pending-billing">
+                    <div class="quick-action-icon" style="background: var(--gradient-primary);">
+                        <i class="fa fa-credit-card"></i>
+                    </div>
+                    <div class="quick-action-content">
+                        <div class="quick-action-title">Pending Billing</div>
+                        <div class="quick-action-subtitle">Orders ready for invoicing</div>
+                        <div class="quick-action-count">${frappe.format(summary.total_remaining, {fieldtype: 'Currency'})}</div>
+                    </div>
+                </div>
+                
+                <div class="quick-action-card" data-action="today-delivery">
+                    <div class="quick-action-icon" style="background: var(--gradient-success);">
+                        <i class="fa fa-truck"></i>
+                    </div>
+                    <div class="quick-action-content">
+                        <div class="quick-action-title">Today's Deliveries</div>
+                        <div class="quick-action-subtitle">Scheduled for delivery today</div>
+                        <div class="quick-action-count">${summary.due_today_count} orders</div>
+                    </div>
+                </div>
+                
+                <div class="quick-action-card" data-action="sales-performance">
+                    <div class="quick-action-icon" style="background: var(--gradient-cool);">
+                        <i class="fa fa-users"></i>
+                    </div>
+                    <div class="quick-action-content">
+                        <div class="quick-action-title">Sales Performance</div>
+                        <div class="quick-action-subtitle">Team performance overview</div>
+                        <div class="quick-action-count">${this.data.by_sales_person.length} sales persons</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        ${this.renderSimplifiedAnalytics()}
+    `;
+    
+    this.content_area.html(html);
+    this.setupDashboardHandlers();
+    this.setupQuickActionHandlers();
+}
+
+// Add this new method for simplified analytics
+renderSimplifiedAnalytics() {
+    const topCustomers = this.data.by_customer.slice(0, 5);
+    const topSalesPersons = this.data.by_sales_person.slice(0, 5);
+    
+    return `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-8); margin-top: var(--space-10);">
+            <!-- Top Customers -->
+            <div class="analytics-card">
+                <div class="analytics-header">
+                    <h4><i class="fa fa-building"></i> Top Customers</h4>
+                    <button class="btn btn-ghost btn-sm" data-action="view-all-customers">View All</button>
+                </div>
+                <div class="analytics-content">
+                    ${topCustomers.map((customer, index) => `
+                        <div class="analytics-item" data-customer="${customer.name}">
+                            <div class="analytics-rank">${index + 1}</div>
+                            <div class="analytics-info">
+                                <div class="analytics-name">${customer.name}</div>
+                                <div class="analytics-meta">${customer.orders.length} orders</div>
+                            </div>
+                            <div class="analytics-value">${frappe.format(customer.total_value, {fieldtype: 'Currency'})}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            
+            <!-- Top Sales Persons -->
+            <div class="analytics-card">
+                <div class="analytics-header">
+                    <h4><i class="fa fa-user-tie"></i> Top Sales Persons</h4>
+                    <button class="btn btn-ghost btn-sm" data-action="view-all-salespersons">View All</button>
+                </div>
+                <div class="analytics-content">
+                    ${topSalesPersons.map((sp, index) => `
+                        <div class="analytics-item" data-salesperson="${sp.name}">
+                            <div class="analytics-rank">${index + 1}</div>
+                            <div class="analytics-info">
+                                <div class="analytics-name">${sp.name}</div>
+                                <div class="analytics-meta">${sp.orders.length} orders • ${sp.efficiency_score.toFixed(0)}</div>
+                            </div>
+                            <div class="analytics-value">${frappe.format(sp.total_value, {fieldtype: 'Currency'})}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Add these new handlers
+setupQuickActionHandlers() {
+    $('.quick-action-card').on('click', (e) => {
+        const action = $(e.currentTarget).data('action');
+        this.handleQuickAction(action);
+    });
+}
+
+handleQuickAction(action) {
+    switch(action) {
+        case 'high-priority':
+            const highPriorityOrders = this.filtered_orders.filter(order => 
+                order.due_days < 0 || parseFloat(order.grand_total) > 100000
+            );
+            this.showOrdersModal(highPriorityOrders, 'High Priority Orders');
+            break;
+            
+        case 'pending-billing':
+            const pendingBillingOrders = this.filtered_orders.filter(order => 
+                parseFloat(order.remaining_amount || 0) > 0
+            );
+            this.showOrdersModal(pendingBillingOrders, 'Orders with Pending Billing');
+            break;
+            
+        case 'today-delivery':
+            const todayOrders = this.filtered_orders.filter(order => order.due_days === 0);
+            this.showOrdersModal(todayOrders, "Today's Deliveries");
+            break;
+            
+        case 'sales-performance':
+            this.switchView('sales-person');
+            break;
+    }
+}
+    renderMetricCard(label, value, icon, color, drill) {
+        return `
+            <div class="metric-card-modern" data-drill="${drill}">
+                <div class="metric-card-icon" style="background: var(--gradient-${color === 'primary' ? 'primary' : color === 'warning' ? 'warm' : color === 'error' ? 'warm' : 'cool'});">
+                    <i class="fa ${icon}"></i>
+                </div>
+                <div class="metric-card-content">
+                    <div class="metric-value">${value}</div>
+                    <div class="metric-label">${label}</div>
+                    ${this.getMetricTrend(drill)}
+                </div>
+            </div>
+        `;
+    }
+
+    getMetricTrend(type) {
+        // Simulated trend data - you can replace with actual calculations
+        const trends = {
+            'all': { value: '+12%', positive: true },
+            'balance-to-bill': { value: '-5%', positive: true },
+            'overdue': { value: '+3', positive: false },
+            'due-today': { value: '0', positive: null },
+            'high-value': { value: '+8%', positive: true },
+            'on-hold': { value: '-2', positive: true }
+        };
+        
+        const trend = trends[type] || { value: '0', positive: null };
+        if (trend.positive === null) return '';
+        
+        return `
+            <div class="metric-trend ${trend.positive ? 'positive' : 'negative'}">
+                <i class="fa fa-arrow-${trend.positive ? 'up' : 'down'}"></i>
+                ${trend.value} from last week
+            </div>
+        `;
+    }
+
+    renderStatusAnalytics() {
+        const statusData = this.data.by_status;
+        
+        return `
+            <div class="table-modern-container">
+                <div class="table-modern-header">
+                    <div class="table-modern-title">Order Status Analytics</div>
+                    <div class="table-toolbar">
+                        <div class="table-search-box">
+                            <i class="fa fa-search table-search-icon"></i>
+                            <input type="text" class="table-search-input" placeholder="Search status..." id="status-search">
+                        </div>
+                        <div class="table-actions">
+                            <button class="btn btn-ghost btn-sm">
+                                <i class="fa fa-download"></i>
+                                Export
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-body">
+                    <table class="data-table" id="status-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Orders</th>
+                                <th>Total Value</th>
+                                <th>Percentage</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${statusData.map(status => `
+                                <tr data-status="${status.name}">
+                                    <td><strong>${status.name}</strong></td>
+                                    <td>${status.count}</td>
+                                    <td><strong>${frappe.format(status.total_value, {fieldtype: 'Currency'})}</strong></td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: var(--space-3);">
+                                            <div class="progress-bar-modern" style="flex: 1;">
+                                                <div class="progress-fill-modern" style="width: ${status.percentage}%"></div>
+                                            </div>
+                                            <span>${status.percentage.toFixed(1)}%</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-primary btn-sm" data-action="view-status-orders" data-status="${status.name}">
+                                            View Orders
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    renderTimelineAnalytics() {
+        const timelineData = this.data.by_delivery_date;
+        
+        return `
+            <div class="table-modern-container" style="margin-top: var(--space-8);">
+                <div class="table-modern-header">
+                    <div class="table-modern-title">Delivery Timeline Analysis</div>
+                    <div class="table-toolbar">
+                        <div class="table-search-box">
+                            <i class="fa fa-search table-search-icon"></i>
+                            <input type="text" class="table-search-input" placeholder="Search timeline..." id="timeline-search">
+                        </div>
+                    </div>
+                </div>
+                <div class="table-body">
+                    <table class="data-table" id="timeline-table">
+                        <thead>
+                            <tr>
+                                <th>Timeline</th>
+                                <th>Orders</th>
+                                <th>Total Value</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${timelineData.map(timeline => `
+                                <tr data-timeline="${timeline.name}">
+                                    <td>
+                                        <strong>${timeline.name}</strong>
+                                        ${this.getTimelineBadge(timeline.name)}
+                                    </td>
+                                    <td>${timeline.count}</td>
+                                    <td><strong>${frappe.format(timeline.total_value, {fieldtype: 'Currency'})}</strong></td>
+                                    <td>
+                                        <button class="btn btn-primary btn-sm" data-action="view-timeline-orders" data-timeline="${timeline.name}">
+                                            View Orders
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    getTimelineBadge(timeline) {
+        const badges = {
+            'Overdue': '<span style="display: inline-block; margin-left: var(--space-2); padding: 2px 8px; background: var(--error); color: white; border-radius: var(--radius); font-size: 0.75rem; font-weight: 600;">Urgent</span>',
+            'Due Today': '<span style="display: inline-block; margin-left: var(--space-2); padding: 2px 8px; background: var(--warning); color: white; border-radius: var(--radius); font-size: 0.75rem; font-weight: 600;">Today</span>',
+            'Due This Week': '<span style="display: inline-block; margin-left: var(--space-2); padding: 2px 8px; background: var(--info); color: white; border-radius: var(--radius); font-size: 0.75rem; font-weight: 600;">This Week</span>'
+        };
+        
+        return badges[timeline] || '';
+    }
+
+    renderModernGrid() {
+        if (!this.filtered_orders.length) {
+            this.content_area.html(this.renderEmptyState('No orders found', 'Try adjusting your filters or search criteria'));
+            return;
+        }
+        
+        const html = `
+            <div class="orders-card-grid">
+                ${this.filtered_orders.map(order => this.renderModernOrderCard(order)).join('')}
+            </div>
+        `;
+        
+        this.content_area.html(html);
+        this.setupOrderCardHandlers();
+    }
+
+    renderModernOrderCard(order) {
+        const billedPercent = parseFloat(order.per_billed || 0);
+        const deliveredPercent = parseFloat(order.per_delivered || 0);
+        
+        return `
+            <div class="order-card-modern" data-order="${order.name}">
+                <div class="order-card-status-bar ${order.due_status}"></div>
+                
+                <div class="order-card-header">
+                    <div class="order-card-number">${order.name}</div>
+                    <div class="order-card-customer">${order.customer}</div>
+                </div>
+                
+                <div class="order-card-body">
+                    <div class="order-info-grid">
+                        <div class="order-info-item">
+                            <div class="order-info-label">Sales Person</div>
+                            <div class="order-info-value">${order.sales_person}</div>
+                        </div>
+                        <div class="order-info-item">
+                            <div class="order-info-label">Delivery Date</div>
+                            <div class="order-info-value">${frappe.datetime.str_to_user(order.delivery_date)}</div>
+                        </div>
+                        <div class="order-info-item">
+                            <div class="order-info-label">Grand Total</div>
+                            <div class="order-info-value">${frappe.format(order.grand_total, {fieldtype: 'Currency'})}</div>
+                        </div>
+                        <div class="order-info-item">
+                            <div class="order-info-label">Remaining</div>
+                            <div class="order-info-value">${frappe.format(order.remaining_amount, {fieldtype: 'Currency'})}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-container">
+                        <div class="progress-item">
+                            <div class="progress-header">
+                                <span class="progress-label">Billing Progress</span>
+                                <span class="progress-value">${billedPercent.toFixed(1)}%</span>
+                            </div>
+                            <div class="progress-bar-modern">
+                                <div class="progress-fill-modern" style="width: ${billedPercent}%"></div>
+                            </div>
+                        </div>
+                        <div class="progress-item">
+                            <div class="progress-header">
+                                <span class="progress-label">Delivery Progress</span>
+                                <span class="progress-value">${deliveredPercent.toFixed(1)}%</span>
+                            </div>
+                            <div class="progress-bar-modern">
+                                <div class="progress-fill-modern" style="width: ${deliveredPercent}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderModernCalendar() {
+        const currentDate = this.calendar_date;
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        
+        const html = `
+            <div class="calendar-modern">
+                <div class="calendar-header">
+                    <div class="calendar-title">${this.getMonthName(month)} ${year}</div>
+                    <div class="calendar-nav">
+                        <button class="calendar-nav-btn" id="prev-month">
+                            <i class="fa fa-chevron-left"></i>
+                            Previous
+                        </button>
+                        <button class="calendar-nav-btn" id="today-btn">Today</button>
+                        <button class="calendar-nav-btn" id="next-month">
+                            Next
+                            <i class="fa fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="calendar-grid">
+                    ${this.renderCalendarGrid(year, month)}
+                </div>
+            </div>
+        `;
+        
+        this.content_area.html(html);
+        this.setupCalendarHandlers();
+    }
+
+    renderEmptyState(title, message) {
+        return `
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fa fa-inbox"></i>
+                </div>
+                <div class="empty-state-title">${title}</div>
+                <div class="empty-state-message">${message}</div>
+                <button class="btn btn-primary btn-lg" onclick="frappe.sales_order_dashboard.clearAllFilters()">
+                    <i class="fa fa-refresh"></i>
+                    Reset Filters
+                </button>
+            </div>
+        `;
+    }
+
+    showLoading() {
+        const loadingHtml = `
+            <div class="metrics-container">
+                ${[1,2,3,4,5,6].map(() => `
+                    <div class="metric-card-modern">
+                        <div class="skeleton skeleton-title"></div>
+                        <div class="skeleton skeleton-text"></div>
+                        <div class="skeleton skeleton-text" style="width: 60%;"></div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        this.content_area.html(loadingHtml);
+    }
+
+    // Keep all existing methods but enhance UI where needed...
+    // (All other methods remain the same with minor UI enhancements)
+
+    // Existing methods remain unchanged
+    processOrdersData() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        this.all_orders.forEach(order => {
+            order.name = order.sales_order_number;
+            order.sales_person = order.sales_person || 'Unassigned';
+            order.per_billed = order.percent_amount_billed || 0;
+            order.per_delivered = order.percent_amount_delivered || 0;
+            order.remaining_amount = order.balance_to_bill_amount || 0;
+            
+            const deliveryDate = new Date(order.delivery_date);
+            deliveryDate.setHours(0, 0, 0, 0);
+            const timeDiff = deliveryDate.getTime() - today.getTime();
+            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+            
+            order.due_days = daysDiff;
+            order.due_days_text = this.formatDueDays(daysDiff);
+            order.due_status = this.getDueStatus(daysDiff);
+        });
+    }
+
+    extractFilterOptions() {
+        const customers = new Set();
+        const sales_persons = new Set();
+        const branches = new Set();
+        const statuses = new Set();
+        
+        this.all_orders.forEach(order => {
+            if (order.customer) customers.add(order.customer);
+            if (order.sales_person) sales_persons.add(order.sales_person);
+            if (order.branch) branches.add(order.branch);
+            if (order.status) statuses.add(order.status);
+        });
+        
+        this.filter_options = {
+            customers: Array.from(customers).sort(),
+            sales_persons: Array.from(sales_persons).sort(),
+            branches: Array.from(branches).sort(),
+            statuses: Array.from(statuses).sort()
+        };
+    }
+
+    populateFilterOptions() {
+        ['customers', 'sales_persons', 'branches', 'statuses'].forEach(type => {
+            const filterId = type === 'customers' ? 'customer-filter' :
+                            type === 'sales_persons' ? 'sales-person-filter' :
+                            type === 'branches' ? 'branch-filter' : 'status-filter';
+            
+            const filter = $(`#${filterId}`);
+            filter.find('option:not(:first)').remove();
+            
+            this.filter_options[type].forEach(option => {
+                filter.append(`<option value="${option}">${option}</option>`);
+            });
+        });
+    }
+
+applyFilters() {
+    const globalSearch = $('#global-search').val().toLowerCase();
+    
+    let filtered = [...this.all_orders];
+    
+    if (globalSearch && !this.hasActiveFilters()) {
+        this.applyGlobalFilter(globalSearch);
+        return;
+    }
+    
+    const customer = $('#customer-filter').val();
+    const salesPerson = $('#sales-person-filter').val();
+    const branch = $('#branch-filter').val();
+    const status = $('#status-filter').val();
+    const dateFrom = $('#date-from').val();
+    const dateTo = $('#date-to').val();
+    const quickFilter = $('#quick-filter').val();
+    const valueMin = parseFloat($('#value-min').val()) || 0;
+    const valueMax = parseFloat($('#value-max').val()) || Infinity;
+    
+    // Add customer type filter
+    const customerType = $('#customer-type-filter').val();
+    
+    if (customer) filtered = filtered.filter(order => order.customer === customer);
+    if (salesPerson) filtered = filtered.filter(order => order.sales_person === salesPerson);
+    if (branch) filtered = filtered.filter(order => order.branch === branch);
+    if (status) filtered = filtered.filter(order => order.status === status);
+    
+    // Apply customer type filter
+    if (customerType) {
+        if (customerType === 'internal') {
+            filtered = filtered.filter(order => order.is_internal_customer === 1 || order.is_internal_customer === true);
+        } else if (customerType === 'external') {
+            filtered = filtered.filter(order => !order.is_internal_customer || order.is_internal_customer === 0);
+        }
+    }
+    
+    if (dateFrom) filtered = filtered.filter(order => new Date(order.delivery_date) >= new Date(dateFrom));
+    if (dateTo) filtered = filtered.filter(order => new Date(order.delivery_date) <= new Date(dateTo));
+    
+    // Value range filter
+    filtered = filtered.filter(order => {
+        const value = parseFloat(order.grand_total || 0);
+        return value >= valueMin && value <= valueMax;
+    });
+    
+    if (quickFilter) {
+        switch (quickFilter) {
+            case 'overdue':
+                filtered = filtered.filter(order => order.due_days < 0);
+                break;
+            case 'due-today':
+                filtered = filtered.filter(order => order.due_days === 0);
+                break;
+            case 'due-week':
+                filtered = filtered.filter(order => order.due_days >= 0 && order.due_days <= 7);
+                break;
+            case 'high-value':
+                filtered = filtered.filter(order => parseFloat(order.grand_total) > 20000);
+                break;
+            case 'on-hold':
+                filtered = filtered.filter(order => (order.status || '').toLowerCase().includes('hold'));
+                break;
+        }
+    }
+    
+    if (globalSearch) {
+        filtered = filtered.filter(order =>
+            order.name.toLowerCase().includes(globalSearch) ||
+            order.customer.toLowerCase().includes(globalSearch) ||
+            (order.sales_person || '').toLowerCase().includes(globalSearch) ||
+            (order.status || '').toLowerCase().includes(globalSearch)
+        );
+    }
+     this.showHeaderStatsLoading();
+    this.filtered_orders = filtered;
+    this.processData();
+    this.updateActiveFilters();
+    this.updateHeaderStats(); // Add this line to update header stats
+    this.renderView();
+}
+hasActiveFilters() {
+    return $('#customer-filter').val() || $('#sales-person-filter').val() ||
+           $('#branch-filter').val() || $('#status-filter').val() ||
+           $('#date-from').val() || $('#date-to').val() || $('#quick-filter').val() ||
+           $('#value-min').val() || $('#value-max').val() || $('#customer-type-filter').val();
+}
+updateActiveFilters() {
+    const activeFiltersContainer = $('#active-filters');
+    const filters = [];
+    
+    const filterMappings = [
+        { id: 'customer-filter', label: 'Customer' },
+        { id: 'sales-person-filter', label: 'Sales Person' },
+        { id: 'branch-filter', label: 'Branch' },
+        { id: 'status-filter', label: 'Status' },
+        { id: 'customer-type-filter', label: 'Customer Type' }, // Add this line
+        { id: 'date-from', label: 'From Date' },
+        { id: 'date-to', label: 'To Date' },
+        { id: 'quick-filter', label: 'Quick Filter' },
+        { id: 'value-min', label: 'Min Value' },
+        { id: 'value-max', label: 'Max Value' }
+    ];
+    
+
+        filterMappings.forEach(mapping => {
+            const value = $(`#${mapping.id}`).val();
+            if (value) {
+                filters.push({
+                    id: mapping.id,
+                    label: mapping.label,
+                    value: value
+                });
+            }
+        });
+        
+        const globalSearch = $('#global-search').val();
+        if (globalSearch) {
+            filters.push({
+                id: 'global-search',
+                label: 'Search',
+                value: globalSearch
+            });
+        }
+        
+        if (filters.length > 0) {
+            let html = '<div style="display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4);">';
+            filters.forEach(filter => {
+                html += `
+                    <div style="display: inline-flex; align-items: center; gap: var(--space-2); background: var(--primary); color: white; padding: var(--space-2) var(--space-4); border-radius: var(--radius-full); font-size: 0.875rem; font-weight: 600;">
+                        <span>${filter.label}: ${filter.value}</span>
+                        <button style="background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;" 
+                                onclick="$('#${filter.id}').val(''); frappe.sales_order_dashboard.applyFilters();">
+                            ×
+                        </button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            activeFiltersContainer.html(html).show();
+        } else {
+            activeFiltersContainer.hide();
+        }
+    }
+clearAllFilters() {
+    $('.filter-control').val('');
+    $('#global-search').val('');
+    $('#customer-type-filter').val('');
+    this.applyFilters(); // This will now call updateHeaderStats()
+    this.showToast('All filters cleared', 'success');
+}
+
+    saveCurrentFilter() {
+        // Implement filter saving logic
+        this.showToast('Filter saved successfully', 'success');
+    }
+
+    processData() {
+        this.data = {
+            summary: this.calculateSummaryMetrics(),
+            date_summary: this.calculateDateBasedSummary(),
+            by_status: this.groupByStatus(),
+            by_delivery_date: this.groupByDeliveryDate(),
+            by_sales_person: this.groupBySalesPerson(),
+            by_branch: this.groupByBranch(),
+            by_customer: this.groupByCustomer(),
+            calendar_data: this.prepareCalendarData()
+        };
+    }
+
+    calculateSummaryMetrics() {
+        const total_orders = this.filtered_orders.length;
+        const total_value = this.filtered_orders.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0);
+        const total_remaining = this.filtered_orders.reduce((sum, order) => sum + parseFloat(order.remaining_amount || 0), 0);
+        
+        const overdue_orders = this.filtered_orders.filter(order => order.due_days < 0);
+        const due_today = this.filtered_orders.filter(order => order.due_days === 0);
+        const high_value_orders = this.filtered_orders.filter(order => parseFloat(order.grand_total) > 20000);
+        const on_hold_orders = this.filtered_orders.filter(order => (order.status || '').toLowerCase().includes('hold'));
+        
+        return {
+            total_orders,
+            total_value,
+            total_remaining,
+            overdue_count: overdue_orders.length,
+            overdue_value: overdue_orders.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0),
+            due_today_count: due_today.length,
+            due_today_value: due_today.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0),
+            high_value_count: high_value_orders.length,
+            high_value_total: high_value_orders.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0),
+            on_hold_count: on_hold_orders.length,
+            on_hold_value: on_hold_orders.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0),
+            avg_order_value: total_orders > 0 ? total_value / total_orders : 0,
+            completion_rate: total_value > 0 ? ((total_value - total_remaining) / total_value * 100) : 0,
+            avg_billing_progress: total_orders > 0 ? this.filtered_orders.reduce((sum, order) => sum + parseFloat(order.per_billed || 0), 0) / total_orders : 0,
+            avg_delivery_progress: total_orders > 0 ? this.filtered_orders.reduce((sum, order) => sum + parseFloat(order.per_delivered || 0), 0) / total_orders : 0
+        };
+    }
+
+    calculateDateBasedSummary() {
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        
+        const startOfLastWeek = new Date(startOfWeek);
+        startOfLastWeek.setDate(startOfWeek.getDate() - 7);
+        const endOfLastWeek = new Date(startOfWeek);
+        endOfLastWeek.setDate(startOfWeek.getDate() - 1);
+        
+        today.setHours(0, 0, 0, 0);
+        yesterday.setHours(0, 0, 0, 0);
+        startOfWeek.setHours(0, 0, 0, 0);
+        startOfLastWeek.setHours(0, 0, 0, 0);
+        endOfLastWeek.setHours(23, 59, 59, 999);
+        
+        const summary = {
+            // Transaction Date Based
+            transaction_today: this.getOrdersByTransactionDate(today, today),
+            transaction_yesterday: this.getOrdersByTransactionDate(yesterday, yesterday),
+            transaction_this_week: this.getOrdersByTransactionDate(startOfWeek, today),
+            transaction_last_week: this.getOrdersByTransactionDate(startOfLastWeek, endOfLastWeek),
+            
+            // Delivery Date Based
+            delivery_today: this.getOrdersByDeliveryDate(today, today),
+            delivery_yesterday: this.getOrdersByDeliveryDate(yesterday, yesterday),
+            delivery_this_week: this.getOrdersByDeliveryDate(startOfWeek, new Date(today.getTime() + 6 * 24 * 60 * 60 * 1000)),
+            delivery_last_week: this.getOrdersByDeliveryDate(startOfLastWeek, endOfLastWeek),
+            delivery_overdue: this.filtered_orders.filter(order => {
+                const deliveryDate = new Date(order.delivery_date);
+                deliveryDate.setHours(0, 0, 0, 0);
+                return deliveryDate < today;
+            }),
+            delivery_future: this.filtered_orders.filter(order => {
+                const deliveryDate = new Date(order.delivery_date);
+                deliveryDate.setHours(0, 0, 0, 0);
+                const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+                return deliveryDate > nextWeek;
+            })
+        };
+        
+        return summary;
+    }
+
+    getOrdersByTransactionDate(startDate, endDate) {
+        return this.filtered_orders.filter(order => {
+            const transactionDate = new Date(order.transaction_date || order.date);
+            transactionDate.setHours(0, 0, 0, 0);
+            return transactionDate >= startDate && transactionDate <= endDate;
+        });
+    }
+
+    getOrdersByDeliveryDate(startDate, endDate) {
+        return this.filtered_orders.filter(order => {
+            const deliveryDate = new Date(order.delivery_date);
+            deliveryDate.setHours(0, 0, 0, 0);
+            return deliveryDate >= startDate && deliveryDate <= endDate;
+        });
+    }
+
+    groupByStatus() {
+        const groups = {};
+        this.filtered_orders.forEach(order => {
+            const status = order.status || 'Unknown';
+            if (!groups[status]) {
+                groups[status] = {
+                    name: status,
+                    orders: [],
+                    count: 0,
+                    total_value: 0,
+                    percentage: 0
+                };
+            }
+            groups[status].orders.push(order);
+            groups[status].count++;
+            groups[status].total_value += parseFloat(order.grand_total || 0);
+        });
+        
+        const total_value = this.data?.summary?.total_value || this.filtered_orders.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0);
+        Object.values(groups).forEach(group => {
+            group.percentage = total_value > 0 ? (group.total_value / total_value * 100) : 0;
+        });
+        
+        return Object.values(groups).sort((a, b) => b.total_value - a.total_value);
+    }
+
+    groupByDeliveryDate() {
+        const today = new Date();
+        const groups = {
+            overdue: { name: 'Overdue', orders: [], count: 0, total_value: 0 },
+            today: { name: 'Due Today', orders: [], count: 0, total_value: 0 },
+            this_week: { name: 'Due This Week', orders: [], count: 0, total_value: 0 },
+            next_week: { name: 'Due Next Week', orders: [], count: 0, total_value: 0 },
+            this_month: { name: 'Due This Month', orders: [], count: 0, total_value: 0 },
+            next_month: { name: 'Due Next Month', orders: [], count: 0, total_value: 0 },
+            future: { name: 'Future Orders', orders: [], count: 0, total_value: 0 }
+        };
+        
+        this.filtered_orders.forEach(order => {
+            const value = parseFloat(order.grand_total || 0);
+            const daysDiff = order.due_days;
+            
+            let category = 'future';
+            if (daysDiff < 0) category = 'overdue';
+            else if (daysDiff === 0) category = 'today';
+            else if (daysDiff <= 7) category = 'this_week';
+            else if (daysDiff <= 14) category = 'next_week';
+            else if (daysDiff <= 30) category = 'this_month';
+            else if (daysDiff <= 60) category = 'next_month';
+            
+            groups[category].orders.push(order);
+            groups[category].count++;
+            groups[category].total_value += value;
+        });
+        
+        return Object.values(groups);
+    }
+
+    groupBySalesPerson() {
+        const groups = {};
+        this.filtered_orders.forEach(order => {
+            const salesPerson = order.sales_person || 'Unassigned';
+            if (!groups[salesPerson]) {
+                groups[salesPerson] = {
+                    name: salesPerson,
+                    orders: [],
+                    total_value: 0,
+                    total_remaining: 0,
+                    overdue_count: 0,
+                    avg_completion: 0,
+                    efficiency_score: 0,
+                    image: order.sales_person_image || '/assets/frappe/images/ui/avatar.png'
+                };
+            }
+            groups[salesPerson].orders.push(order);
+            groups[salesPerson].total_value += parseFloat(order.grand_total || 0);
+            groups[salesPerson].total_remaining += parseFloat(order.remaining_amount || 0);
+            groups[salesPerson].avg_completion += (parseFloat(order.per_billed || 0) + parseFloat(order.per_delivered || 0)) / 2;
+            if (order.due_days < 0) groups[salesPerson].overdue_count++;
+            
+            if (order.sales_person_image && order.sales_person_image !== '/assets/frappe/images/ui/avatar.png') {
+                groups[salesPerson].image = order.sales_person_image;
+            }
+        });
+        
+        Object.values(groups).forEach(group => {
+            group.avg_completion = group.orders.length > 0 ? group.avg_completion / group.orders.length : 0;
+            group.efficiency_score = group.orders.length > 0 ? Math.max(0, 100 - (group.overdue_count / group.orders.length * 100)) : 0;
+        });
+        
+        return Object.values(groups).sort((a, b) => b.total_value - a.total_value);
+    }
+
+    groupByBranch() {
+        const groups = {};
+        this.filtered_orders.forEach(order => {
+            const branch = order.branch || 'Unassigned';
+            if (!groups[branch]) {
+                groups[branch] = {
+                    name: branch,
+                    orders: [],
+                    total_value: 0,
+                    total_remaining: 0,
+                    overdue_count: 0
+                };
+            }
+            groups[branch].orders.push(order);
+            groups[branch].total_value += parseFloat(order.grand_total || 0);
+            groups[branch].total_remaining += parseFloat(order.remaining_amount || 0);
+            if (order.due_days < 0) groups[branch].overdue_count++;
+        });
+        return Object.values(groups).sort((a, b) => b.total_value - a.total_value);
+    }
+
+    groupByCustomer() {
+        const groups = {};
+        this.filtered_orders.forEach(order => {
+            const customer = order.customer;
+            if (!groups[customer]) {
+                groups[customer] = {
+                    name: customer,
+                    orders: [],
+                    total_value: 0,
+                    total_remaining: 0,
+                    overdue_count: 0,
+                    is_internal: order.is_internal_customer
+                };
+            }
+            groups[customer].orders.push(order);
+            groups[customer].total_value += parseFloat(order.grand_total || 0);
+            groups[customer].total_remaining += parseFloat(order.remaining_amount || 0);
+            if (order.due_days < 0) groups[customer].overdue_count++;
+        });
+        return Object.values(groups).sort((a, b) => b.total_value - a.total_value);
+    }
+
+    prepareCalendarData() {
+        const deliveryDates = {};
+        const transactionDates = {};
+        
+        this.filtered_orders.forEach(order => {
+            const deliveryDateStr = frappe.datetime.obj_to_str(new Date(order.delivery_date));
+            const transactionDateStr = frappe.datetime.obj_to_str(new Date(order.transaction_date || order.date));
+            
+            deliveryDates[deliveryDateStr] = (deliveryDates[deliveryDateStr] || 0) + 1;
+            transactionDates[transactionDateStr] = (transactionDates[transactionDateStr] || 0) + 1;
+        });
+        
+        return { delivery_dates: deliveryDates, transaction_dates: transactionDates };
+    }
+
+    switchView(view) {
+        this.current_view = view;
+        $('.view-pill').removeClass('active');
+        $(`.view-pill[data-view="${view}"]`).addClass('active');
+        this.renderView();
+    }
+
+    renderModernSummary() {
+        const dateSummary = this.data.date_summary;
+        
+        const html = `
+            <div class="metrics-container">
+                <div class="metric-card-modern">
+                    <div class="metric-card-icon" style="background: var(--gradient-primary);">
+                        <i class="fa fa-plus-circle"></i>
+                    </div>
+                    <div class="metric-card-content">
+                        <div class="metric-value">${dateSummary.transaction_today.length}</div>
+                        <div class="metric-label">Orders Created Today</div>
+                        <div class="metric-trend positive">
+                            <i class="fa fa-money"></i>
+                            ${frappe.format(dateSummary.transaction_today.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0), {fieldtype: 'Currency'})}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="metric-card-modern">
+                    <div class="metric-card-icon" style="background: var(--gradient-warm);">
+                        <i class="fa fa-truck"></i>
+                    </div>
+                    <div class="metric-card-content">
+                        <div class="metric-value">${dateSummary.delivery_today.length}</div>
+                        <div class="metric-label">Deliveries Due Today</div>
+                        <div class="metric-trend positive">
+                            <i class="fa fa-money"></i>
+                            ${frappe.format(dateSummary.delivery_today.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0), {fieldtype: 'Currency'})}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="metric-card-modern">
+                    <div class="metric-card-icon" style="background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);">
+                        <i class="fa fa-exclamation-circle"></i>
+                    </div>
+                    <div class="metric-card-content">
+                        <div class="metric-value">${dateSummary.delivery_overdue.length}</div>
+                        <div class="metric-label">Overdue Deliveries</div>
+                        <div class="metric-trend negative">
+                            <i class="fa fa-money"></i>
+                            ${frappe.format(dateSummary.delivery_overdue.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0), {fieldtype: 'Currency'})}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            ${this.renderDateSummaryTables()}
+        `;
+        
+        this.content_area.html(html);
+        this.setupDateSummaryHandlers();
+    }
+
+    renderDateSummaryTables() {
+        const dateSummary = this.data.date_summary;
+        
+        return `
+            <div class="table-modern-container">
+                <div class="table-modern-header">
+                    <div class="table-modern-title">Transaction Date Analysis</div>
+                </div>
+                <div class="table-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Period</th>
+                                <th>Orders</th>
+                                <th>Total Value</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Today</strong></td>
+                                <td>${dateSummary.transaction_today.length}</td>
+                                <td><strong>${frappe.format(dateSummary.transaction_today.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0), {fieldtype: 'Currency'})}</strong></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" data-action="view-transaction" data-period="today">
+                                        View Orders
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Yesterday</strong></td>
+                                <td>${dateSummary.transaction_yesterday.length}</td>
+                                <td><strong>${frappe.format(dateSummary.transaction_yesterday.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0), {fieldtype: 'Currency'})}</strong></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" data-action="view-transaction" data-period="yesterday">
+                                        View Orders
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>This Week</strong></td>
+                                <td>${dateSummary.transaction_this_week.length}</td>
+                                <td><strong>${frappe.format(dateSummary.transaction_this_week.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0), {fieldtype: 'Currency'})}</strong></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" data-action="view-transaction" data-period="this-week">
+                                        View Orders
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Last Week</strong></td>
+                                <td>${dateSummary.transaction_last_week.length}</td>
+                                <td><strong>${frappe.format(dateSummary.transaction_last_week.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0), {fieldtype: 'Currency'})}</strong></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" data-action="view-transaction" data-period="last-week">
+                                        View Orders
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="table-modern-container" style="margin-top: var(--space-8);">
+                <div class="table-modern-header">
+                    <div class="table-modern-title">Delivery Date Analysis</div>
+                </div>
+                <div class="table-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Period</th>
+                                <th>Orders</th>
+                                <th>Total Value</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Overdue</strong> <span style="display: inline-block; margin-left: var(--space-2); padding: 2px 8px; background: var(--error); color: white; border-radius: var(--radius); font-size: 0.75rem;">Urgent</span></td>
+                                <td>${dateSummary.delivery_overdue.length}</td>
+                                <td><strong>${frappe.format(dateSummary.delivery_overdue.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0), {fieldtype: 'Currency'})}</strong></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" data-action="view-delivery" data-period="overdue">
+                                        View Orders
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Today</strong></td>
+                                <td>${dateSummary.delivery_today.length}</td>
+                                <td><strong>${frappe.format(dateSummary.delivery_today.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0), {fieldtype: 'Currency'})}</strong></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" data-action="view-delivery" data-period="today">
+                                        View Orders
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>This Week</strong></td>
+                                <td>${dateSummary.delivery_this_week.length}</td>
+                                <td><strong>${frappe.format(dateSummary.delivery_this_week.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0), {fieldtype: 'Currency'})}</strong></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" data-action="view-delivery" data-period="this-week">
+                                        View Orders
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Future</strong></td>
+                                <td>${dateSummary.delivery_future.length}</td>
+                                <td><strong>${frappe.format(dateSummary.delivery_future.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0), {fieldtype: 'Currency'})}</strong></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" data-action="view-delivery" data-period="future">
+                                        View Orders
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    renderModernList() {
+        if (!this.filtered_orders.length) {
+            this.content_area.html(this.renderEmptyState('No orders found', 'Try adjusting your filters or search criteria'));
+            return;
+        }
+        
+        const totalValue = this.filtered_orders.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0);
+        const totalRemaining = this.filtered_orders.reduce((sum, order) => sum + parseFloat(order.remaining_amount || 0), 0);
+        
+        const html = `
+            <div class="table-modern-container">
+                <div class="table-modern-header">
+                    <div class="table-modern-title">All Orders (${this.filtered_orders.length} orders)</div>
+                    <div class="table-toolbar">
+                        <div class="table-search-box">
+                            <i class="fa fa-search table-search-icon"></i>
+                            <input type="text" class="table-search-input" placeholder="Search orders..." id="list-search">
+                        </div>
+                        <div class="table-actions">
+                            <button class="btn btn-ghost btn-sm" onclick="frappe.sales_order_dashboard.exportData()">
+                                <i class="fa fa-download"></i>
+                                Export
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-body">
+                    <table class="data-table" id="orders-table">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Sales Person</th>
+                                <th>Delivery Date</th>
+                                <th>Status</th>
+                                <th>Grand Total</th>
+                                <th>Progress</th>
+                                <th>Remaining</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${this.filtered_orders.map(order => this.renderModernOrderRow(order)).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="padding: var(--space-6); background: var(--surface-alt); border-top: 2px solid var(--primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4);">
+                    <div style="display: flex; gap: var(--space-8); flex-wrap: wrap;">
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Orders</div>
+                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${this.filtered_orders.length}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Value</div>
+                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${frappe.format(totalValue, {fieldtype: 'Currency'})}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Remaining</div>
+                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${frappe.format(totalRemaining, {fieldtype: 'Currency'})}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        this.content_area.html(html);
+        this.setupListHandlers();
+    }
+
+    renderModernOrderRow(order) {
+        const billedPercent = parseFloat(order.per_billed || 0);
+        const deliveredPercent = parseFloat(order.per_delivered || 0);
+        const avgProgress = (billedPercent + deliveredPercent) / 2;
+        
+        return `
+            <tr data-order="${order.name}" style="cursor: pointer;">
+                <td><strong style="color: var(--primary);">${order.name}</strong></td>
+                <td>${order.customer}</td>
+                <td>${order.sales_person}</td>
+                <td>
+                    ${frappe.datetime.str_to_user(order.delivery_date)}
+                    ${this.getDueBadge(order.due_status, order.due_days_text)}
+                </td>
+                <td>${order.status || 'Unknown'}</td>
+                <td><strong>${frappe.format(order.grand_total, {fieldtype: 'Currency'})}</strong></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: var(--space-3);">
+                        <div class="progress-bar-modern" style="flex: 1;">
+                            <div class="progress-fill-modern" style="width: ${avgProgress}%"></div>
+                        </div>
+                        <span style="font-size: 0.75rem; font-weight: 600;">${avgProgress.toFixed(0)}%</span>
+                    </div>
+                </td>
+                <td><strong>${frappe.format(order.remaining_amount, {fieldtype: 'Currency'})}</strong></td>
+            </tr>
+        `;
+    }
+
+    getDueBadge(status, text) {
+        const colors = {
+            'overdue': 'var(--error)',
+            'due-today': 'var(--warning)',
+            'upcoming': 'var(--success)'
+        };
+        
+        return `
+            <div style="display: inline-block; margin-left: var(--space-2); padding: 2px 8px; background: ${colors[status] || 'var(--info)'}; color: white; border-radius: var(--radius); font-size: 0.625rem; font-weight: 600;">
+                ${text}
+            </div>
+        `;
+    }
+
+    renderModernSalesPersonView() {
+        const salesPersonData = this.data.by_sales_person;
+        
+        const html = `
+            <div class="metrics-container">
+                ${salesPersonData.slice(0, 3).map(sp => `
+                    <div class="metric-card-modern">
+                        <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4);">
+                            <img src="${sp.image}" style="width: 50px; height: 50px; border-radius: var(--radius-full); object-fit: cover; border: 3px solid var(--primary);" 
+                                 onerror="this.src='/assets/frappe/images/ui/avatar.png'">
+                            <div>
+                                <div style="font-weight: 700; color: var(--text);">${sp.name}</div>
+                                <div style="font-size: 0.875rem; color: var(--text-muted);">${sp.orders.length} orders</div>
+                            </div>
+                        </div>
+                        <div class="metric-value">${frappe.format(sp.total_value, {fieldtype: 'Currency'})}</div>
+                        <div class="metric-label">Total Sales Value</div>
+                        <div class="metric-trend ${sp.efficiency_score > 80 ? 'positive' : 'negative'}">
+                            <i class="fa fa-chart-line"></i>
+                            ${sp.efficiency_score.toFixed(0)}% efficiency
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="table-modern-container">
+                <div class="table-modern-header">
+                    <div class="table-modern-title">Sales Team Performance</div>
+                    <div class="table-toolbar">
+                        <div class="table-search-box">
+                            <i class="fa fa-search table-search-icon"></i>
+                            <input type="text" class="table-search-input" placeholder="Search sales persons..." id="sp-search">
+                        </div>
+                    </div>
+                </div>
+                <div class="table-body">
+                    <table class="data-table" id="salesperson-table">
+                        <thead>
+                            <tr>
+                                <th>Sales Person</th>
+                                <th>Orders</th>
+                                <th>Total Value</th>
+                                <th>Remaining</th>
+                                <th>Overdue</th>
+                                <th>Avg Completion</th>
+                                <th>Efficiency</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${salesPersonData.map(sp => `
+                                <tr data-salesperson="${sp.name}">
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: var(--space-3);">
+                                            <img src="${sp.image}" style="width: 35px; height: 35px; border-radius: var(--radius-full); object-fit: cover;"
+                                                 onerror="this.src='/assets/frappe/images/ui/avatar.png'">
+                                            <strong>${sp.name}</strong>
+                                        </div>
+                                    </td>
+                                    <td>${sp.orders.length}</td>
+                                    <td><strong>${frappe.format(sp.total_value, {fieldtype: 'Currency'})}</strong></td>
+                                    <td><strong>${frappe.format(sp.total_remaining, {fieldtype: 'Currency'})}</strong></td>
+                                    <td>
+                                        <span style="color: ${sp.overdue_count > 0 ? 'var(--error)' : 'var(--success)'}; font-weight: 600;">
+                                            ${sp.overdue_count}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: var(--space-3);">
+                                            <div class="progress-bar-modern" style="flex: 1; height: 6px;">
+                                                <div class="progress-fill-modern" style="width: ${sp.avg_completion}%"></div>
+                                            </div>
+                                            <span style="font-size: 0.75rem;">${sp.avg_completion.toFixed(0)}%</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span style="padding: 4px 8px; background: ${sp.efficiency_score > 80 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'}; 
+                                                     color: ${sp.efficiency_score > 80 ? 'var(--success)' : 'var(--error)'}; 
+                                                     border-radius: var(--radius); font-size: 0.75rem; font-weight: 600;">
+                                            ${sp.efficiency_score.toFixed(0)}%
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-primary btn-sm" data-action="view-sp-orders" data-salesperson="${sp.name}">
+                                            View Orders
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+        this.content_area.html(html);
+        this.setupSalesPersonHandlers();
+    }
+
+    renderModernCustomerView() {
+        const customerData = this.data.by_customer;
+        
+        const html = `
+            <div class="metrics-container">
+                <div class="metric-card-modern">
+                    <div class="metric-card-icon">
+                        <i class="fa fa-building"></i>
+                    </div>
+                    <div class="metric-card-content">
+                        <div class="metric-value">${customerData.length}</div>
+                        <div class="metric-label">Total Customers</div>
+                    </div>
+                </div>
+                
+                <div class="metric-card-modern">
+                    <div class="metric-card-icon" style="background: var(--gradient-warm);">
+                        <i class="fa fa-star"></i>
+                    </div>
+                    <div class="metric-card-content">
+                        <div class="metric-value">${customerData.filter(c => c.total_value > 50000).length}</div>
+                        <div class="metric-label">Premium Customers (>50K)</div>
+                    </div>
+                </div>
+                
+                <div class="metric-card-modern">
+                    <div class="metric-card-icon" style="background: var(--gradient-cool);">
+                        <i class="fa fa-home"></i>
+                    </div>
+                    <div class="metric-card-content">
+                        <div class="metric-value">${customerData.filter(c => c.is_internal).length}</div>
+                        <div class="metric-label">Internal Customers</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-modern-container">
+                <div class="table-modern-header">
+                    <div class="table-modern-title">Customer Performance</div>
+                    <div class="table-toolbar">
+                        <div class="table-search-box">
+                            <i class="fa fa-search table-search-icon"></i>
+                            <input type="text" class="table-search-input" placeholder="Search customers..." id="customer-search">
+                        </div>
+                    </div>
+                </div>
+                <div class="table-body">
+                    <table class="data-table" id="customer-table">
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th>Type</th>
+                                <th>Orders</th>
+                                <th>Total Value</th>
+                                <th>Remaining</th>
+                                <th>Overdue</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${customerData.map(customer => `
+                                <tr data-customer="${customer.name}">
+                                    <td><strong>${customer.name}</strong></td>
+                                    <td>
+                                        <span style="padding: 4px 8px; background: ${customer.is_internal ? 'rgba(99, 102, 241, 0.1)' : 'rgba(139, 92, 246, 0.1)'}; 
+                                                     color: ${customer.is_internal ? 'var(--primary)' : 'var(--secondary)'}; 
+                                                     border-radius: var(--radius); font-size: 0.75rem; font-weight: 600;">
+                                            ${customer.is_internal ? 'Internal' : 'External'}
+                                        </span>
+                                    </td>
+                                    <td>${customer.orders.length}</td>
+                                    <td><strong>${frappe.format(customer.total_value, {fieldtype: 'Currency'})}</strong></td>
+                                    <td><strong>${frappe.format(customer.total_remaining, {fieldtype: 'Currency'})}</strong></td>
+                                    <td>
+                                        <span style="color: ${customer.overdue_count > 0 ? 'var(--error)' : 'var(--success)'}; font-weight: 600;">
+                                            ${customer.overdue_count}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-primary btn-sm" data-action="view-customer-orders" data-customer="${customer.name}">
+                                            View Orders
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+        this.content_area.html(html);
+        this.setupCustomerHandlers();
+    }
+
+    renderCalendarGrid(year, month) {
+        const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        let html = '';
+        
+        // Day headers
+        dayHeaders.forEach(day => {
+            html += `<div class="calendar-day-header">${day}</div>`;
+        });
+        
+        // Calendar days
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const startDate = new Date(firstDay);
+        startDate.setDate(startDate.getDate() - firstDay.getDay());
+        
+        const today = new Date();
+        const deliveryDates = this.data.calendar_data.delivery_dates;
+        
+        for (let i = 0; i < 42; i++) {
+            const date = new Date(startDate);
+            date.setDate(startDate.getDate() + i);
+            
+            const dateStr = frappe.datetime.obj_to_str(date);
+            const isToday = date.toDateString() === today.toDateString();
+            const isCurrentMonth = date.getMonth() === month;
+            const deliveryCount = deliveryDates[dateStr] || 0;
+            
+            const hasOrders = deliveryCount > 0;
+            const isOverdue = date < today && hasOrders;
+            
+            html += `
+                <div class="calendar-day ${isToday ? 'today' : ''} ${!isCurrentMonth ? 'other-month' : ''}"
+                     data-date="${dateStr}" ${hasOrders ? 'style="cursor: pointer;"' : ''}>
+                    <div class="calendar-day-number">${date.getDate()}</div>
+                    <div class="calendar-day-events">
+                        ${deliveryCount > 0 ? `
+                            <div class="calendar-event" style="${isOverdue ? 'background: var(--gradient-warm);' : ''}">
+                                ${deliveryCount} ${deliveryCount === 1 ? 'order' : 'orders'}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+        return html;
+    }
+
+    // Event Handlers
+    setupDashboardHandlers() {
+        $('.metric-card-modern[data-drill]').on('click', (e) => {
+            const drill = $(e.currentTarget).data('drill');
+            this.showDrillDownModal(drill);
+        });
+        
+        this.setupTableSearch('#status-search', '#status-table');
+        this.setupTableSearch('#timeline-search', '#timeline-table');
+        
+        $('[data-action="view-status-orders"]').on('click', (e) => {
+            e.stopPropagation();
+            const status = $(e.currentTarget).data('status');
+            const statusData = this.data.by_status.find(s => s.name === status);
+            if (statusData) {
+                this.showOrdersModal(statusData.orders, `${status} Orders`);
+            }
+        });
+        
+        $('[data-action="view-timeline-orders"]').on('click', (e) => {
+            e.stopPropagation();
+            const timeline = $(e.currentTarget).data('timeline');
+            const timelineData = this.data.by_delivery_date.find(t => t.name === timeline);
+            if (timelineData) {
+                this.showOrdersModal(timelineData.orders, `${timeline} Orders`);
+            }
+        });
+    }
+
+    setupDateSummaryHandlers() {
+        $('[data-action="view-transaction"]').on('click', (e) => {
+            e.stopPropagation();
+            const period = $(e.currentTarget).data('period');
+            const orders = this.getTransactionOrdersByPeriod(period);
+            this.showOrdersModal(orders, `Transaction - ${this.getPeriodLabel(period)}`);
+        });
+        
+        $('[data-action="view-delivery"]').on('click', (e) => {
+            e.stopPropagation();
+            const period = $(e.currentTarget).data('period');
+            const orders = this.getDeliveryOrdersByPeriod(period);
+            this.showOrdersModal(orders, `Delivery - ${this.getPeriodLabel(period)}`);
+        });
+    }
+
+    getTransactionOrdersByPeriod(period) {
+        const dateSummary = this.data.date_summary;
+        switch(period) {
+            case 'today': return dateSummary.transaction_today;
+            case 'yesterday': return dateSummary.transaction_yesterday;
+            case 'this-week': return dateSummary.transaction_this_week;
+            case 'last-week': return dateSummary.transaction_last_week;
+            default: return [];
+        }
+    }
+
+    getDeliveryOrdersByPeriod(period) {
+        const dateSummary = this.data.date_summary;
+        switch(period) {
+            case 'overdue': return dateSummary.delivery_overdue;
+            case 'today': return dateSummary.delivery_today;
+            case 'this-week': return dateSummary.delivery_this_week;
+            case 'future': return dateSummary.delivery_future;
+            default: return [];
+        }
+    }
+
+    getPeriodLabel(period) {
+        const labels = {
+            'today': 'Today',
+            'yesterday': 'Yesterday',
+            'this-week': 'This Week',
+            'last-week': 'Last Week',
+            'overdue': 'Overdue',
+            'future': 'Future'
+        };
+        return labels[period] || period;
+    }
+
+    setupListHandlers() {
+        this.setupTableSearch('#list-search', '#orders-table');
+        
+        $('#orders-table tbody tr').on('click', (e) => {
+            const orderName = $(e.currentTarget).data('order');
+            this.showOrderDetails(orderName);
+        });
+    }
+
+    setupSalesPersonHandlers() {
+        this.setupTableSearch('#sp-search', '#salesperson-table');
+        
+        $('[data-action="view-sp-orders"]').on('click', (e) => {
+            e.stopPropagation();
+            const salesPerson = $(e.currentTarget).data('salesperson');
+            const spData = this.data.by_sales_person.find(sp => sp.name === salesPerson);
+            if (spData) {
+                this.showOrdersModal(spData.orders, `${salesPerson} - Orders`);
+            }
+        });
+    }
+
+    setupCustomerHandlers() {
+        this.setupTableSearch('#customer-search', '#customer-table');
+        
+        $('[data-action="view-customer-orders"]').on('click', (e) => {
+            e.stopPropagation();
+            const customer = $(e.currentTarget).data('customer');
+            const customerData = this.data.by_customer.find(c => c.name === customer);
+            if (customerData) {
+                this.showOrdersModal(customerData.orders, `${customer} - Orders`);
+            }
+        });
+    }
+
+    setupOrderCardHandlers() {
+        $('.order-card-modern').on('click', (e) => {
+            const orderName = $(e.currentTarget).data('order');
+            this.showOrderDetails(orderName);
+        });
+    }
+
+    setupCalendarHandlers() {
+        $('#prev-month').on('click', () => {
+            this.calendar_date.setMonth(this.calendar_date.getMonth() - 1);
+            this.renderModernCalendar();
+        });
+        
+        $('#next-month').on('click', () => {
+            this.calendar_date.setMonth(this.calendar_date.getMonth() + 1);
+            this.renderModernCalendar();
+        });
+        
+        $('#today-btn').on('click', () => {
+            this.calendar_date = new Date();
+            this.renderModernCalendar();
+        });
+        
+        $('.calendar-day[data-date]').on('click', (e) => {
+            const date = $(e.currentTarget).data('date');
+            const ordersForDate = this.filtered_orders.filter(order => 
+                frappe.datetime.obj_to_str(new Date(order.delivery_date)) === date
+            );
+            
+            if (ordersForDate.length > 0) {
+                this.showOrdersModal(ordersForDate, `Orders for ${frappe.datetime.str_to_user(date)}`);
+            }
+        });
+    }
+
+    setupTableSearch(inputId, tableId) {
+        $(inputId).on('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const rows = $(`${tableId} tbody tr`);
+            
+            rows.each(function() {
+                const rowText = $(this).text().toLowerCase();
+                $(this).toggle(rowText.includes(searchTerm));
+            });
+        });
+    }
+
+    // Modal Methods
+    showDrillDownModal(drillType) {
+        let filteredOrders = [];
+        let title = '';
+        
+        switch (drillType) {
+            case 'all':
+                filteredOrders = this.filtered_orders;
+                title = 'All Pending Orders';
+                break;
+            case 'balance-to-bill':
+                filteredOrders = this.filtered_orders.filter(order => parseFloat(order.remaining_amount || 0) > 0);
+                title = 'Orders with Balance to Bill';
+                break;
+            case 'overdue':
+                filteredOrders = this.filtered_orders.filter(order => order.due_days < 0);
+                title = 'Overdue Orders';
+                break;
+            case 'due-today':
+                filteredOrders = this.filtered_orders.filter(order => order.due_days === 0);
+                title = 'Orders Due Today';
+                break;
+            case 'high-value':
+                filteredOrders = this.filtered_orders.filter(order => parseFloat(order.grand_total) > 20000);
+                title = 'High Value Orders (>20K)';
+                break;
+            case 'on-hold':
+                filteredOrders = this.filtered_orders.filter(order => (order.status || '').toLowerCase().includes('hold'));
+                title = 'Orders On Hold';
+                break;
+        }
+        
+        this.showOrdersModal(filteredOrders, title);
+    }
+
+    showOrdersModal(orders, title) {
+        this.main_modal.find('.modal-title').text(title);
+        
+        if (!orders.length) {
+            this.main_modal.find('.modal-body').html(this.renderEmptyState('No orders found', ''));
+        } else {
+            const totalValue = orders.reduce((sum, order) => sum + parseFloat(order.grand_total || 0), 0);
+            const totalRemaining = orders.reduce((sum, order) => sum + parseFloat(order.remaining_amount || 0), 0);
+            
+            const html = `
+                <div class="table-modern-container" style="box-shadow: none; margin: 0;">
+                    <div class="table-toolbar" style="padding: var(--space-4); background: var(--surface-alt); border-radius: var(--radius-lg); margin-bottom: var(--space-4);">
+                        <div class="table-search-box">
+                            <i class="fa fa-search table-search-icon"></i>
+                            <input type="text" class="table-search-input" placeholder="Search orders..." id="modal-search" style="background: var(--surface); color: var(--text);">
+                        </div>
+                    </div>
+                    <div class="table-body">
+                        <table class="data-table" id="modal-orders-table">
+                            <thead>
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Customer</th>
+                                    <th>Sales Person</th>
+                                    <th>Delivery Date</th>
+                                    <th>Grand Total</th>
+                                    <th>Remaining</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${orders.map(order => `
+                                    <tr data-order="${order.name}" style="cursor: pointer;">
+                                        <td><strong style="color: var(--primary);">${order.name}</strong></td>
+                                        <td>${order.customer}</td>
+                                        <td>${order.sales_person}</td>
+                                        <td>
+                                            ${frappe.datetime.str_to_user(order.delivery_date)}
+                                            ${this.getDueBadge(order.due_status, order.due_days_text)}
+                                        </td>
+                                        <td><strong>${frappe.format(order.grand_total, {fieldtype: 'Currency'})}</strong></td>
+                                        <td><strong>${frappe.format(order.remaining_amount, {fieldtype: 'Currency'})}</strong></td>
+                                        <td>${order.status || 'Unknown'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="padding: var(--space-6); background: var(--surface-alt); border-top: 2px solid var(--primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4);">
+                        <div style="display: flex; gap: var(--space-8); flex-wrap: wrap;">
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Orders</div>
+                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${orders.length}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Value</div>
+                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${frappe.format(totalValue, {fieldtype: 'Currency'})}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Total Remaining</div>
+                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${frappe.format(totalRemaining, {fieldtype: 'Currency'})}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            this.main_modal.find('.modal-body').html(html);
+            
+            // Setup modal search functionality
+            this.setupTableSearch('#modal-search', '#modal-orders-table');
+            
+            this.main_modal.find('tbody tr[data-order]').on('click', (e) => {
+                const orderName = $(e.currentTarget).data('order');
+                this.showOrderDetails(orderName);
+            });
+        }
+        
+        this.main_modal.fadeIn(300);
+    }
+
+    showOrderDetails(orderName) {
+        this.detail_modal.find('.modal-title').text(`Order Details: ${orderName}`);
+        this.detail_modal.find('.modal-body').html(`
+            <div class="skeleton">
+                <div class="skeleton-title"></div>
+                <div class="skeleton-text"></div>
+                <div class="skeleton-text"></div>
+            </div>
+        `);
+        this.detail_modal.fadeIn(300);
+        
+        frappe.call({
+            method: 'prastara_custom.controller.variant_pricing.get_sales_order_details',
+            args: { sales_order_name: orderName },
+            callback: (r) => {
+                if (r.message && r.message.status === 'success') {
+                    this.renderOrderDetailsModal(r.message.data);
+                } else {
+                    this.detail_modal.find('.modal-body').html(this.renderEmptyState('Failed to load order details', ''));
+                }
+            },
+            error: () => {
+                this.detail_modal.find('.modal-body').html(this.renderEmptyState('Error loading order details', ''));
+            }
+        });
+    }
+
+ // Enhanced renderOrderDetailsModal function
+// Enhanced renderOrderDetailsModal function
+renderOrderDetailsModal(data) {
+    const order = data.order || {};
+    const items = data.items || [];
+    const salesTeam = data.sales_team || [];
+    const invoices = data.invoices || [];
+    const deliveryNotes = data.delivery_notes || [];
+    const payments = data.payment_entries || [];
+    const quotations = data.quotations || [];
+    const permits = data.permits || [];
+    const opportunities = data.opportunities || [];
+    
+    const html = `
+        <div style="display: flex; flex-direction: column; gap: var(--space-6); max-height: 80vh; overflow-y: auto;">
+            
+            <!-- Navigation Tabs -->
+            <div class="detail-nav-tabs" style="display: flex; gap: var(--space-2); border-bottom: 2px solid var(--border); padding-bottom: var(--space-4); position: sticky; top: 0; background: var(--surface); z-index: 10;">
+                <button class="detail-tab active" data-tab="overview">
+                    <i class="fa fa-info-circle"></i> Overview
+                </button>
+                <button class="detail-tab" data-tab="team">
+                    <i class="fa fa-users"></i> Sales Team
+                </button>
+                <button class="detail-tab" data-tab="items">
+                    <i class="fa fa-list"></i> Items (${items.length})
+                </button>
+                <button class="detail-tab" data-tab="documents">
+                    <i class="fa fa-file-text"></i> Documents
+                </button>
+                <button class="detail-tab" data-tab="financials">
+                    <i class="fa fa-money"></i> Financials
+                </button>
+                <button class="detail-tab" data-tab="workflow">
+                    <i class="fa fa-sitemap"></i> Workflow
+                </button>
+            </div>
+
+            <!-- Overview Tab -->
+            <div class="detail-content active" data-content="overview">
+                ${this.renderOverviewSection(order)}
+            </div>
+
+            <!-- Sales Team Tab -->
+            <div class="detail-content" data-content="team" style="display: none;">
+                ${this.renderSalesTeamSection(salesTeam)}
+            </div>
+
+            <!-- Items Tab -->
+            <div class="detail-content" data-content="items" style="display: none;">
+                ${this.renderItemsSection(items)}
+            </div>
+
+            <!-- Documents Tab -->
+            <div class="detail-content" data-content="documents" style="display: none;">
+                ${this.renderDocumentsSection(invoices, deliveryNotes, quotations, permits)}
+            </div>
+
+            <!-- Financials Tab -->
+            <div class="detail-content" data-content="financials" style="display: none;">
+                ${this.renderFinancialsSection(order, invoices, payments)}
+            </div>
+
+            <!-- Workflow Tab -->
+            <div class="detail-content" data-content="workflow" style="display: none;">
+                ${this.renderWorkflowSection(opportunities)}
+            </div>
+
+        </div>
+        
+        <style>
+            .detail-tab {
+                padding: var(--space-3) var(--space-5);
+                border: none;
+                background: transparent;
+                border-radius: var(--radius-lg);
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 0.875rem;
+                color: var(--text-secondary);
+                transition: var(--transition-fast);
+                display: flex;
+                align-items: center;
+                gap: var(--space-2);
+                white-space: nowrap;
+            }
+            
+            .detail-tab:hover {
+                background: var(--surface-hover);
+                color: var(--text);
+            }
+            
+            .detail-tab.active {
+                background: var(--primary);
+                color: white;
+                box-shadow: var(--shadow-md);
+            }
+            
+            .detail-tab i {
+                font-size: 1rem;
+            }
+            
+            .detail-section {
+                background: var(--surface-alt);
+                border-radius: var(--radius-lg);
+                padding: var(--space-6);
+                margin-bottom: var(--space-6);
+            }
+            
+            .detail-section-title {
+                font-size: 1.125rem;
+                font-weight: 700;
+                color: var(--text);
+                margin-bottom: var(--space-4);
+                display: flex;
+                align-items: center;
+                gap: var(--space-3);
+            }
+            
+            .detail-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: var(--space-4);
+            }
+            
+            .detail-field {
+                display: flex;
+                flex-direction: column;
+                gap: var(--space-1);
+            }
+            
+            .detail-label {
+                font-size: 0.75rem;
+                color: var(--text-muted);
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                font-weight: 600;
+            }
+            
+            .detail-value {
+                font-weight: 600;
+                color: var(--text);
+                font-size: 0.9rem;
+            }
+            
+            .status-badge {
+                display: inline-block;
+                padding: var(--space-1) var(--space-3);
+                border-radius: var(--radius);
+                font-size: 0.75rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            
+            .status-overdue { background: rgba(239, 68, 68, 0.1); color: var(--error); }
+            .status-pending { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+            .status-completed { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+            .status-normal { background: rgba(99, 102, 241, 0.1); color: var(--primary); }
+            
+            .document-card {
+                background: var(--surface);
+                border: 1px solid var(--border-light);
+                border-radius: var(--radius-lg);
+                padding: var(--space-4);
+                transition: var(--transition);
+                cursor: pointer;
+            }
+            
+            .document-card:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-lg);
+                border-color: var(--primary-light);
+            }
+            
+            .open-doc-btn {
+                background: var(--primary);
+                color: white;
+                border: none;
+                border-radius: var(--radius);
+                padding: var(--space-2) var(--space-3);
+                font-size: 0.75rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: var(--transition-fast);
+                display: flex;
+                align-items: center;
+                gap: var(--space-2);
+            }
+            
+            .open-doc-btn:hover {
+                background: var(--primary-dark);
+                transform: scale(1.05);
+            }
+            
+            .item-image {
+                width: 60px;
+                height: 60px;
+                border-radius: var(--radius);
+                object-fit: cover;
+                border: 2px solid var(--border-light);
+            }
+            
+            .team-member-card {
+                background: var(--surface);
+                border: 1px solid var(--border-light);
+                border-radius: var(--radius-lg);
+                padding: var(--space-4);
+                display: flex;
+                align-items: center;
+                gap: var(--space-4);
+            }
+            
+            .team-member-image {
+                width: 50px;
+                height: 50px;
+                border-radius: var(--radius-full);
+                object-fit: cover;
+                border: 3px solid var(--primary);
+            }
+        </style>
+    `;
+    
+    this.detail_modal.find('.modal-body').html(html);
+    this.setupDetailTabHandlers();
+}
+
+renderOverviewSection(order) {
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-info-circle" style="color: var(--primary);"></i>
+                Order Information
+            </div>
+            <div class="detail-grid">
+                <div class="detail-field">
+                    <div class="detail-label">Order Number</div>
+                    <div class="detail-value">${order.name || 'N/A'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Customer</div>
+                    <div class="detail-value">${order.customer_name || 'N/A'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-value">${order.status || 'N/A'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Sales Person</div>
+                    <div class="detail-value">${order.sales_person || 'Not assigned'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Branch</div>
+                    <div class="detail-value">${order.branch || 'Not specified'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Project</div>
+                    <div class="detail-value">${order.project || 'Not specified'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Transaction Date</div>
+                    <div class="detail-value">${order.formatted_transaction_date || 'N/A'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Delivery Date</div>
+                    <div class="detail-value">${order.formatted_delivery_date || 'N/A'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Days Until Delivery</div>
+                    <div class="detail-value">
+                        <span class="status-badge ${order.days_until_delivery < 0 ? 'status-overdue' : order.days_until_delivery === 0 ? 'status-pending' : 'status-normal'}">
+                            ${order.days_until_delivery < 0 ? Math.abs(order.days_until_delivery) + ' days overdue' : 
+                              order.days_until_delivery === 0 ? 'Due today' : 
+                              order.days_until_delivery === 999999 ? 'No delivery date' :
+                              order.days_until_delivery + ' days remaining'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-chart-pie" style="color: var(--success);"></i>
+                Financial Overview
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-4);">
+                <div style="text-align: center; padding: var(--space-6); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary); margin-bottom: var(--space-2);">
+                        ${frappe.format(order.grand_total || 0, {fieldtype: 'Currency'})}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600;">Grand Total</div>
+                </div>
+                <div style="text-align: center; padding: var(--space-6); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--warning); margin-bottom: var(--space-2);">
+                        ${frappe.format(order.balance_to_bill_amount || 0, {fieldtype: 'Currency'})}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600;">Balance to Bill</div>
+                </div>
+                <div style="text-align: center; padding: var(--space-6); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--info); margin-bottom: var(--space-2);">
+                        ${frappe.format(order.advance_paid || 0, {fieldtype: 'Currency'})}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600;">Advance Paid</div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); margin-top: var(--space-6);">
+                <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                    <div class="status-badge ${order.billing_status === 'Fully Billed' ? 'status-completed' : 'status-pending'}" style="font-size: 1rem; padding: var(--space-2) var(--space-4);">
+                        ${order.billing_status || 'Unknown'}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600; margin-top: var(--space-2);">Billing Status</div>
+                </div>
+                <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                    <div class="status-badge ${order.delivery_status === 'Fully Delivered' ? 'status-completed' : 'status-pending'}" style="font-size: 1rem; padding: var(--space-2) var(--space-4);">
+                        ${order.delivery_status || 'Unknown'}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600; margin-top: var(--space-2);">Delivery Status</div>
+                </div>
+            </div>
+            
+            <div class="progress-container" style="margin-top: var(--space-6);">
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span class="progress-label">Billing Progress</span>
+                        <span class="progress-value">${parseFloat(order.per_billed || order.percent_amount_billed || 0).toFixed(1)}%</span>
+                    </div>
+                    <div class="progress-bar-modern">
+                        <div class="progress-fill-modern" style="width: ${parseFloat(order.per_billed || order.percent_amount_billed || 0)}%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span class="progress-label">Delivery Progress</span>
+                        <span class="progress-value">${parseFloat(order.per_delivered || order.percent_amount_delivered || 0).toFixed(1)}%</span>
+                    </div>
+                    <div class="progress-bar-modern">
+                        <div class="progress-fill-modern" style="width: ${parseFloat(order.per_delivered || order.percent_amount_delivered || 0)}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-4); margin-top: var(--space-4);">
+            <button class="btn btn-secondary" onclick="window.open('/app/sales-order/${order.name}', '_blank')">
+                <i class="fa fa-external-link"></i>
+                Open Sales Order
+            </button>
+            ${order.project ? `
+                <button class="btn btn-secondary" onclick="window.open('/app/project/${order.project}', '_blank')">
+                    <i class="fa fa-tasks"></i>
+                    Open Project
+                </button>
+            ` : ''}
+            ${order.customer ? `
+                <button class="btn btn-secondary" onclick="window.open('/app/customer/${order.customer}', '_blank')">
+                    <i class="fa fa-building"></i>
+                    Open Customer
+                </button>
+            ` : ''}
+        </div>
+    `;
+}
+
+renderSalesTeamSection(salesTeam) {
+    if (!salesTeam.length) {
+        return `
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-users" style="color: var(--primary);"></i>
+                    Sales Team
+                </div>
+                <div style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
+                    <i class="fa fa-users" style="font-size: 3rem; margin-bottom: var(--space-4);"></i>
+                    <div>No sales team assigned to this order</div>
+                </div>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-users" style="color: var(--primary);"></i>
+                Sales Team (${salesTeam.length} members)
+            </div>
+            <div style="display: grid; gap: var(--space-4);">
+                ${salesTeam.map(member => `
+                    <div class="team-member-card">
+                        <img src="${member.image || '/assets/frappe/images/ui/avatar.png'}" 
+                             class="team-member-image" 
+                             onerror="this.src='/assets/frappe/images/ui/avatar.png'">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                                ${member.employee_name || member.sales_person}
+                            </div>
+                            <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                                ${member.sales_person} • ${member.branch || 'Branch not specified'}
+                            </div>
+                            <div style="display: flex; gap: var(--space-4);">
+                                <div>
+                                    <div class="detail-label">Allocation %</div>
+                                    <div class="detail-value">${member.allocated_percentage || 0}%</div>
+                                </div>
+                                <div>
+                                    <div class="detail-label">Allocated Amount</div>
+                                    <div class="detail-value">${frappe.format(member.allocated_amount || 0, {fieldtype: 'Currency'})}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+renderItemsSection(items) {
+    if (!items.length) {
+        return `
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-list" style="color: var(--primary);"></i>
+                    Order Items
+                </div>
+                <div style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
+                    <i class="fa fa-inbox" style="font-size: 3rem; margin-bottom: var(--space-4);"></i>
+                    <div>No items found in this order</div>
+                </div>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-list" style="color: var(--primary);"></i>
+                Order Items (${items.length} items)
+            </div>
+            <div class="table-body" style="border-radius: var(--radius-lg); overflow: hidden;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Rate</th>
+                            <th>Amount</th>
+                            <th>Delivered</th>
+                            <th>Billed</th>
+                            <th>Pending</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.map(item => `
+                            <tr>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: var(--space-3);">
+                                        ${item.image ? `
+                                            <img src="${item.image}" class="item-image" onerror="this.style.display='none'">
+                                        ` : `
+                                            <div class="item-image" style="background: var(--surface-alt); display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
+                                                <i class="fa fa-cube"></i>
+                                            </div>
+                                        `}
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text);">${item.item_code}</div>
+                                            <div style="font-size: 0.875rem; color: var(--text-muted);">${item.item_name}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>${item.qty || 0}</td>
+                                <td>${frappe.format(item.rate || 0, {fieldtype: 'Currency'})}</td>
+                                <td><strong>${frappe.format(item.amount || 0, {fieldtype: 'Currency'})}</strong></td>
+                                <td>
+                                    <span class="status-badge ${item.delivered_qty >= item.qty ? 'status-completed' : 'status-pending'}">
+                                        ${item.delivered_qty || 0}
+                                    </span>
+                                </td>
+                                <td>${frappe.format(item.billed_amt || 0, {fieldtype: 'Currency'})}</td>
+                                <td>
+                                    <div style="font-size: 0.875rem;">
+                                        <div>Qty: ${item.pending_qty || 0}</div>
+                                        <div style="color: var(--warning); font-weight: 600;">
+                                            ${frappe.format(item.pending_amount || 0, {fieldtype: 'Currency'})}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <button class="open-doc-btn" onclick="window.open('/app/item/${item.item_code}', '_blank')">
+                                        <i class="fa fa-external-link"></i>
+                                        View Item
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+renderDocumentsSection(invoices, deliveryNotes, quotations, permits) {
+    return `
+        <div style="display: grid; gap: var(--space-6);">
+            
+            <!-- Invoices Section -->
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-file-text" style="color: var(--success);"></i>
+                    Sales Invoices (${invoices.length})
+                </div>
+                ${invoices.length ? `
+                    <div style="display: grid; gap: var(--space-4);">
+                        ${invoices.map(invoice => `
+                            <div class="document-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                                            ${invoice.name}
+                                        </div>
+                                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                                            ${frappe.datetime.str_to_user(invoice.posting_date)} • ${invoice.status}
+                                        </div>
+                                        <div style="display: flex; gap: var(--space-4);">
+                                            <div>
+                                                <span class="detail-label">Total: </span>
+                                                <strong>${frappe.format(invoice.grand_total, {fieldtype: 'Currency'})}</strong>
+                                            </div>
+                                            <div>
+                                                <span class="detail-label">Outstanding: </span>
+                                                <strong style="color: var(--warning);">${frappe.format(invoice.outstanding_amount, {fieldtype: 'Currency'})}</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button class="open-doc-btn" onclick="window.open('/app/sales-invoice/${invoice.name}', '_blank')">
+                                        <i class="fa fa-external-link"></i>
+                                        Open
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : `
+                    <div style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
+                        <i class="fa fa-file-text" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
+                        <div>No invoices created yet</div>
+                    </div>
+                `}
+            </div>
+
+            <!-- Delivery Notes Section -->
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-truck" style="color: var(--info);"></i>
+                    Delivery Notes (${deliveryNotes.length})
+                </div>
+                ${deliveryNotes.length ? `
+                    <div style="display: grid; gap: var(--space-4);">
+                        ${deliveryNotes.map(dn => `
+                            <div class="document-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                                            ${dn.name}
+                                        </div>
+                                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                                            ${frappe.datetime.str_to_user(dn.posting_date)} • ${dn.status}
+                                        </div>
+                                        <div>
+                                            <span class="detail-label">Total: </span>
+                                            <strong>${frappe.format(dn.grand_total, {fieldtype: 'Currency'})}</strong>
+                                        </div>
+                                    </div>
+                                    <button class="open-doc-btn" onclick="window.open('/app/delivery-note/${dn.name}', '_blank')">
+                                        <i class="fa fa-external-link"></i>
+                                        Open
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : `
+                    <div style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
+                        <i class="fa fa-truck" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
+                        <div>No delivery notes created yet</div>
+                    </div>
+                `}
+            </div>
+
+            <!-- Quotations Section -->
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-quote-left" style="color: var(--secondary);"></i>
+                    Related Quotations (${quotations.length})
+                </div>
+                ${quotations.length ? `
+                    <div style="display: grid; gap: var(--space-4);">
+                        ${quotations.map(quote => `
+                            <div class="document-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                                            ${quote.name}
+                                        </div>
+                                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                                            Status: ${quote.status}
+                                            ${quote.opportunity ? ` • Opportunity: ${quote.opportunity}` : ''}
+                                        </div>
+                                        <div>
+                                            <span class="detail-label">Total: </span>
+                                            <strong>${frappe.format(quote.grand_total, {fieldtype: 'Currency'})}</strong>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: var(--space-2);">
+                                        <button class="open-doc-btn" onclick="window.open('/app/quotation/${quote.name}', '_blank')">
+                                            <i class="fa fa-external-link"></i>
+                                            Open
+                                        </button>
+                                        ${quote.opportunity ? `
+                                            <button class="open-doc-btn" onclick="window.open('/app/opportunity/${quote.opportunity}', '_blank')">
+                                                <i class="fa fa-bullseye"></i>
+                                                Opportunity
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : `
+                    <div style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
+                        <i class="fa fa-quote-left" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
+                        <div>No related quotations found</div>
+                    </div>
+                `}
+            </div>
+
+            <!-- Permits Section -->
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-certificate" style="color: var(--warning);"></i>
+                    Permits (${permits.length})
+                </div>
+                ${permits.length ? `
+                    <div style="display: grid; gap: var(--space-4);">
+                        ${permits.map(permit => `
+                            <div class="document-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="font-weight: 700; color: var(--text);">
+                                        ${permit.name}
+                                    </div>
+                                    <button class="open-doc-btn" onclick="window.open('/app/permit/${permit.name}', '_blank')">
+                                        <i class="fa fa-external-link"></i>
+                                        Open
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : `
+                    <div style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
+                        <i class="fa fa-certificate" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
+                        <div>No permits linked to this order</div>
+                    </div>
+                `}
+            </div>
+
+        </div>
+    `;
+}
+
+renderFinancialsSection(order, invoices, payments) {
+    const totalInvoiced = invoices.reduce((sum, inv) => sum + (inv.grand_total || 0), 0);
+    const totalOutstanding = invoices.reduce((sum, inv) => sum + (inv.outstanding_amount || 0), 0);
+    const totalPaid = payments.reduce((sum, payment) => sum + (payment.paid_amount || 0), 0);
+
+    return `
+        <div style="display: grid; gap: var(--space-6);">
+            
+            <!-- Financial Summary -->
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-chart-bar" style="color: var(--success);"></i>
+                    Financial Summary
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4);">
+                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: var(--space-1);">
+                            ${frappe.format(order.grand_total || 0, {fieldtype: 'Currency'})}
+                        </div>
+                        <div class="detail-label">Order Total</div>
+                    </div>
+                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--success); margin-bottom: var(--space-1);">
+                            ${frappe.format(totalInvoiced, {fieldtype: 'Currency'})}
+                        </div>
+                        <div class="detail-label">Total Invoiced</div>
+                    </div>
+                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--info); margin-bottom: var(--space-1);">
+                            ${frappe.format(totalPaid, {fieldtype: 'Currency'})}
+                        </div>
+                        <div class="detail-label">Total Paid</div>
+                    </div>
+                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning); margin-bottom: var(--space-1);">
+                            ${frappe.format(totalOutstanding, {fieldtype: 'Currency'})}
+                        </div>
+                        <div class="detail-label">Outstanding</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Entries -->
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-credit-card" style="color: var(--info);"></i>
+                    Payment Entries (${payments.length})
+                </div>
+                ${payments.length ? `
+                    <div style="display: grid; gap: var(--space-4);">
+                        ${payments.map(payment => `
+                            <div class="document-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                                            ${payment.name}
+                                        </div>
+                                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                                            ${frappe.datetime.str_to_user(payment.posting_date)} • ${payment.mode_of_payment || 'N/A'}
+                                            ${payment.reference_no ? ` • Ref: ${payment.reference_no}` : ''}
+                                        </div>
+                                        <div style="display: flex; gap: var(--space-4);">
+                                            <div>
+                                                <span class="detail-label">Amount: </span>
+                                                <strong style="color: var(--success);">${frappe.format(payment.paid_amount, {fieldtype: 'Currency'})}</strong>
+                                            </div>
+                                            <div>
+                                                <span class="detail-label">Status: </span>
+                                                <span class="status-badge status-${payment.status === 'Submitted' ? 'completed' : 'pending'}">
+                                                    ${payment.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button class="open-doc-btn" onclick="window.open('/app/payment-entry/${payment.name}', '_blank')">
+                                        <i class="fa fa-external-link"></i>
+                                        Open
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : `
+                    <div style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
+                        <i class="fa fa-credit-card" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
+                        <div>No payment entries recorded</div>
+                    </div>
+                `}
+            </div>
+
+        </div>
+    `;
+}
+
+renderWorkflowSection(opportunities) {
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-sitemap" style="color: var(--secondary);"></i>
+                Sales Workflow & Process Documents
+            </div>
+            ${opportunities.length ? `
+                <div style="display: grid; gap: var(--space-6);">
+                    ${opportunities.map(opp => `
+                        <div style="background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border-light); padding: var(--space-6);">
+                            
+                            <!-- Opportunity Details -->
+                            <div style="margin-bottom: var(--space-6);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--text); font-size: 1.125rem; margin-bottom: var(--space-1);">
+                                            ${opp.opportunity.name}
+                                        </div>
+                                        <div style="font-size: 0.875rem; color: var(--text-muted);">
+                                            ${opp.opportunity.opportunity_from}: ${opp.opportunity.party_name} • Status: ${opp.opportunity.status}
+                                        </div>
+                                    </div>
+                                    <button class="open-doc-btn" onclick="window.open('/app/opportunity/${opp.opportunity.name}', '_blank')">
+                                        <i class="fa fa-external-link"></i>
+                                        Open Opportunity
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Site Visits -->
+                            ${opp.site_visits.length ? `
+                                <div style="margin-bottom: var(--space-6);">
+                                    <div style="font-weight: 600; color: var(--text); margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2);">
+                                        <i class="fa fa-map-marker" style="color: var(--info);"></i>
+                                        Site Visits (${opp.site_visits.length})
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-3);">
+                                        ${opp.site_visits.map(visit => `
+                                            <div class="document-card" style="padding: var(--space-3);">
+                                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                    <div style="font-weight: 600; color: var(--text);">${visit.name}</div>
+                                                    <button class="open-doc-btn" style="padding: var(--space-1) var(--space-2); font-size: 0.7rem;" onclick="window.open('/app/site-visit/${visit.name}', '_blank')">
+                                                        <i class="fa fa-external-link"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            <!-- Design Requests -->
+                            ${opp.design_requests.length ? `
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text); margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-2);">
+                                        <i class="fa fa-paint-brush" style="color: var(--secondary);"></i>
+                                        Design Requests (${opp.design_requests.length})
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-3);">
+                                        ${opp.design_requests.map(design => `
+                                            <div class="document-card" style="padding: var(--space-3);">
+                                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                    <div style="font-weight: 600; color: var(--text);">${design.name}</div>
+                                                    <button class="open-doc-btn" style="padding: var(--space-1) var(--space-2); font-size: 0.7rem;" onclick="window.open('/app/design-request/${design.name}', '_blank')">
+                                                        <i class="fa fa-external-link"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            ${!opp.site_visits.length && !opp.design_requests.length ? `
+                                <div style="text-align: center; padding: var(--space-4); color: var(--text-muted);">
+                                    <i class="fa fa-info-circle" style="font-size: 1.5rem; margin-bottom: var(--space-2);"></i>
+                                    <div>No site visits or design requests recorded</div>
+                                </div>
+                            ` : ''}
+
+                        </div>
+                    `).join('')}
+                </div>
+            ` : `
+                <div style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
+                    <i class="fa fa-sitemap" style="font-size: 3rem; margin-bottom: var(--space-4);"></i>
+                    <div>No workflow documents found</div>
+                    <div style="font-size: 0.875rem; margin-top: var(--space-2);">This order doesn't have any linked opportunities, site visits, or design requests</div>
+                </div>
+            `}
+        </div>
+    `;
+}
+
+setupDetailTabHandlers() {
+    $('.detail-tab').on('click', function() {
+        const tabId = $(this).data('tab');
+        
+        // Update active tab
+        $('.detail-tab').removeClass('active');
+        $(this).addClass('active');
+        
+        // Show corresponding content
+        $('.detail-content').hide();
+        $(`.detail-content[data-content="${tabId}"]`).show();
+    });
+}
+    exportData() {
+        // Prepare data for export
+        const headers = ['Order #', 'Customer', 'Sales Person', 'Delivery Date', 'Status', 'Grand Total', 'Remaining Amount', 'Billing %', 'Delivery %'];
+        const rows = this.filtered_orders.map(order => [
+            order.name,
+            order.customer,
+            order.sales_person,
+            order.delivery_date,
+            order.status || 'Unknown',
+            order.grand_total,
+            order.remaining_amount,
+            order.per_billed,
+            order.per_delivered
+        ]);
+        
+        // Create CSV content
+        let csvContent = headers.join(',') + '\n';
+        rows.forEach(row => {
+            csvContent += row.map(cell => `"${cell}"`).join(',') + '\n';
+        });
+        
+        // Download CSV
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sales_orders_${frappe.datetime.now_datetime().replace(/[^0-9]/g, '')}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        this.showToast('Data exported successfully', 'success');
+    }
+
+    showSettingsModal() {
+        // Placeholder for settings modal
+        this.showToast('Settings panel coming soon', 'info');
+    }
+
+    showError(message) {
+        this.content_area.html(`
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fa fa-exclamation-triangle" style="color: var(--error);"></i>
+                </div>
+                <div class="empty-state-title">Error</div>
+                <div class="empty-state-message">${message}</div>
+                <button class="btn btn-primary btn-lg" onclick="frappe.sales_order_dashboard.loadData()">
+                    <i class="fa fa-refresh"></i>
+                    Retry
+                </button>
+            </div>
+        `);
+    }
+
+    // Utility methods
+    formatDueDays(days) {
+        if (days < 0) {
+            return `${Math.abs(days)} days overdue`;
+        } else if (days === 0) {
+            return 'Due today';
+        } else if (days === 1) {
+            return 'Due tomorrow';
+        } else {
+            return `Due in ${days} days`;
+        }
+    }
+
+    getDueStatus(days) {
+        if (days < 0) return 'overdue';
+        if (days === 0) return 'due-today';
+        return 'upcoming';
+    }
+
+    getMonthName(month) {
+        const months = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        return months[month];
+    }
+
+  applyGlobalFilter(query) {
+    if (!query) {
+        this.applyFilters();
+        return;
+    }
+    
+    const lowerQuery = query.toLowerCase();
+    
+    // Start with all orders
+    let filtered = [...this.all_orders];
+    
+    // Apply customer type filter first if it's set
+    const customerType = $('#customer-type-filter').val();
+    if (customerType) {
+        if (customerType === 'internal') {
+            filtered = filtered.filter(order => order.is_internal_customer === 1 || order.is_internal_customer === true);
+        } else if (customerType === 'external') {
+            filtered = filtered.filter(order => !order.is_internal_customer || order.is_internal_customer === 0);
+        }
+    }
+    
+    // Then apply global search filter
+    this.filtered_orders = filtered.filter(order =>
+        order.name.toLowerCase().includes(lowerQuery) ||
+        order.customer.toLowerCase().includes(lowerQuery) ||
+        (order.sales_person || '').toLowerCase().includes(lowerQuery) ||
+        (order.status || '').toLowerCase().includes(lowerQuery) ||
+        (order.branch || '').toLowerCase().includes(lowerQuery)
+    );
+    
+    this.processData();
+    this.updateActiveFilters();
+    this.updateHeaderStats(); // Add this line
+    this.renderView();
+}
+}
+
+// Export the class
+window.UltraModernSalesOrderDashboard = UltraModernSalesOrderDashboard;
