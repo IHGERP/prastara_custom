@@ -5953,7 +5953,7 @@ def get_sales_order_list(
                 so.per_delivered as percent_amount_delivered,
                 so.status,
                 so.project,
-                so.project_description,
+                so.custom_project_description,
                 (so.grand_total * (100 - COALESCE(so.per_billed, 0)) / 100) as balance_to_bill_amount,
                 so.transaction_date as date,
                 so.delivery_date,
