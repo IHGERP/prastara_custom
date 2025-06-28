@@ -43,60 +43,61 @@ class UltraModernSalesOrderDashboard {
             /* Ultra-Modern Sales Dashboard Styles */
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
             
-           :root {
-    /* Enhanced Color Palette */
-    --primary: #4338ca;
-    --primary-light: #6366f1;
-    --primary-dark: #312e81;
-    --primary-glass: rgba(67, 56, 202, 0.12);
-    --secondary: #7c3aed;
-    --secondary-light: #8b5cf6;
-    --accent: #dc2626;
+           
+:root {
+    /* Enhanced Green Color Palette */
+    --primary: #2e4d3a;
+    --primary-light: #4a6b5a;
+    --primary-dark: #1a2d24;
+    --primary-glass: rgba(46, 77, 58, 0.12);
+    --secondary: #3d5a47;
+    --secondary-light: #5c7a68;
+    --accent: #8b5a3c;
     --success: #059669;
     --warning: #d97706;
     --error: #dc2626;
-    --info: #0284c7;
+    --info: #0f766e;
     
     /* Light Surface Colors */
     --surface: #ffffff;
     --surface-glass: rgba(255, 255, 255, 0.9);
-    --surface-alt: #f8fafc;
-    --surface-hover: #f1f5f9;
-    --surface-dark: #e2e8f0;
+    --surface-alt: #f8faf9;
+    --surface-hover: #f1f5f3;
+    --surface-dark: #e6f2e8;
     --surface-elevated: #ffffff;
     --surface-card: #ffffff;
-    --glass-border: rgba(67, 56, 202, 0.15);
+    --glass-border: rgba(46, 77, 58, 0.15);
     
     /* Enhanced Dark Text Colors */
-    --text: #0f172a;
-    --text-secondary: #334155;
-    --text-muted: #475569;
-    --text-light: #64748b;
+    --text: #0f1712;
+    --text-secondary: #1a2d24;
+    --text-muted: #2e4d3a;
+    --text-light: #4a6b5a;
     --text-inverse: #ffffff;
     
     /* Enhanced Borders & Shadows */
-    --border: #cbd5e1;
-    --border-light: #e2e8f0;
-    --border-dark: #94a3b8;
-    --border-subtle: #f1f5f9;
-    --shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.08);
-    --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.12);
-    --shadow-lg: 0 10px 15px -3px rgb(15 23 42 / 0.15);
-    --shadow-xl: 0 20px 25px -5px rgb(15 23 42 / 0.18);
-    --shadow-2xl: 0 25px 50px -12px rgb(15 23 42 / 0.25);
-    --shadow-inner: inset 0 2px 4px 0 rgb(15 23 42 / 0.08);
-    --shadow-glow: 0 0 25px rgba(67, 56, 202, 0.15);
-    --shadow-color: 0 0 20px rgba(67, 56, 202, 0.12);
+    --border: #c7d6cc;
+    --border-light: #e1ece4;
+    --border-dark: #9eb5a5;
+    --border-subtle: #f1f5f3;
+    --shadow-sm: 0 1px 3px 0 rgb(15 23 18 / 0.08);
+    --shadow-md: 0 4px 6px -1px rgb(15 23 18 / 0.12);
+    --shadow-lg: 0 10px 15px -3px rgb(15 23 18 / 0.15);
+    --shadow-xl: 0 20px 25px -5px rgb(15 23 18 / 0.18);
+    --shadow-2xl: 0 25px 50px -12px rgb(15 23 18 / 0.25);
+    --shadow-inner: inset 0 2px 4px 0 rgb(15 23 18 / 0.08);
+    --shadow-glow: 0 0 25px rgba(46, 77, 58, 0.15);
+    --shadow-color: 0 0 20px rgba(46, 77, 58, 0.12);
     
-    /* Sophisticated Gradients */
-    --gradient-primary: linear-gradient(135deg, #4338ca 0%, #7c3aed 100%);
-    --gradient-secondary: linear-gradient(135deg, #7c3aed 0%, #dc2626 100%);
-    --gradient-success: linear-gradient(135deg, #059669 0%, #0284c7 100%);
-    --gradient-warm: linear-gradient(135deg, #dc2626 0%, #d97706 100%);
-    --gradient-cool: linear-gradient(135deg, #0284c7 0%, #4338ca 100%);
-    --gradient-dark: linear-gradient(135deg, #0f172a 0%, #334155 100%);
-    --gradient-surface: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    --gradient-glass: linear-gradient(135deg, rgba(67, 56, 202, 0.05) 0%, rgba(124, 58, 237, 0.05) 100%);
+    /* Sophisticated Green Gradients */
+    --gradient-primary: linear-gradient(135deg, #2e4d3a 0%, #3d5a47 100%);
+    --gradient-secondary: linear-gradient(135deg, #3d5a47 0%, #8b5a3c 100%);
+    --gradient-success: linear-gradient(135deg, #059669 0%, #0f766e 100%);
+    --gradient-warm: linear-gradient(135deg, #8b5a3c 0%, #d97706 100%);
+    --gradient-cool: linear-gradient(135deg, #0f766e 0%, #2e4d3a 100%);
+    --gradient-dark: linear-gradient(135deg, #0f1712 0%, #1a2d24 100%);
+    --gradient-surface: linear-gradient(135deg, #ffffff 0%, #f8faf9 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(46, 77, 58, 0.05) 0%, rgba(61, 90, 71, 0.05) 100%);
     
     /* Enhanced Light Backgrounds */
     --bg-primary: var(--surface);
@@ -128,17 +129,17 @@ class UltraModernSalesOrderDashboard {
     --transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     
-    /* Special Light Theme Effects */
-    --glow-subtle: 0 0 10px rgba(67, 56, 202, 0.08);
-    --glow-medium: 0 0 20px rgba(67, 56, 202, 0.12);
-    --glow-strong: 0 0 30px rgba(67, 56, 202, 0.15);
+    /* Special Green Theme Effects */
+    --glow-subtle: 0 0 10px rgba(46, 77, 58, 0.08);
+    --glow-medium: 0 0 20px rgba(46, 77, 58, 0.12);
+    --glow-strong: 0 0 30px rgba(46, 77, 58, 0.15);
     --backdrop-blur: blur(8px);
     --backdrop-saturate: saturate(120%);
     
     /* Interactive States */
-    --hover-overlay: rgba(67, 56, 202, 0.06);
-    --focus-ring: 0 0 0 3px rgba(67, 56, 202, 0.15);
-    --active-overlay: rgba(67, 56, 202, 0.12);
+    --hover-overlay: rgba(46, 77, 58, 0.06);
+    --focus-ring: 0 0 0 3px rgba(46, 77, 58, 0.15);
+    --active-overlay: rgba(46, 77, 58, 0.12);
     
     /* Enhanced Status Indicators */
     --status-online: #059669;
@@ -147,15 +148,39 @@ class UltraModernSalesOrderDashboard {
     --status-offline: #64748b;
     
     /* Dark Element Overlays for Contrast */
-    --dark-overlay-1: rgba(15, 23, 42, 0.05);
-    --dark-overlay-2: rgba(15, 23, 42, 0.08);
-    --dark-overlay-3: rgba(15, 23, 42, 0.12);
+    --dark-overlay-1: rgba(15, 23, 18, 0.05);
+    --dark-overlay-2: rgba(15, 23, 18, 0.08);
+    --dark-overlay-3: rgba(15, 23, 18, 0.12);
     
     /* Typography Enhancements */
-    --text-contrast: #020617;
-    --text-heading: #0f172a;
-    --text-body: #334155;
-    --text-caption: #475569;
+    --text-contrast: #061708;
+    --text-heading: #0f1712;
+    --text-body: #1a2d24;
+    --text-caption: #2e4d3a;
+}
+:root {
+    /* Additional Green Variations */
+    --green-50: #f7fdf8;
+    --green-100: #f0faf2;
+    --green-200: #dcf4e0;
+    --green-300: #bfe7c7;
+    --green-400: #9bd3a4;
+    --green-500: #6ab377;
+    --green-600: #4a8c57;
+    --green-700: #3d7347;
+    --green-800: #2e4d3a;
+    --green-900: #1f342a;
+    --green-950: #0f1712;
+    
+    /* Forest Green Accents */
+    --forest-light: #5c7a68;
+    --forest-base: #3d5a47;
+    --forest-dark: #2a3f32;
+    
+    /* Sage Green Variations */
+    --sage-light: #a8c3b0;
+    --sage-base: #7ea088;
+    --sage-dark: #5a7961;
 }
             /* Global Styles */
             .ultra-modern-dashboard {
@@ -2100,7 +2125,7 @@ showSearchSuggestions(query) {
         (order.sales_person || '').toLowerCase().includes(lowerQuery) ||
         (order.status || '').toLowerCase().includes(lowerQuery) ||
         (order.project || '').toLowerCase().includes(lowerQuery) ||
-        (order.custom_project_description || '').toLowerCase().includes(lowerQuery)
+        (order.project_description || '').toLowerCase().includes(lowerQuery)
     ).slice(0, 8);
     
     if (matches.length === 0) {
@@ -2120,9 +2145,9 @@ showSearchSuggestions(query) {
                     ${order.customer} • ${order.sales_person} • ${frappe.format(order.grand_total, {fieldtype: 'Currency'})}
                     ${order.project ? ` • 📋 ${order.project}` : ''}
                 </div>
-                ${order.custom_project_description ? `
+                ${order.project_description ? `
                     <div style="font-size: 0.75rem; color: var(--text-light); margin-top: var(--space-1);">
-                        ${order.custom_project_description.length > 60 ? order.custom_project_description.substring(0, 60) + '...' : order.custom_project_description}
+                        ${order.project_description.length > 60 ? order.project_description.substring(0, 60) + '...' : order.project_description}
                     </div>
                 ` : ''}
             </div>
@@ -2884,10 +2909,10 @@ renderModernOrderCard(order) {
                             <div class="order-info-value">${order.project}</div>
                         </div>
                     ` : ''}
-                    ${order.custom_project_description ? `
+                    ${order.project_description ? `
                         <div class="order-info-item">
                             <div class="order-info-label">Project Description</div>
-                            <div class="order-info-value" title="${order.custom_project_description}">${order.custom_project_description.length > 30 ? order.custom_project_description.substring(0, 30) + '...' : order.custom_project_description}</div>
+                            <div class="order-info-value" title="${order.project_description}">${order.project_description.length > 30 ? order.project_description.substring(0, 30) + '...' : order.project_description}</div>
                         </div>
                     ` : ''}
                     <div class="order-info-item">
@@ -3133,7 +3158,7 @@ applyFilters() {
             (order.sales_person || '').toLowerCase().includes(globalSearch) ||
             (order.status || '').toLowerCase().includes(globalSearch) ||
             (order.project || '').toLowerCase().includes(globalSearch) ||
-            (order.custom_project_description || '').toLowerCase().includes(globalSearch)
+            (order.project_description || '').toLowerCase().includes(globalSearch)
         );
     }
     
@@ -3748,7 +3773,7 @@ renderModernOrderRow(order) {
                 ${order.project ? `
                     <div>
                         <div style="font-weight: 600;">${order.project}</div>
-                        ${order.custom_project_description ? `<div style="font-size: 0.75rem; color: var(--text-muted);" title="${order.custom_project_description}">${order.custom_project_description.length > 25 ? order.custom_project_description.substring(0, 25) + '...' : order.custom_project_description}</div>` : ''}
+                        ${order.project_description ? `<div style="font-size: 0.75rem; color: var(--text-muted);" title="${order.project_description}">${order.project_description.length > 25 ? order.project_description.substring(0, 25) + '...' : order.project_description}</div>` : ''}
                     </div>
                 ` : `<span style="color: var(--text-muted);">No Project</span>`}
             </td>
@@ -4296,7 +4321,7 @@ renderCalendarGrid(year, month) {
                                 ${order.project ? `
                                     <div>
                                         <div style="font-weight: 600; font-size: 0.85rem;">${order.project}</div>
-                                        ${order.custom_project_description ? `<div style="font-size: 0.7rem; color: var(--text-muted);" title="${order.custom_project_description}">${order.custom_project_description.length > 20 ? order.custom_project_description.substring(0, 20) + '...' : order.custom_project_description}</div>` : ''}
+                                        ${order.project_description ? `<div style="font-size: 0.7rem; color: var(--text-muted);" title="${order.project_description}">${order.project_description.length > 20 ? order.project_description.substring(0, 20) + '...' : order.project_description}</div>` : ''}
                                     </div>
                                 ` : `<span style="color: var(--text-muted); font-size: 0.8rem;">No Project</span>`}
                             </td>
@@ -4385,58 +4410,109 @@ renderOrderDetailsModal(data) {
     const quotations = data.quotations || [];
     const permits = data.permits || [];
     const opportunities = data.opportunities || [];
+    const projectDetails = data.project_details || {};
+    const tasks = data.tasks || [];
+    const paymentSchedule = data.payment_schedule || [];
+    const materialRequests = data.material_requests || [];
+    const advanceInvoices = data.advance_invoices || [];
+    const financialDetails = data.financial_details || {};
+    
+    // Generate insights based on data
+    const insights = this.generateOrderInsights(data);
     
     const html = `
-        <div style="display: flex; flex-direction: column; gap: var(--space-6); max-height: 80vh; overflow-y: auto;">
+        <div style="display: flex; flex-direction: column; gap: var(--space-4); max-height: 80vh; overflow-y: auto;">
+            
+            <!-- Insights Panel -->
+            ${insights.length > 0 ? `
+                <div class="insights-panel">
+                    <div class="insights-header">
+                        <i class="fa fa-lightbulb"></i>
+                        Key Insights & Recommendations
+                    </div>
+                    <div class="insights-grid">
+                        ${insights.map(insight => `
+                            <div class="insight-item">
+                                <i class="fa ${insight.icon}" style="color: ${insight.color};"></i>
+                                <span>${insight.message}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
             
             <!-- Navigation Tabs -->
-            <div class="detail-nav-tabs" style="display: flex; gap: var(--space-2); border-bottom: 2px solid var(--border); padding-bottom: var(--space-4); position: sticky; top: 0; background: var(--surface); z-index: 10;">
+            <div class="detail-nav-tabs">
                 <button class="detail-tab active" data-tab="overview">
                     <i class="fa fa-info-circle"></i> Overview
                 </button>
+                ${order.project ? `
+                    <button class="detail-tab" data-tab="project">
+                        <i class="fa fa-project-diagram"></i> Project
+                    </button>
+                ` : ''}
+                <button class="detail-tab" data-tab="financials">
+                    <i class="fa fa-money"></i> Financials
+                </button>
                 <button class="detail-tab" data-tab="team">
-                    <i class="fa fa-users"></i> Sales Team
+                    <i class="fa fa-users"></i> Team
                 </button>
                 <button class="detail-tab" data-tab="items">
                     <i class="fa fa-list"></i> Items (${items.length})
                 </button>
+                <button class="detail-tab" data-tab="schedule">
+                    <i class="fa fa-calendar-check"></i> Schedule
+                </button>
                 <button class="detail-tab" data-tab="documents">
                     <i class="fa fa-file-text"></i> Documents
                 </button>
-                <button class="detail-tab" data-tab="financials">
-                    <i class="fa fa-money"></i> Financials
-                </button>
+                ${materialRequests.length > 0 ? `
+                    <button class="detail-tab" data-tab="materials">
+                        <i class="fa fa-boxes"></i> Materials (${materialRequests.length})
+                    </button>
+                ` : ''}
                 <button class="detail-tab" data-tab="workflow">
                     <i class="fa fa-sitemap"></i> Workflow
                 </button>
             </div>
 
-            <!-- Overview Tab -->
+            <!-- Content Areas -->
             <div class="detail-content active" data-content="overview">
-                ${this.renderOverviewSection(order)}
+                ${this.renderEnhancedOverviewSection(order, financialDetails)}
             </div>
 
-            <!-- Sales Team Tab -->
+            ${order.project ? `
+                <div class="detail-content" data-content="project" style="display: none;">
+                    ${this.renderProjectSection(projectDetails, tasks, financialDetails)}
+                </div>
+            ` : ''}
+
+            <div class="detail-content" data-content="financials" style="display: none;">
+                ${this.renderEnhancedFinancialsSection(order, invoices, payments, advanceInvoices, financialDetails)}
+            </div>
+
             <div class="detail-content" data-content="team" style="display: none;">
                 ${this.renderSalesTeamSection(salesTeam)}
             </div>
 
-            <!-- Items Tab -->
             <div class="detail-content" data-content="items" style="display: none;">
                 ${this.renderItemsSection(items)}
             </div>
 
-            <!-- Documents Tab -->
+            <div class="detail-content" data-content="schedule" style="display: none;">
+                ${this.renderPaymentScheduleSection(paymentSchedule, order)}
+            </div>
+
             <div class="detail-content" data-content="documents" style="display: none;">
                 ${this.renderDocumentsSection(invoices, deliveryNotes, quotations, permits)}
             </div>
 
-            <!-- Financials Tab -->
-            <div class="detail-content" data-content="financials" style="display: none;">
-                ${this.renderFinancialsSection(order, invoices, payments)}
-            </div>
+            ${materialRequests.length > 0 ? `
+                <div class="detail-content" data-content="materials" style="display: none;">
+                    ${this.renderMaterialRequestsSection(materialRequests)}
+                </div>
+            ` : ''}
 
-            <!-- Workflow Tab -->
             <div class="detail-content" data-content="workflow" style="display: none;">
                 ${this.renderWorkflowSection(opportunities)}
             </div>
@@ -4444,19 +4520,77 @@ renderOrderDetailsModal(data) {
         </div>
         
         <style>
+            /* Enhanced Styling for Details Modal */
+            .insights-panel {
+                background: linear-gradient(135deg, var(--surface-alt) 0%, var(--surface) 100%);
+                border-radius: var(--radius-lg);
+                padding: var(--space-4);
+                border-left: 4px solid var(--primary);
+                margin-bottom: var(--space-4);
+            }
+            
+            .insights-header {
+                font-weight: 700;
+                color: var(--text);
+                margin-bottom: var(--space-3);
+                display: flex;
+                align-items: center;
+                gap: var(--space-2);
+                font-size: 1rem;
+            }
+            
+            .insights-header i {
+                color: var(--warning);
+                font-size: 1.125rem;
+            }
+            
+            .insights-grid {
+                display: flex;
+                flex-direction: column;
+                gap: var(--space-2);
+            }
+            
+            .insight-item {
+                display: flex;
+                align-items: flex-start;
+                gap: var(--space-2);
+                font-size: 0.875rem;
+                color: var(--text-secondary);
+                line-height: 1.4;
+            }
+            
+            .insight-item i {
+                font-size: 0.875rem;
+                margin-top: 2px;
+                flex-shrink: 0;
+            }
+            
+            .detail-nav-tabs {
+                display: flex;
+                gap: var(--space-2);
+                border-bottom: 2px solid var(--border);
+                padding-bottom: var(--space-3);
+                position: sticky;
+                top: 0;
+                background: var(--surface);
+                z-index: 10;
+                flex-wrap: wrap;
+                margin-bottom: var(--space-4);
+            }
+            
             .detail-tab {
-                padding: var(--space-3) var(--space-5);
+                padding: var(--space-2) var(--space-4);
                 border: none;
                 background: transparent;
                 border-radius: var(--radius-lg);
                 cursor: pointer;
                 font-weight: 600;
-                font-size: 0.875rem;
+                font-size: 0.8rem;
                 color: var(--text-secondary);
                 transition: var(--transition-fast);
                 display: flex;
                 align-items: center;
-                gap: var(--space-2);
+                gap: var(--space-1);
                 white-space: nowrap;
             }
             
@@ -4468,34 +4602,38 @@ renderOrderDetailsModal(data) {
             .detail-tab.active {
                 background: var(--primary);
                 color: white;
-                box-shadow: var(--shadow-md);
+                box-shadow: var(--shadow-sm);
             }
             
             .detail-tab i {
-                font-size: 1rem;
+                font-size: 0.875rem;
             }
             
             .detail-section {
                 background: var(--surface-alt);
                 border-radius: var(--radius-lg);
-                padding: var(--space-6);
-                margin-bottom: var(--space-6);
+                padding: var(--space-5);
+                margin-bottom: var(--space-4);
             }
             
             .detail-section-title {
-                font-size: 1.125rem;
+                font-size: 1rem;
                 font-weight: 700;
                 color: var(--text);
                 margin-bottom: var(--space-4);
                 display: flex;
                 align-items: center;
-                gap: var(--space-3);
+                gap: var(--space-2);
+            }
+            
+            .detail-section-title i {
+                font-size: 1.125rem;
             }
             
             .detail-grid {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: var(--space-4);
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: var(--space-3);
             }
             
             .detail-field {
@@ -4505,7 +4643,7 @@ renderOrderDetailsModal(data) {
             }
             
             .detail-label {
-                font-size: 0.75rem;
+                font-size: 0.7rem;
                 color: var(--text-muted);
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
@@ -4515,14 +4653,14 @@ renderOrderDetailsModal(data) {
             .detail-value {
                 font-weight: 600;
                 color: var(--text);
-                font-size: 0.9rem;
+                font-size: 0.875rem;
             }
             
             .status-badge {
                 display: inline-block;
-                padding: var(--space-1) var(--space-3);
+                padding: 2px 8px;
                 border-radius: var(--radius);
-                font-size: 0.75rem;
+                font-size: 0.7rem;
                 font-weight: 600;
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
@@ -4532,6 +4670,26 @@ renderOrderDetailsModal(data) {
             .status-pending { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
             .status-completed { background: rgba(16, 185, 129, 0.1); color: var(--success); }
             .status-normal { background: rgba(99, 102, 241, 0.1); color: var(--primary); }
+            
+            .open-doc-btn {
+                background: var(--primary);
+                color: white;
+                border: none;
+                border-radius: var(--radius);
+                padding: var(--space-1) var(--space-2);
+                font-size: 0.7rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: var(--transition-fast);
+                display: inline-flex;
+                align-items: center;
+                gap: var(--space-1);
+            }
+            
+            .open-doc-btn:hover {
+                background: var(--primary-dark);
+                transform: scale(1.05);
+            }
             
             .document-card {
                 background: var(--surface);
@@ -4543,55 +4701,137 @@ renderOrderDetailsModal(data) {
             }
             
             .document-card:hover {
-                transform: translateY(-2px);
-                box-shadow: var(--shadow-lg);
+                transform: translateY(-1px);
+                box-shadow: var(--shadow-md);
                 border-color: var(--primary-light);
             }
             
-            .open-doc-btn {
-                background: var(--primary);
-                color: white;
-                border: none;
-                border-radius: var(--radius);
-                padding: var(--space-2) var(--space-3);
-                font-size: 0.75rem;
-                font-weight: 600;
-                cursor: pointer;
-                transition: var(--transition-fast);
-                display: flex;
-                align-items: center;
-                gap: var(--space-2);
-            }
-            
-            .open-doc-btn:hover {
-                background: var(--primary-dark);
-                transform: scale(1.05);
-            }
-            
             .item-image {
-                width: 60px;
-                height: 60px;
+                width: 40px;
+                height: 40px;
                 border-radius: var(--radius);
                 object-fit: cover;
-                border: 2px solid var(--border-light);
+                border: 1px solid var(--border-light);
             }
             
             .team-member-card {
                 background: var(--surface);
                 border: 1px solid var(--border-light);
                 border-radius: var(--radius-lg);
-                padding: var(--space-4);
+                padding: var(--space-3);
                 display: flex;
                 align-items: center;
-                gap: var(--space-4);
+                gap: var(--space-3);
             }
             
             .team-member-image {
-                width: 50px;
-                height: 50px;
+                width: 40px;
+                height: 40px;
                 border-radius: var(--radius-full);
                 object-fit: cover;
-                border: 3px solid var(--primary);
+                border: 2px solid var(--primary-light);
+            }
+            
+            .profit-card {
+                background: var(--surface);
+                border-radius: var(--radius-lg);
+                padding: var(--space-5);
+                border: 1px solid var(--border-light);
+                transition: var(--transition);
+            }
+            
+            .profit-card:hover {
+                transform: translateY(-1px);
+                box-shadow: var(--shadow-md);
+            }
+            
+            .financial-metric {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: var(--space-3) 0;
+                border-bottom: 1px solid var(--border-light);
+                font-size: 0.875rem;
+            }
+            
+            .financial-metric:last-child {
+                border-bottom: none;
+                margin: var(--space-3) -var(--space-5) -var(--space-5);
+                padding: var(--space-4);
+                background: var(--surface-alt);
+                border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+            }
+            
+            .task-card {
+                background: var(--surface);
+                border: 1px solid var(--border-light);
+                border-radius: var(--radius-lg);
+                padding: var(--space-3);
+                transition: var(--transition);
+            }
+            
+            .task-card:hover {
+                border-color: var(--primary-light);
+                box-shadow: var(--shadow-sm);
+            }
+            
+            .pl-account-row {
+                display: grid;
+                grid-template-columns: 2fr 1fr 1fr 1fr;
+                gap: var(--space-3);
+                padding: var(--space-2);
+                border-bottom: 1px solid var(--border-light);
+                align-items: center;
+                font-size: 0.8rem;
+            }
+            
+            .pl-account-row:hover {
+                background: var(--surface-hover);
+            }
+            
+            .pl-total-row {
+                background: var(--surface-alt);
+                font-weight: 700;
+                border-top: 2px solid var(--primary);
+                border-bottom: 2px solid var(--primary);
+            }
+            
+            .metric-card-small {
+                text-align: center;
+                padding: var(--space-4);
+                background: var(--surface);
+                border-radius: var(--radius-lg);
+                border: 1px solid var(--border);
+            }
+            
+            .metric-card-small .metric-value {
+                font-size: 1.25rem;
+                font-weight: 700;
+                margin-bottom: var(--space-1);
+            }
+            
+            .metric-card-small .metric-label {
+                font-size: 0.75rem;
+                color: var(--text-muted);
+                font-weight: 600;
+            }
+            
+            /* Responsive adjustments */
+            @media (max-width: 768px) {
+                .detail-grid {
+                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                }
+                
+                .pl-account-row {
+                    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+                    font-size: 0.75rem;
+                    padding: var(--space-2);
+                }
+                
+                .detail-tab {
+                    font-size: 0.75rem;
+                    padding: var(--space-2) var(--space-3);
+                }
             }
         </style>
     `;
@@ -4599,7 +4839,749 @@ renderOrderDetailsModal(data) {
     this.detail_modal.find('.modal-body').html(html);
     this.setupDetailTabHandlers();
 }
+// Generate insights based on order data
+generateOrderInsights(data) {
+    const insights = [];
+    const order = data.order || {};
+    const financialDetails = data.financial_details || {};
+    const tasks = data.tasks || [];
+    const paymentSchedule = data.payment_schedule || [];
+    const advanceInvoices = data.advance_invoices || [];
+    
+    // Financial insights
+    if (financialDetails.profit_percentage !== undefined) {
+        if (financialDetails.profit_percentage < 35) {
+            insights.push({
+                icon: 'fa-exclamation-triangle',
+                color: 'var(--error)',
+                message: `Project profit margin is ${financialDetails.profit_percentage}% - below target of 40%. Consider reviewing expenses or renegotiating pricing.`
+            });
+        } else if (financialDetails.profit_percentage >= 40) {
+            insights.push({
+                icon: 'fa-check-circle',
+                color: 'var(--success)',
+                message: `Excellent profit margin of ${financialDetails.profit_percentage}% - meeting target of 40%.`
+            });
+        }
+    }
+    
+    // Delivery insights
+    if (order.days_until_delivery < 0) {
+        insights.push({
+            icon: 'fa-clock',
+            color: 'var(--error)',
+            message: `Order is ${Math.abs(order.days_until_delivery)} days overdue. Immediate action required.`
+        });
+    } else if (order.days_until_delivery === 0) {
+        insights.push({
+            icon: 'fa-truck',
+            color: 'var(--warning)',
+            message: 'Order is due for delivery today. Ensure all items are ready for dispatch.'
+        });
+    }
+    
+    // Payment insights
+    const unpaidAdvances = advanceInvoices.filter(inv => !inv.is_paid);
+    if (unpaidAdvances.length > 0) {
+        const totalUnpaid = unpaidAdvances.reduce((sum, inv) => sum + parseFloat(inv.outstanding_amount || 0), 0);
+        insights.push({
+            icon: 'fa-credit-card',
+            color: 'var(--warning)',
+            message: `${unpaidAdvances.length} advance invoice(s) pending payment totaling ${frappe.format(totalUnpaid, {fieldtype: 'Currency'})}.`
+        });
+    }
+    
+    // Task insights
+    const incompleteTasks = tasks.filter(task => task.status !== 'Completed' && task.status !== 'Closed');
+    if (incompleteTasks.length > 0 && order.days_until_delivery < 7) {
+        insights.push({
+            icon: 'fa-tasks',
+            color: 'var(--warning)',
+            message: `${incompleteTasks.length} task(s) still pending with delivery approaching. Review task priorities.`
+        });
+    }
+    
+    // Budget status insight
+    if (financialDetails.status === 'Over Budget') {
+        insights.push({
+            icon: 'fa-chart-line',
+            color: 'var(--error)',
+            message: 'Project expenses have exceeded budget limits. Cost control measures recommended.'
+        });
+    }
+    
+    return insights;
+}
 
+// Enhanced Overview Section
+renderEnhancedOverviewSection(order, financialDetails) {
+    const profitStatus = this.getProfitStatus(financialDetails);
+    
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-info-circle" style="color: var(--primary);"></i>
+                Order Information
+            </div>
+            <div class="detail-grid">
+                <div class="detail-field">
+                    <div class="detail-label">Order Number</div>
+                    <div class="detail-value">${order.name || 'N/A'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Customer</div>
+                    <div class="detail-value">${order.customer_name || 'N/A'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-value">${order.status || 'N/A'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Sales Person</div>
+                    <div class="detail-value">${order.sales_person || 'Not assigned'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Branch</div>
+                    <div class="detail-value">${order.branch || 'Not specified'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Project</div>
+                    <div class="detail-value">${order.project || 'Not specified'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Transaction Date</div>
+                    <div class="detail-value">${order.formatted_transaction_date || 'N/A'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Delivery Date</div>
+                    <div class="detail-value">${order.formatted_delivery_date || 'N/A'}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Days Until Delivery</div>
+                    <div class="detail-value">
+                        <span class="status-badge ${order.days_until_delivery < 0 ? 'status-overdue' : order.days_until_delivery === 0 ? 'status-pending' : 'status-normal'}">
+                            ${order.days_until_delivery < 0 ? Math.abs(order.days_until_delivery) + ' days overdue' : 
+                              order.days_until_delivery === 0 ? 'Due today' : 
+                              order.days_until_delivery === 999999 ? 'No delivery date' :
+                              order.days_until_delivery + ' days remaining'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-chart-pie" style="color: var(--success);"></i>
+                Financial Overview
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-4);">
+                <div style="text-align: center; padding: var(--space-6); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary); margin-bottom: var(--space-2);">
+                        ${frappe.format(order.grand_total || 0, {fieldtype: 'Currency'})}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600;">Grand Total</div>
+                </div>
+                <div style="text-align: center; padding: var(--space-6); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--warning); margin-bottom: var(--space-2);">
+                        ${frappe.format(order.balance_to_bill_amount || 0, {fieldtype: 'Currency'})}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600;">Balance to Bill</div>
+                </div>
+                <div style="text-align: center; padding: var(--space-6); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                    <div style="font-size: 2rem; font-weight: 700; color: ${profitStatus.color}; margin-bottom: var(--space-2);">
+                        ${financialDetails.profit_percentage || 0}%
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600;">Profit Margin</div>
+                    <div class="status-badge ${profitStatus.badgeClass}" style="margin-top: var(--space-2);">
+                        ${profitStatus.label}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="progress-container" style="margin-top: var(--space-6);">
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span class="progress-label">Billing Progress</span>
+                        <span class="progress-value">${parseFloat(order.per_billed || 0).toFixed(1)}%</span>
+                    </div>
+                    <div class="progress-bar-modern">
+                        <div class="progress-fill-modern" style="width: ${parseFloat(order.per_billed || 0)}%"></div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span class="progress-label">Delivery Progress</span>
+                        <span class="progress-value">${parseFloat(order.per_delivered || 0).toFixed(1)}%</span>
+                    </div>
+                    <div class="progress-bar-modern">
+                        <div class="progress-fill-modern" style="width: ${parseFloat(order.per_delivered || 0)}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-4); margin-top: var(--space-4);">
+            <button class="btn btn-secondary" onclick="window.open('/app/sales-order/${order.name}', '_blank')">
+                <i class="fa fa-external-link"></i>
+                Open Sales Order
+            </button>
+            ${order.project ? `
+                <button class="btn btn-secondary" onclick="window.open('/app/project/${order.project}', '_blank')">
+                    <i class="fa fa-tasks"></i>
+                    Open Project
+                </button>
+            ` : ''}
+            ${order.customer ? `
+                <button class="btn btn-secondary" onclick="window.open('/app/customer/${order.customer}', '_blank')">
+                    <i class="fa fa-building"></i>
+                    Open Customer
+                </button>
+            ` : ''}
+        </div>
+    `;
+}
+
+// New Project Section
+renderProjectSection(projectDetails, tasks, financialDetails) {
+    if (!projectDetails.name) {
+        return `
+            <div class="detail-section">
+                <div style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
+                    <i class="fa fa-project-diagram" style="font-size: 3rem; margin-bottom: var(--space-4);"></i>
+                    <div>No project linked to this order</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    const plStatement = financialDetails.profit_loss_statement || {};
+    
+    return `
+        <div style="display: grid; gap: var(--space-6);">
+            <!-- Project Overview -->
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-project-diagram" style="color: var(--primary);"></i>
+                    Project Overview
+                </div>
+                <div class="detail-grid">
+                    <div class="detail-field">
+                        <div class="detail-label">Project Name</div>
+                        <div class="detail-value">${projectDetails.project_name || projectDetails.name}</div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value">
+                            <span class="status-badge ${projectDetails.status === 'Completed' ? 'status-completed' : 'status-pending'}">
+                                ${projectDetails.status}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-label">Progress</div>
+                        <div class="detail-value">${projectDetails.percent_complete || 0}%</div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-label">Project Owner</div>
+                        <div class="detail-value">${projectDetails.custom_project_owner_name || 'Not specified'}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Project P&L Statement -->
+            ${plStatement.summary ? `
+                <div class="detail-section">
+                    <div class="detail-section-title">
+                        <i class="fa fa-chart-bar" style="color: var(--success);"></i>
+                        Project Profit & Loss Statement
+                    </div>
+                    
+                    <!-- Summary Cards -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6);">
+                        <div class="profit-card">
+                            <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600; margin-bottom: var(--space-2);">Total Income</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);">
+                                ${frappe.format(plStatement.summary.total_income || 0, {fieldtype: 'Currency'})}
+                            </div>
+                        </div>
+                        <div class="profit-card">
+                            <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600; margin-bottom: var(--space-2);">Total Expenses</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--error);">
+                                ${frappe.format(plStatement.summary.total_expense || 0, {fieldtype: 'Currency'})}
+                            </div>
+                        </div>
+                        <div class="profit-card">
+                            <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600; margin-bottom: var(--space-2);">Net Profit</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: ${plStatement.summary.net_profit >= 0 ? 'var(--success)' : 'var(--error)'};">
+                                ${frappe.format(plStatement.summary.net_profit || 0, {fieldtype: 'Currency'})}
+                            </div>
+                        </div>
+                        <div class="profit-card">
+                            <div style="font-size: 0.875rem; color: var(--text-muted); font-weight: 600; margin-bottom: var(--space-2);">Profit Margin</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: ${financialDetails.profit_percentage >= 40 ? 'var(--success)' : financialDetails.profit_percentage >= 35 ? 'var(--warning)' : 'var(--error)'};">
+                                ${financialDetails.profit_percentage || 0}%
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: var(--space-1);">Target: 40%</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Income Accounts -->
+                    ${plStatement.income_accounts && plStatement.income_accounts.length > 0 ? `
+                        <div style="margin-bottom: var(--space-6);">
+                            <h4 style="font-weight: 600; color: var(--text); margin-bottom: var(--space-3);">Income Accounts</h4>
+                            <div style="background: var(--surface); border-radius: var(--radius-lg); overflow: hidden;">
+                                <div class="pl-account-row" style="background: var(--surface-alt); font-weight: 600;">
+                                    <div>Account</div>
+                                    <div style="text-align: right;">Debit</div>
+                                    <div style="text-align: right;">Credit</div>
+                                    <div style="text-align: right;">Net Income</div>
+                                </div>
+                                ${plStatement.income_accounts.map(acc => `
+                                    <div class="pl-account-row">
+                                        <div>${acc.account_name}</div>
+                                        <div style="text-align: right;">${frappe.format(acc.total_debit || 0, {fieldtype: 'Currency'})}</div>
+                                        <div style="text-align: right;">${frappe.format(acc.total_credit || 0, {fieldtype: 'Currency'})}</div>
+                                        <div style="text-align: right; font-weight: 600; color: var(--success);">
+                                            ${frappe.format(acc.net_amount || 0, {fieldtype: 'Currency'})}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Expense Accounts -->
+                    ${plStatement.expense_accounts && plStatement.expense_accounts.length > 0 ? `
+                        <div>
+                            <h4 style="font-weight: 600; color: var(--text); margin-bottom: var(--space-3);">Expense Accounts</h4>
+                            <div style="background: var(--surface); border-radius: var(--radius-lg); overflow: hidden;">
+                                <div class="pl-account-row" style="background: var(--surface-alt); font-weight: 600;">
+                                    <div>Account</div>
+                                    <div style="text-align: right;">Debit</div>
+                                    <div style="text-align: right;">Credit</div>
+                                    <div style="text-align: right;">Net Expense</div>
+                                </div>
+                                ${plStatement.expense_accounts.map(acc => `
+                                    <div class="pl-account-row">
+                                        <div>${acc.account_name}</div>
+                                        <div style="text-align: right;">${frappe.format(acc.total_debit || 0, {fieldtype: 'Currency'})}</div>
+                                        <div style="text-align: right;">${frappe.format(acc.total_credit || 0, {fieldtype: 'Currency'})}</div>
+                                        <div style="text-align: right; font-weight: 600; color: var(--error);">
+                                            ${frappe.format(acc.net_amount || 0, {fieldtype: 'Currency'})}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                                <div class="pl-account-row pl-total-row">
+                                    <div>Total Expenses</div>
+                                    <div style="text-align: right;">-</div>
+                                    <div style="text-align: right;">-</div>
+                                    <div style="text-align: right; color: var(--error);">
+                                        ${frappe.format(plStatement.summary.total_expense || 0, {fieldtype: 'Currency'})}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            ` : ''}
+            
+            <!-- Project Tasks -->
+            ${tasks.length > 0 ? `
+                <div class="detail-section">
+                    <div class="detail-section-title">
+                        <i class="fa fa-tasks" style="color: var(--info);"></i>
+                        Project Tasks (${tasks.length})
+                    </div>
+                    <div style="display: grid; gap: var(--space-4);">
+                        ${tasks.map(task => `
+                            <div class="task-card">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-3);">
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                                            ${task.subject}
+                                        </div>
+                                        <div class="status-badge status-${task.status === 'Completed' ? 'completed' : task.status === 'Open' ? 'pending' : 'normal'}">
+                                            ${task.status}
+                                        </div>
+                                    </div>
+                                    <button class="open-doc-btn" onclick="window.open('/app/task/${task.name}', '_blank')">
+                                        <i class="fa fa-external-link"></i>
+                                    </button>
+                                </div>
+                                ${task.description ? `
+                                    <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-3);">
+                                        ${task.description}
+                                    </div>
+                                ` : ''}
+                                <div class="progress-item">
+                                    <div class="progress-header">
+                                        <span class="progress-label">Progress</span>
+                                        <span class="progress-value">${task.progress || 0}%</span>
+                                    </div>
+                                    <div class="progress-bar-modern" style="height: 6px;">
+                                        <div class="progress-fill-modern" style="width: ${task.progress || 0}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+// Enhanced Financials Section
+renderEnhancedFinancialsSection(order, invoices, payments, advanceInvoices, financialDetails) {
+    const totalInvoiced = invoices.reduce((sum, inv) => sum + (inv.grand_total || 0), 0);
+    const totalOutstanding = invoices.reduce((sum, inv) => sum + (inv.outstanding_amount || 0), 0);
+    const totalPaid = payments.reduce((sum, payment) => sum + (payment.paid_amount || 0), 0);
+    const totalAdvance = advanceInvoices.reduce((sum, inv) => sum + (inv.grand_total || 0), 0);
+    const totalAdvancePaid = advanceInvoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
+
+    return `
+        <div style="display: grid; gap: var(--space-6);">
+            
+            <!-- Financial Summary -->
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-chart-bar" style="color: var(--success);"></i>
+                    Financial Summary
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4);">
+                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: var(--space-1);">
+                            ${frappe.format(order.grand_total || 0, {fieldtype: 'Currency'})}
+                        </div>
+                        <div class="detail-label">Order Total</div>
+                    </div>
+                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--success); margin-bottom: var(--space-1);">
+                            ${frappe.format(totalInvoiced, {fieldtype: 'Currency'})}
+                        </div>
+                        <div class="detail-label">Total Invoiced</div>
+                    </div>
+                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--info); margin-bottom: var(--space-1);">
+                            ${frappe.format(totalPaid, {fieldtype: 'Currency'})}
+                        </div>
+                        <div class="detail-label">Total Paid</div>
+                    </div>
+                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning); margin-bottom: var(--space-1);">
+                            ${frappe.format(totalOutstanding, {fieldtype: 'Currency'})}
+                        </div>
+                        <div class="detail-label">Outstanding</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advance Invoices -->
+            ${advanceInvoices.length > 0 ? `
+                <div class="detail-section">
+                    <div class="detail-section-title">
+                        <i class="fa fa-file-invoice-dollar" style="color: var(--secondary);"></i>
+                        Advance/Progress Invoices (${advanceInvoices.length})
+                    </div>
+                    <div style="display: grid; gap: var(--space-4);">
+                        ${advanceInvoices.map(invoice => `
+                            <div class="document-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                                            ${invoice.name}
+                                        </div>
+                                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                                            ${frappe.datetime.str_to_user(invoice.posting_date)} • ${invoice.status}
+                                        </div>
+                                        <div style="display: flex; gap: var(--space-4);">
+                                            <div>
+                                                <span class="detail-label">Total: </span>
+                                                <strong>${frappe.format(invoice.grand_total, {fieldtype: 'Currency'})}</strong>
+                                            </div>
+                                            <div>
+                                                <span class="detail-label">Paid: </span>
+                                                <strong style="color: var(--success);">${frappe.format(invoice.paid_amount || 0, {fieldtype: 'Currency'})}</strong>
+                                            </div>
+                                            <div>
+                                                <span class="status-badge status-${invoice.is_paid ? 'completed' : 'pending'}">
+                                                    ${invoice.is_paid ? 'Paid' : 'Unpaid'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button class="open-doc-btn" onclick="window.open('/app/sales-invoice/${invoice.name}', '_blank')">
+                                        <i class="fa fa-external-link"></i>
+                                        Open
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                        <div style="background: var(--surface-alt); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--primary);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>Total Advances</strong>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-weight: 700; color: var(--primary);">
+                                        ${frappe.format(totalAdvance, {fieldtype: 'Currency'})}
+                                    </div>
+                                    <div style="font-size: 0.875rem; color: var(--text-muted);">
+                                        Paid: ${frappe.format(totalAdvancePaid, {fieldtype: 'Currency'})}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Financial Health Analysis -->
+            ${financialDetails.total_sales_amount ? `
+                <div class="detail-section">
+                    <div class="detail-section-title">
+                        <i class="fa fa-heartbeat" style="color: ${financialDetails.status === 'Within Budget' ? 'var(--success)' : 'var(--error)'}"></i>
+                        Financial Health Analysis
+                    </div>
+                    <div class="profit-card">
+                        <div class="financial-metric">
+                            <div>
+                                <div style="font-weight: 600;">Total Project Revenue</div>
+                                <div style="font-size: 0.875rem; color: var(--text-muted);">Income from all sources</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--success);">
+                                ${frappe.format(financialDetails.total_sales_amount || 0, {fieldtype: 'Currency'})}
+                            </div>
+                        </div>
+                        <div class="financial-metric">
+                            <div>
+                                <div style="font-weight: 600;">Total Expenses</div>
+                                <div style="font-size: 0.875rem; color: var(--text-muted);">All project costs</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--error);">
+                                ${frappe.format(financialDetails.total_expenses || 0, {fieldtype: 'Currency'})}
+                            </div>
+                        </div>
+                        <div class="financial-metric">
+                            <div>
+                                <div style="font-weight: 600;">Actual Profit</div>
+                                <div style="font-size: 0.875rem; color: var(--text-muted);">Revenue - Expenses</div>
+                            </div>
+                            <div style="font-weight: 700; color: ${financialDetails.actual_profit >= 0 ? 'var(--success)' : 'var(--error)'};">
+                                ${frappe.format(financialDetails.actual_profit || 0, {fieldtype: 'Currency'})}
+                            </div>
+                        </div>
+                        <div class="financial-metric">
+                            <div>
+                                <div style="font-weight: 600;">Expense Limit (60% Target)</div>
+                                <div style="font-size: 0.875rem; color: var(--text-muted);">Maximum recommended expenses</div>
+                            </div>
+                            <div style="font-weight: 700;">
+                                ${frappe.format(financialDetails.expected_expense_limit || 0, {fieldtype: 'Currency'})}
+                            </div>
+                        </div>
+                        <div class="financial-metric" style="background: var(--surface-alt); padding: var(--space-4); border-radius: var(--radius-lg); margin: var(--space-3) -var(--space-6) -var(--space-6);">
+                            <div>
+                                <div style="font-weight: 700; font-size: 1.125rem;">Budget Status</div>
+                                <div style="font-size: 0.875rem; color: var(--text-muted);">
+                                    ${financialDetails.expense_percentage}% of revenue spent
+                                </div>
+                            </div>
+                            <div>
+                                <span class="status-badge status-${financialDetails.status === 'Within Budget' ? 'completed' : financialDetails.status === 'Close to Target' ? 'pending' : 'overdue'}" style="font-size: 1rem; padding: var(--space-2) var(--space-4);">
+                                    ${financialDetails.status}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Payment Entries -->
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-credit-card" style="color: var(--info);"></i>
+                    Payment Entries (${payments.length})
+                </div>
+                ${payments.length ? `
+                    <div style="display: grid; gap: var(--space-4);">
+                        ${payments.map(payment => `
+                            <div class="document-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                                            ${payment.name}
+                                        </div>
+                                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                                            ${frappe.datetime.str_to_user(payment.posting_date)} • ${payment.mode_of_payment || 'N/A'}
+                                            ${payment.reference_no ? ` • Ref: ${payment.reference_no}` : ''}
+                                        </div>
+                                        <div style="display: flex; gap: var(--space-4);">
+                                            <div>
+                                                <span class="detail-label">Amount: </span>
+                                                <strong style="color: var(--success);">${frappe.format(payment.paid_amount, {fieldtype: 'Currency'})}</strong>
+                                            </div>
+                                            <div>
+                                                <span class="detail-label">Status: </span>
+                                                <span class="status-badge status-${payment.status === 'Submitted' ? 'completed' : 'pending'}">
+                                                    ${payment.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button class="open-doc-btn" onclick="window.open('/app/payment-entry/${payment.name}', '_blank')">
+                                        <i class="fa fa-external-link"></i>
+                                        Open
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : `
+                    <div style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
+                        <i class="fa fa-credit-card" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
+                        <div>No payment entries recorded</div>
+                    </div>
+                `}
+            </div>
+
+        </div>
+    `;
+}
+
+// Payment Schedule Section
+renderPaymentScheduleSection(paymentSchedule, order) {
+    if (!paymentSchedule.length) {
+        return `
+            <div class="detail-section">
+                <div style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
+                    <i class="fa fa-calendar-check" style="font-size: 3rem; margin-bottom: var(--space-4);"></i>
+                    <div>No payment schedule defined for this order</div>
+                </div>
+            </div>
+        `;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-calendar-check" style="color: var(--primary);"></i>
+                Payment Schedule
+            </div>
+            <div class="table-body">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Payment Term</th>
+                            <th>Due Date</th>
+                            <th>Invoice Portion (%)</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${paymentSchedule.map(schedule => {
+                            const dueDate = new Date(schedule.due_date);
+                            const isPastDue = dueDate < today;
+                            const isToday = dueDate.toDateString() === today.toDateString();
+                            const amount = (order.grand_total * schedule.invoice_portion) / 100;
+                            
+                            return `
+                                <tr>
+                                    <td><strong>${schedule.payment_term}</strong></td>
+                                    <td>
+                                        ${frappe.datetime.str_to_user(schedule.due_date)}
+                                        ${isPastDue ? '<span class="status-badge status-overdue" style="margin-left: var(--space-2);">Overdue</span>' : 
+                                          isToday ? '<span class="status-badge status-pending" style="margin-left: var(--space-2);">Due Today</span>' : ''}
+                                    </td>
+                                    <td>${schedule.invoice_portion}%</td>
+                                    <td><strong>${frappe.format(amount, {fieldtype: 'Currency'})}</strong></td>
+                                    <td>
+                                        <span class="status-badge status-normal">
+                                            ${isPastDue ? 'Check Payment' : 'Upcoming'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+// Material Requests Section
+renderMaterialRequestsSection(materialRequests) {
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-boxes" style="color: var(--warning);"></i>
+                Material Requests (${materialRequests.length})
+            </div>
+            <div style="display: grid; gap: var(--space-4);">
+                ${materialRequests.map(mr => `
+                    <div class="document-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                                    ${mr.name}
+                                </div>
+                                <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                                    ${frappe.datetime.str_to_user(mr.transaction_date)} • ${mr.material_request_type}
+                                </div>
+                                <div>
+                                    <span class="status-badge status-${mr.status === 'Submitted' ? 'completed' : mr.status === 'Ordered' ? 'pending' : 'normal'}">
+                                        ${mr.status}
+                                    </span>
+                                </div>
+                            </div>
+                            <button class="open-doc-btn" onclick="window.open('/app/material-request/${mr.name}', '_blank')">
+                                <i class="fa fa-external-link"></i>
+                                Open
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// Helper function to determine profit status
+getProfitStatus(financialDetails) {
+    const profitPercentage = financialDetails.profit_percentage || 0;
+    
+    if (profitPercentage >= 40) {
+        return {
+            color: 'var(--success)',
+            label: 'Excellent',
+            badgeClass: 'status-completed'
+        };
+    } else if (profitPercentage >= 35) {
+        return {
+            color: 'var(--warning)',
+            label: 'Good',
+            badgeClass: 'status-pending'
+        };
+    } else if (profitPercentage >= 25) {
+        return {
+            color: 'var(--warning)',
+            label: 'Below Target',
+            badgeClass: 'status-pending'
+        };
+    } else {
+        return {
+            color: 'var(--error)',
+            label: 'Poor',
+            badgeClass: 'status-overdue'
+        };
+    }
+}
 renderOverviewSection(order) {
     return `
         <div class="detail-section">
@@ -4814,7 +5796,7 @@ renderItemsSection(items) {
                 Order Items (${items.length} items)
             </div>
             <div class="table-body" style="border-radius: var(--radius-lg); overflow: hidden;">
-                <table class="data-table">
+                <table class="data-table" style="font-size: 0.85rem;">
                     <thead>
                         <tr>
                             <th>Item</th>
@@ -4831,17 +5813,17 @@ renderItemsSection(items) {
                         ${items.map(item => `
                             <tr>
                                 <td>
-                                    <div style="display: flex; align-items: center; gap: var(--space-3);">
+                                    <div style="display: flex; align-items: center; gap: var(--space-2);">
                                         ${item.image ? `
                                             <img src="${item.image}" class="item-image" onerror="this.style.display='none'">
                                         ` : `
-                                            <div class="item-image" style="background: var(--surface-alt); display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
+                                            <div class="item-image" style="background: var(--surface-alt); display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.875rem;">
                                                 <i class="fa fa-cube"></i>
                                             </div>
                                         `}
                                         <div>
-                                            <div style="font-weight: 600; color: var(--text);">${item.item_code}</div>
-                                            <div style="font-size: 0.875rem; color: var(--text-muted);">${item.item_name}</div>
+                                            <div style="font-weight: 600; color: var(--text); font-size: 0.8rem;">${item.item_code}</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted);">${item.item_name}</div>
                                         </div>
                                     </div>
                                 </td>
@@ -4855,7 +5837,7 @@ renderItemsSection(items) {
                                 </td>
                                 <td>${frappe.format(item.billed_amt || 0, {fieldtype: 'Currency'})}</td>
                                 <td>
-                                    <div style="font-size: 0.875rem;">
+                                    <div style="font-size: 0.75rem;">
                                         <div>Qty: ${item.pending_qty || 0}</div>
                                         <div style="color: var(--warning); font-weight: 600;">
                                             ${frappe.format(item.pending_amount || 0, {fieldtype: 'Currency'})}
@@ -4865,7 +5847,7 @@ renderItemsSection(items) {
                                 <td>
                                     <button class="open-doc-btn" onclick="window.open('/app/item/${item.item_code}', '_blank')">
                                         <i class="fa fa-external-link"></i>
-                                        View Item
+                                        View
                                     </button>
                                 </td>
                             </tr>
@@ -4876,7 +5858,6 @@ renderItemsSection(items) {
         </div>
     `;
 }
-
 renderDocumentsSection(invoices, deliveryNotes, quotations, permits) {
     return `
         <div style="display: grid; gap: var(--space-6);">
@@ -5256,7 +6237,7 @@ setupDetailTabHandlers() {
         order.name,
         order.customer,
         order.project || '',
-        order.custom_project_description || '',
+        order.project_description || '',
         order.sales_person,
         order.delivery_date,
         order.status || 'Unknown',
@@ -5362,7 +6343,7 @@ applyGlobalFilter(query) {
         (order.status || '').toLowerCase().includes(lowerQuery) ||
         (order.branch || '').toLowerCase().includes(lowerQuery) ||
         (order.project || '').toLowerCase().includes(lowerQuery) ||
-        (order.custom_project_description || '').toLowerCase().includes(lowerQuery)
+        (order.project_description || '').toLowerCase().includes(lowerQuery)
     );
     
     this.processData();

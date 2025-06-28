@@ -5823,7 +5823,6 @@ def get_conditions(filters):
 
 
 
-
 import frappe
 from frappe import _
 from frappe.utils import flt, getdate, date_diff, today, add_days, get_first_day, get_last_day, add_months
@@ -5953,7 +5952,7 @@ def get_sales_order_list(
                 so.per_delivered as percent_amount_delivered,
                 so.status,
                 so.project,
-                so.custom_project_description,
+                so.project_description,
                 (so.grand_total * (100 - COALESCE(so.per_billed, 0)) / 100) as balance_to_bill_amount,
                 so.transaction_date as date,
                 so.delivery_date,
@@ -5962,7 +5961,7 @@ def get_sales_order_list(
             LEFT JOIN `tabSales Team` st ON st.parent = so.name AND st.parenttype = 'Sales Order'
             LEFT JOIN `tabSales Person` sp ON sp.name = st.sales_person
             LEFT JOIN `tabEmployee` e ON e.name = sp.employee
-            WHERE {where_clause} 
+            WHERE {where_clause}
             ORDER BY 
                 CASE WHEN '{sort_by}' = 'sales_person' THEN COALESCE(st.sales_person, 'Unassigned') END {sort_order},
                 CASE WHEN '{sort_by}' = 'name' THEN so.name END {sort_order},
@@ -6015,21 +6014,27 @@ def get_sales_order_list(
                 "sort_info": {}
             }
         }
+
+
+import frappe
+from frappe.utils import getdate, flt, today, date_diff
+from frappe import _
+from datetime import timedelta  
+import json
+
 @frappe.whitelist(allow_guest=True)
 def get_sales_order_details(sales_order_name):
     """
     Get detailed information for a specific sales order including all related data,
     invoices, delivery notes, payment entries, quotations, opportunities, site visits,
-    design requests, permits directly linked to the sales order, and item images.
+    design requests, permits, project details, tasks, payment schedule, material requests,
+    advance invoices, and project financial details.
     
     Parameters:
     - sales_order_name: str, The name/ID of the sales order
     
     Returns: dict, JSON response with detailed sales order information
     """
-    from frappe.utils import getdate, flt, today, date_diff
-    import frappe
-
     try:
         order = frappe.get_doc("Sales Order", sales_order_name)
         
@@ -6045,8 +6050,8 @@ def get_sales_order_details(sales_order_name):
             
             sales_team.append({
                 "sales_person": team_member.sales_person,
-                "allocated_percentage": team_member.allocated_percentage,
-                "allocated_amount": team_member.allocated_amount,
+                "allocated_percentage": flt(team_member.allocated_percentage, 0),
+                "allocated_amount": flt(team_member.allocated_amount, 0),
                 "employee_name": employee_details.get("employee_name"),
                 "image": employee_details.get("image"),
                 "branch": employee_details.get("branch")
@@ -6059,13 +6064,13 @@ def get_sales_order_details(sales_order_name):
             items.append({
                 "item_code": item.item_code,
                 "item_name": item.item_name,
-                "qty": item.qty,
-                "rate": item.rate,
-                "amount": item.amount,
-                "delivered_qty": item.delivered_qty,
-                "billed_amt": item.billed_amt or 0,
-                "pending_qty": item.qty - item.delivered_qty,
-                "pending_amount": item.amount - (item.billed_amt or 0),
+                "qty": flt(item.qty, 0),
+                "rate": flt(item.rate, 0),
+                "amount": flt(item.amount, 0),
+                "delivered_qty": flt(item.delivered_qty, 0),
+                "billed_amt": flt(item.billed_amt, 0),
+                "pending_qty": flt(item.qty, 0) - flt(item.delivered_qty, 0),
+                "pending_amount": flt(item.amount, 0) - flt(item.billed_amt, 0),
                 "image": item_image
             })
         
@@ -6125,14 +6130,12 @@ def get_sales_order_details(sales_order_name):
             FROM `tabQuotation` q
             JOIN `tabSales Order Item` soi ON soi.prevdoc_docname = q.name
             WHERE soi.parent = %s AND q.docstatus = 1
-        
         """, sales_order_name, as_dict=True)
         
         # Get permit details directly linked to the sales order
         permits = frappe.db.sql("""
             SELECT 
                 name
-       
             FROM `tabPermit Form`
             WHERE sales_order = %s 
             ORDER BY creation
@@ -6154,20 +6157,16 @@ def get_sales_order_details(sales_order_name):
                 site_visits = frappe.db.sql("""
                     SELECT 
                         name
-  
                     FROM `tabSite Visit`
                     WHERE opportunity = %s 
-                 
                 """, opportunity_name, as_dict=True)
                 
                 # Get Design Request details
                 design_requests = frappe.db.sql("""
                     SELECT 
                         name
-               
                     FROM `tabDesign Request`
                     WHERE opportunity = %s 
-           
                 """, opportunity_name, as_dict=True)
                 
                 opportunities.append({
@@ -6176,22 +6175,403 @@ def get_sales_order_details(sales_order_name):
                     "design_requests": design_requests
                 })
         
-        # Calculate balance to bill amount
-        balance_to_bill_amount = flt(order.grand_total) - flt(order.advance_paid or 0) - sum([flt(inv.grand_total) for inv in invoices])
+        # 1) Get project details
+        project_details = {}
+        if order.project:
+            project_details = frappe.db.get_value(
+                "Project",
+                order.project,
+                [
+                    "name",
+                    "project_name",
+                    "status",
+                    "percent_complete",
+                    "custom_project_owner_name",
+                    "total_costing_amount",
+                    "total_purchase_cost",
+                    "custom_total_purchase_cost_via_purchase_order",
+                    "total_consumed_material_cost"
+                ],
+                as_dict=True
+            ) or {}
         
-        # Get primary sales person from sales team (first one or the one with highest allocation)
+        # 2) Get project tasks
+        tasks = frappe.db.sql("""
+            SELECT 
+                name,
+                subject,
+                status,
+                description,
+                progress
+            FROM `tabTask`
+            WHERE project = %s
+            ORDER BY creation
+        """, order.project, as_dict=True) if order.project else []
+        
+        # 3) Get payment schedule from sales order
+        payment_schedule = []
+        for payment in order.payment_schedule or []:
+            payment_schedule.append({
+                "payment_term": payment.payment_term,
+                "due_date": payment.due_date,
+                "invoice_portion": flt(payment.invoice_portion, 0)
+            })
+        
+        # 4) Get material requests (from sales order and project, avoiding duplicates)
+        material_requests = frappe.db.sql("""
+            SELECT DISTINCT 
+                mr.name,
+                mr.transaction_date,
+                mr.material_request_type,
+                mr.status
+            FROM `tabMaterial Request` mr
+            LEFT JOIN `tabMaterial Request Item` mri ON mri.parent = mr.name
+            WHERE (mri.sales_order = %s OR mri.project = %s) AND mr.docstatus = 1
+            ORDER BY mr.transaction_date
+        """, (sales_order_name, order.project), as_dict=True) if order.project else frappe.db.sql("""
+            SELECT DISTINCT 
+                mr.name,
+                mr.transaction_date,
+                mr.material_request_type,
+                mr.status
+            FROM `tabMaterial Request` mr
+            JOIN `tabMaterial Request Item` mri ON mri.parent = mr.name
+            WHERE mri.sales_order = %s AND mr.docstatus = 1
+            ORDER BY mr.transaction_date
+        """, sales_order_name, as_dict=True)
+        
+        # 5) Get advance invoices (invoices with advance/progress items) - FIXED
+        advance_invoices = frappe.db.sql("""
+            SELECT 
+                si.name,
+                si.posting_date,
+                si.grand_total,
+                si.outstanding_amount,
+                si.status,
+                (SELECT SUM(ple.amount)
+                 FROM `tabPayment Ledger Entry` ple
+                 WHERE ple.voucher_type = 'Sales Invoice' 
+                 AND ple.voucher_no = si.name 
+                 AND ple.delinked = 0) as paid_amount
+            FROM `tabSales Invoice` si
+            JOIN `tabSales Invoice Item` sii ON sii.parent = si.name
+            WHERE sii.sales_order = %s 
+            AND si.docstatus = 1
+            AND (sii.item_code LIKE '%%advance%%' OR sii.item_code LIKE '%%progress%%')
+            GROUP BY si.name
+            ORDER BY si.posting_date
+        """, sales_order_name, as_dict=True)
+        
+        # Fix the None value comparison issue
+        for inv in advance_invoices:
+            paid_amount = flt(inv.get("paid_amount"), 0)
+            grand_total = flt(inv.get("grand_total"), 0)
+            
+            inv["paid_amount"] = paid_amount
+            inv["is_paid"] = paid_amount >= grand_total
+            inv["outstanding_amount"] = grand_total - paid_amount
+        
+        # 6) Calculate project financial details (Profit and Loss) - UPDATED WITH P&L STATEMENT
+        financial_details = {
+            "total_sales_amount": 0,
+            "total_expense": 0,
+            "timesheet_amount": 0,
+            "jc_expense": 0,
+            "total_expenses": 0,
+            "expected_profit_amount": 0,
+            "expected_expense_limit": 0,
+            "actual_profit": 0,
+            "pr_cost": 0,
+            "is_internal": 0,
+            "status": "Within Budget",
+            "currency": order.currency or "AED",
+            "account_statement": [],
+            "profit_loss_statement": {}  # New P&L statement
+        }
+        
+        if order.project:
+            # Fetch sales orders for total sales amount using direct SQL
+            sales_orders = frappe.db.sql("""
+                SELECT base_net_total
+                FROM `tabSales Order`
+                WHERE project = %s AND docstatus = 1
+            """, order.project, as_dict=True)
+            financial_details["total_sales_amount"] = sum([flt(so.base_net_total, 0) for so in sales_orders])
+            
+            # Calculate GL expenses using direct SQL query with detailed P&L view
+            gl_entries = frappe.db.sql("""
+                SELECT 
+                    gle.account,
+                    gle.debit,
+                    gle.credit,
+                    gle.voucher_type,
+                    gle.voucher_no,
+                    gle.posting_date,
+                    gle.remarks,
+                    acc.root_type,
+                    acc.account_type,
+                    acc.account_name,
+                    acc.parent_account
+                FROM `tabGL Entry` gle
+                LEFT JOIN `tabAccount` acc ON acc.name = gle.account
+                WHERE gle.project = %s
+                ORDER BY acc.root_type, gle.account, gle.posting_date
+            """, order.project, as_dict=True)
+            
+            # Create P&L Statement structure
+            profit_loss_statement = {
+                "income": {},
+                "expense": {},
+                "other_accounts": {},
+                "summary": {
+                    "total_income": 0,
+                    "total_expense": 0,
+                    "gross_profit": 0,
+                    "net_profit": 0
+                }
+            }
+            
+            # Process GL entries into P&L categories
+            for gl in gl_entries:
+                account = gl.account
+                root_type = gl.root_type or "Other"
+                account_name = gl.account_name or account
+                debit = flt(gl.debit, 0)
+                credit = flt(gl.credit, 0)
+                net_amount = debit - credit
+                
+                # Determine which section this account belongs to
+                if root_type == "Income":
+                    section = profit_loss_statement["income"]
+                    # For income accounts, credit increases income (so we use credit - debit)
+                    net_amount = credit - debit
+                    profit_loss_statement["summary"]["total_income"] += net_amount
+                elif root_type == "Expense":
+                    section = profit_loss_statement["expense"]
+                    # For expense accounts, debit increases expense (so we use debit - credit)
+                    net_amount = debit - credit
+                    profit_loss_statement["summary"]["total_expense"] += net_amount
+                else:
+                    section = profit_loss_statement["other_accounts"]
+                
+                # Initialize account if not exists
+                if account not in section:
+                    section[account] = {
+                        "account": account,
+                        "account_name": account_name,
+                        "root_type": root_type,
+                        "account_type": gl.account_type,
+                        "parent_account": gl.parent_account,
+                        "total_debit": 0,
+                        "total_credit": 0,
+                        "net_amount": 0,
+                        "entries": []
+                    }
+                
+                # Add to account totals
+                section[account]["total_debit"] += debit
+                section[account]["total_credit"] += credit
+                
+                # Update net amount based on account type
+                if root_type == "Income":
+                    section[account]["net_amount"] = section[account]["total_credit"] - section[account]["total_debit"]
+                else:
+                    section[account]["net_amount"] = section[account]["total_debit"] - section[account]["total_credit"]
+                
+                # Add individual entry
+                section[account]["entries"].append({
+                    "posting_date": gl.posting_date,
+                    "voucher_type": gl.voucher_type,
+                    "voucher_no": gl.voucher_no,
+                    "debit": debit,
+                    "credit": credit,
+                    "remarks": gl.remarks
+                })
+            
+            # Calculate P&L summary
+            profit_loss_statement["summary"]["gross_profit"] = (
+                profit_loss_statement["summary"]["total_income"] - 
+                profit_loss_statement["summary"]["total_expense"]
+            )
+            profit_loss_statement["summary"]["net_profit"] = profit_loss_statement["summary"]["gross_profit"]
+            
+            # Convert dictionaries to lists for easier frontend consumption
+            profit_loss_statement["income_accounts"] = list(profit_loss_statement["income"].values())
+            profit_loss_statement["expense_accounts"] = list(profit_loss_statement["expense"].values())
+            profit_loss_statement["other_accounts_list"] = list(profit_loss_statement["other_accounts"].values())
+            
+            # Set for backward compatibility
+            financial_details["total_expense"] = profit_loss_statement["summary"]["total_expense"]
+            financial_details["profit_loss_statement"] = profit_loss_statement
+            
+            # Also create simplified account statement (keep for backward compatibility)
+            account_summary = {}
+            for gl in gl_entries:
+                account = gl.account
+                if account not in account_summary:
+                    account_summary[account] = {
+                        "account": account,
+                        "account_name": gl.account_name,
+                        "root_type": gl.root_type,
+                        "account_type": gl.account_type,
+                        "total_debit": 0,
+                        "total_credit": 0,
+                        "net_amount": 0,
+                        "entries": []
+                    }
+                
+                debit = flt(gl.debit, 0)
+                credit = flt(gl.credit, 0)
+                
+                account_summary[account]["total_debit"] += debit
+                account_summary[account]["total_credit"] += credit
+                account_summary[account]["net_amount"] = account_summary[account]["total_debit"] - account_summary[account]["total_credit"]
+                
+                account_summary[account]["entries"].append({
+                    "posting_date": gl.posting_date,
+                    "voucher_type": gl.voucher_type,
+                    "voucher_no": gl.voucher_no,
+                    "debit": debit,
+                    "credit": credit
+                })
+            
+            financial_details["account_statement"] = list(account_summary.values())
+            
+            # Get timesheet amount instead of project costing
+            project = frappe.db.get_value(
+                "Project",
+                order.project,
+                ["customer"],
+                as_dict=True
+            )
+            
+            # Get timesheet amount from timesheets linked to this project
+            timesheets = frappe.db.sql("""
+                SELECT SUM(tsd.billing_amount) as timesheet_amount
+                FROM `tabTimesheet Detail` tsd
+                JOIN `tabTimesheet` ts ON ts.name = tsd.parent
+                WHERE tsd.project = %s AND ts.docstatus = 1
+            """, order.project, as_dict=True)
+            
+            financial_details["timesheet_amount"] = flt(timesheets[0].timesheet_amount, 0) if timesheets and timesheets[0].timesheet_amount else 0
+            
+            # Get manufacturing costs using direct SQL query
+            stock_entries = frappe.db.sql("""
+                SELECT value_difference
+                FROM `tabStock Entry`
+                WHERE project = %s AND stock_entry_type = 'Manufacture' AND docstatus = 1
+            """, order.project, as_dict=True)
+            financial_details["jc_expense"] = sum([flt(se.value_difference, 0) for se in stock_entries])
+            
+            # Check customer type
+            if project and project.get("customer"):
+                financial_details["is_internal"] = flt(frappe.db.get_value(
+                    "Customer",
+                    project.customer,
+                    "is_internal_customer"
+                ), 0)
+            
+            # Calculate profit expectations (40% profit means 60% max expenses)
+            # Use GL income if available, otherwise use sales order total
+            gl_income = financial_details.get("profit_loss_statement", {}).get("summary", {}).get("total_income", 0)
+            total_sales = gl_income if gl_income > 0 else flt(financial_details["total_sales_amount"], 0)
+            
+            # Update total_sales_amount to reflect actual GL income if available
+            if gl_income > 0:
+                financial_details["total_sales_amount"] = gl_income
+            
+            # Expected profit should be 40% of sales
+            financial_details["expected_profit_amount"] = total_sales * 0.40
+            
+            # Expected expense limit should be 60% of sales
+            financial_details["expected_expense_limit"] = total_sales * 0.60
+            
+            # Calculate total actual expenses (GL expenses + other project costs)
+            gl_expenses = flt(financial_details["total_expense"], 0)
+            financial_details["total_expenses"] = (
+                gl_expenses +
+                flt(financial_details["timesheet_amount"], 0) +
+                flt(financial_details["jc_expense"], 0) +
+                flt(financial_details["pr_cost"], 0)
+            )
+            
+            # Calculate actual profit
+            financial_details["actual_profit"] = total_sales - financial_details["total_expenses"]
+            
+            # Also calculate GL-based profit (from P&L statement)
+            financial_details["gl_based_profit"] = (
+                financial_details.get("profit_loss_statement", {}).get("summary", {}).get("net_profit", 0)
+            )
+            
+            # Get over cost using direct SQL query
+            over_costs = frappe.db.sql("""
+                SELECT over_cost
+                FROM `tabProject Over Cost`
+                WHERE project = %s AND docstatus = 1
+            """, order.project, as_dict=True)
+            financial_details["pr_cost"] = sum([flt(cost.over_cost, 0) for cost in over_costs])
+            
+            # Calculate total
+            financial_details["total"] = financial_details["total_expenses"]  # For backward compatibility
+            
+            # Determine status based on 40% profit model
+            if total_sales > 0:
+                expense_percentage = (financial_details["total_expenses"] / total_sales) * 100
+                profit_percentage = ((total_sales - financial_details["total_expenses"]) / total_sales) * 100
+                
+                if expense_percentage > 60:  # If expenses exceed 60% of sales
+                    financial_details["status"] = "Over Budget"
+                elif profit_percentage >= 40:  # If profit is 40% or more
+                    financial_details["status"] = "Within Budget"
+                elif profit_percentage >= 35:  # If profit is between 35-40%
+                    financial_details["status"] = "Close to Target"
+                else:  # If profit is less than 35%
+                    financial_details["status"] = "Below Target"
+                
+                # Add percentage metrics for better understanding
+                financial_details["expense_percentage"] = round(expense_percentage, 2)
+                financial_details["profit_percentage"] = round(profit_percentage, 2)
+                
+                # Set backward compatibility field
+                financial_details["profit"] = financial_details["actual_profit"]
+                
+                # Add GL vs calculated profit comparison
+                financial_details["profit_variance"] = financial_details["actual_profit"] - financial_details["gl_based_profit"]
+            else:
+                financial_details["expense_percentage"] = 0
+                financial_details["profit_percentage"] = 0
+                financial_details["profit"] = 0
+                financial_details["profit_variance"] = 0
+        
+        # Calculate balance to bill amount - FIXED
+        balance_to_bill_amount = (
+            flt(order.grand_total, 0) - 
+            flt(order.advance_paid, 0) - 
+            sum([flt(inv.grand_total, 0) for inv in invoices])
+        )
+        
+        # Get primary sales person from sales team
         primary_sales_person = None
         if sales_team:
-            # Sort by allocated percentage (descending) and take the first one
-            sorted_team = sorted(sales_team, key=lambda x: x.get('allocated_percentage', 0), reverse=True)
+            sorted_team = sorted(sales_team, key=lambda x: flt(x.get('allocated_percentage'), 0), reverse=True)
             primary_sales_person = sorted_team[0].get('sales_person') if sorted_team else None
         
-        # Safely get fields that might not exist
+        # Safely get fields
         def safe_get_attr(obj, attr, default=None):
             try:
-                return getattr(obj, attr, default)
+                value = getattr(obj, attr, default)
+                return value if value is not None else default
             except AttributeError:
                 return default
+        
+        # Helper function for safe date difference calculation
+        def safe_date_diff(end_date, start_date):
+            try:
+                if end_date and start_date:
+                    return date_diff(end_date, start_date)
+                return 999999
+            except:
+                return 999999
         
         return {
             "status": "success",
@@ -6206,21 +6586,20 @@ def get_sales_order_details(sales_order_name):
                     "project_description": safe_get_attr(order, 'project_description'),
                     "project": safe_get_attr(order, 'project'),
                     "status": safe_get_attr(order, 'status'),
-                    "net_total": safe_get_attr(order, 'net_total', 0),
-                    "grand_total": safe_get_attr(order, 'grand_total', 0),
+                    "net_total": flt(safe_get_attr(order, 'net_total'), 0),
+                    "grand_total": flt(safe_get_attr(order, 'grand_total'), 0),
                     "balance_to_bill_amount": balance_to_bill_amount,
-                    "per_billed": safe_get_attr(order, 'per_billed', 0),
-                    "per_delivered": safe_get_attr(order, 'per_delivered', 0),
-                    "percent_amount_billed": safe_get_attr(order, 'per_billed', 0),
-                    "percent_amount_delivered": safe_get_attr(order, 'per_delivered', 0),
-                    "advance_paid": safe_get_attr(order, 'advance_paid', 0),
-                    "project": safe_get_attr(order, 'project'),
+                    "per_billed": flt(safe_get_attr(order, 'per_billed'), 0),
+                    "per_delivered": flt(safe_get_attr(order, 'per_delivered'), 0),
+                    "percent_amount_billed": flt(safe_get_attr(order, 'per_billed'), 0),
+                    "percent_amount_delivered": flt(safe_get_attr(order, 'per_delivered'), 0),
+                    "advance_paid": flt(safe_get_attr(order, 'advance_paid'), 0),
                     "branch": safe_get_attr(order, 'branch'),
-                    "sales_person": primary_sales_person,  # Get from sales team instead
+                    "sales_person": primary_sales_person,
                     "is_overdue": bool(order.delivery_date and getdate(order.delivery_date) < getdate(today())),
-                    "billing_status": 'Fully Billed' if flt(safe_get_attr(order, 'per_billed', 0)) >= 100 else 'Pending',
-                    "delivery_status": 'Fully Delivered' if flt(safe_get_attr(order, 'per_delivered', 0)) >= 100 else 'Pending',
-                    "days_until_delivery": 999999 if not order.delivery_date else date_diff(order.delivery_date, getdate(today())),
+                    "billing_status": 'Fully Billed' if flt(safe_get_attr(order, 'per_billed'), 0) >= 100 else 'Pending',
+                    "delivery_status": 'Fully Delivered' if flt(safe_get_attr(order, 'per_delivered'), 0) >= 100 else 'Pending',
+                    "days_until_delivery": safe_date_diff(order.delivery_date, getdate(today())) if order.delivery_date else 999999,
                     "formatted_transaction_date": frappe.utils.formatdate(order.transaction_date) if order.transaction_date else None,
                     "formatted_delivery_date": frappe.utils.formatdate(order.delivery_date) if order.delivery_date else None
                 },
@@ -6231,7 +6610,13 @@ def get_sales_order_details(sales_order_name):
                 "payment_entries": payments,
                 "quotations": quotations,
                 "permits": permits,
-                "opportunities": opportunities
+                "opportunities": opportunities,
+                "project_details": project_details,
+                "tasks": tasks,
+                "payment_schedule": payment_schedule,
+                "material_requests": material_requests,
+                "advance_invoices": advance_invoices,
+                "financial_details": financial_details
             }
         }
         
@@ -6249,6 +6634,12 @@ def get_sales_order_details(sales_order_name):
                 "payment_entries": [],
                 "quotations": [],
                 "permits": [],
-                "opportunities": []
+                "opportunities": [],
+                "project_details": {},
+                "tasks": [],
+                "payment_schedule": [],
+                "material_requests": [],
+                "advance_invoices": [],
+                "financial_details": {}
             }
         }
