@@ -5569,7 +5569,7 @@ def get_available_employees():
             (from_date <= schedule_to_date and to_date >= schedule_from_date) and
             (from_time <= schedule_to_time and to_time >= schedule_from_time)
         ):
-            project_desc = parent.get('project_description') or f"Schedule {parent.name}"
+            project_desc = parent.get('custom_project_description') or f"Schedule {parent.name}"
             availability_map[schedule.employee] = {
                 'is_available': False,
                 'conflict': f'"{project_desc}"'
@@ -5952,7 +5952,7 @@ def get_sales_order_list(
                 so.per_delivered as percent_amount_delivered,
                 so.status,
                 so.project,
-                so.project_description,
+                so.custom_project_description,
                 (so.grand_total * (100 - COALESCE(so.per_billed, 0)) / 100) as balance_to_bill_amount,
                 so.transaction_date as date,
                 so.delivery_date,
@@ -6583,7 +6583,7 @@ def get_sales_order_details(sales_order_name):
                     "transaction_date": safe_get_attr(order, 'transaction_date'),
                     "delivery_date": safe_get_attr(order, 'delivery_date'),
                     "company": safe_get_attr(order, 'company'),
-                    "project_description": safe_get_attr(order, 'project_description'),
+                    "project_description": safe_get_attr(order, 'custom_project_description'),
                     "project": safe_get_attr(order, 'project'),
                     "status": safe_get_attr(order, 'status'),
                     "net_total": flt(safe_get_attr(order, 'net_total'), 0),
