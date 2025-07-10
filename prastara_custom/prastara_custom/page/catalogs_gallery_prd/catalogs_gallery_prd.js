@@ -493,6 +493,16 @@ class EnhancedCatalogGallery {
                 letter-spacing: 0.05em;
                 text-transform: uppercase;
             }
+                .main-section {
+                background:linear-gradient(135deg, #152318 0%, #1F3629 50%, #2B4E3E 100%);
+            }
+                .layout-main-section-wrapper{
+                background: linear-gradient(135deg, #152318 0%, #1F3629 50%, #2B4E3E 100%);
+                }
+                .row{
+                background: linear-gradient(135deg, #152318 0%, #1F3629 50%, #2B4E3E 100%);}
+                .layout-main{
+                background: linear-gradient(135deg, #152318 0%, #1F3629 50%, #2B4E3E 100%);}
 
             /* Catalog Grid */
             .catalog-grid {
