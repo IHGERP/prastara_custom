@@ -6643,3 +6643,28 @@ def get_sales_order_details(sales_order_name):
                 "financial_details": {}
             }
         }
+
+@frappe.whitelist(allow_guest=True)
+def get_catalogs_and_profiles():
+    try:
+        # Fetch all records from Catalogs and Profiles DocType
+        records = frappe.get_all(
+            "Catalogs and Profiles",
+            fields=["*"],
+            filters={},
+            order_by="creation desc"
+        )
+
+        # Return data
+        return {
+            "status": "success",
+            "data": records
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error fetching Catalogs and Profiles: {str(e)}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
