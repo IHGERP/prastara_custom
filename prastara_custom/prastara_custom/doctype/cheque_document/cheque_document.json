@@ -179,7 +179,7 @@
    "fieldname": "permit_request",
    "fieldtype": "Link",
    "label": "Permit Request",
-   "options": "Permit Request"
+   "options": "Permit Form"
   },
   {
    "fieldname": "sales_order",
