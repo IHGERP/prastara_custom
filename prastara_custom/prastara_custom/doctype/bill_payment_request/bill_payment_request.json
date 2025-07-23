@@ -1,0 +1,115 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "BPR-.#####",
+ "creation": "2025-05-16 12:21:16.128196",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "cost_center",
+  "types",
+  "budget_amount",
+  "custodian",
+  "column_break_7vsh2",
+  "branch",
+  "due_date",
+  "due_amount",
+  "vat_template"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "label": "Cost Center",
+   "options": "Cost Center"
+  },
+  {
+   "fieldname": "types",
+   "fieldtype": "Link",
+   "label": "Types",
+   "options": "Bill Payment Types"
+  },
+  {
+   "fetch_from": "types.budget_amount",
+   "fieldname": "budget_amount",
+   "fieldtype": "Currency",
+   "label": "Budget Amount",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "types.custodian",
+   "fieldname": "custodian",
+   "fieldtype": "Data",
+   "label": "Custodian",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_7vsh2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "types.branch",
+   "fieldname": "branch",
+   "fieldtype": "Data",
+   "label": "Branch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "label": "Due Date"
+  },
+  {
+   "fieldname": "due_amount",
+   "fieldtype": "Data",
+   "label": "Due Amount"
+  },
+  {
+   "fetch_from": "types.custom_vat_template_",
+   "fieldname": "vat_template",
+   "fieldtype": "Link",
+   "label": "VAT Template",
+   "options": "Purchase Taxes and Charges Template"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [
+  {
+   "custom": 1,
+   "link_doctype": "Purchase Invoice",
+   "link_fieldname": "custom_bill_payment_request"
+  }
+ ],
+ "modified": "2025-07-23 11:06:29.512407",
+ "modified_by": "Administrator",
+ "module": "Prastara Custom",
+ "name": "Bill Payment Request",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
