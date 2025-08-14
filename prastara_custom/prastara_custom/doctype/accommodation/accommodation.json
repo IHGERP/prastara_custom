@@ -1,0 +1,135 @@
+{
+ "actions": [
+  {
+   "action": "/app/accommodation/ACC-IHG-10522",
+   "action_type": "Route",
+   "label": "Help"
+  }
+ ],
+ "allow_rename": 1,
+ "autoname": "format:ACC-{employee}",
+ "creation": "2024-01-12 09:22:19.381902",
+ "default_view": "List",
+ "doctype": "DocType",
+ "documentation": "https://www.diffchecker.com/text-compare/",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "company",
+  "column_break_gsi9z",
+  "employee_name",
+  "branch",
+  "section_break_rjq0k",
+  "room",
+  "room_number",
+  "column_break_xv8u4",
+  "total_beds",
+  "free_beds",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "employee.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "column_break_gsi9z",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name"
+  },
+  {
+   "fetch_from": "employee.branch",
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "section_break_rjq0k",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "room",
+   "fieldtype": "Link",
+   "label": "Room",
+   "options": "Beds"
+  },
+  {
+   "fetch_from": "room.rooms",
+   "fieldname": "room_number",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Room Number",
+   "options": "Accommodation Rooms"
+  },
+  {
+   "fieldname": "column_break_xv8u4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "room.total_bed",
+   "fieldname": "total_beds",
+   "fieldtype": "Int",
+   "label": "Total Beds",
+   "read_only": 1
+  },
+  {
+   "fieldname": "free_beds",
+   "fieldtype": "Int",
+   "label": "Free Beds",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Accommodation",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-08-14 11:06:22.235906",
+ "modified_by": "Administrator",
+ "module": "Prastara Custom",
+ "name": "Accommodation",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
