@@ -5101,141 +5101,6 @@ def reorder_products(page=1, per_page=20, item_code=None, brand=None, category=N
         "per_page": per_page
     }
 
-@frappe.whitelist()
-def get_context(context):
-    """Prepare context for the sales-performance page."""
-    filters = frappe.form_dict  # Get filters from URL query params
-    context.sales_data = get_sales_data(filters)
-    context.csrf_token = frappe.sessions.get_csrf_token()
-    return context
-
-@frappe.whitelist()
-def get_sales_data(filters=None):
-    """Fetch sales target data with HTTPS image URLs."""
-    # Handle stringified filters from frontend
-    if isinstance(filters, str):
-        filters = json.loads(filters)
-    if not filters:
-        filters = {}
-    
-    conditions = get_conditions(filters)
-    from_date = getdate(filters.get("from_date")) if filters.get("from_date") else getdate().replace(day=1)
-    to_date = getdate(filters.get("to_date")) if filters.get("to_date") else getdate()
-    
-    # Fetch sales targets
-    sales_targets = frappe.db.sql(f"""
-        SELECT 
-            sp.name as sales_person, 
-            sp.parent_sales_person as sales_team,
-            st.company, 
-            st.branch, 
-            st.monthly_target, 
-            st.from_date, 
-            st.to_date
-        FROM 
-            `tabSales Target` st
-        JOIN `tabSales Person` sp ON sp.name = st.sales_person
-        WHERE 
-            {conditions}
-            AND st.to_date >= %(from_date)s 
-            AND st.from_date <= %(to_date)s
-    """, {"from_date": from_date, "to_date": to_date, **filters}, as_dict=1)
-    
-    result = []
-    site_url = get_url()  # Ensures HTTPS if site is configured for it
-    
-    for target in sales_targets:
-        sales_person = target.sales_person
-        sales_team = target.sales_team
-        entry_from = getdate(target.from_date)
-        entry_to = getdate(target.to_date)
-        
-        effective_start = max(from_date, entry_from)
-        effective_end = min(to_date, entry_to)
-        
-        num_months = ((effective_end.year - effective_start.year) * 12 + effective_end.month - effective_start.month) + 1
-        
-        # Fetch sales and payment data
-        sales_data = frappe.db.sql("""
-            SELECT SUM(si.grand_total) as total_sales,
-                   COALESCE(SUM(CAST(p.amount AS DECIMAL(10, 2))), 0) AS total_payment
-            FROM `tabSales Invoice` si
-            LEFT JOIN `tabPayment Ledger Entry` p ON p.voucher_no = si.name AND p.docstatus = 1
-            LEFT JOIN `tabSales Team` st ON st.parent = si.name
-            WHERE 
-                si.docstatus = 1
-                AND si.posting_date BETWEEN %(effective_start)s AND %(effective_end)s
-                AND st.sales_person = %(sales_person)s
-        """, {"effective_start": effective_start, "effective_end": effective_end, "sales_person": sales_person}, as_dict=1)
-        
-        overall_payment_data = frappe.db.sql("""
-            SELECT COALESCE(SUM(CAST(p.amount AS DECIMAL(10, 2))), 0) AS overall_total_payment
-            FROM `tabPayment Ledger Entry` p
-            LEFT JOIN `tabSales Invoice` si ON p.voucher_no = si.name
-            LEFT JOIN `tabSales Team` st ON st.parent = si.name
-            WHERE 
-                p.docstatus = 1
-                AND st.sales_person = %(sales_person)s
-        """, {"sales_person": sales_person}, as_dict=1)
-        
-        total_sales = sales_data[0].total_sales if sales_data and sales_data[0].total_sales else 0
-        total_payment = sales_data[0].total_payment if sales_data and sales_data[0].total_payment else 0
-        overall_total_payment = overall_payment_data[0].overall_total_payment if overall_payment_data and overall_payment_data[0].overall_total_payment else 0
-        
-        # Fetch employee image
-        employee = frappe.db.get_value("Sales Person", sales_person, "employee")
-        employee_image = f"{site_url}/files/default-avatar.png"
-        if employee:
-            image = frappe.db.get_value("Employee", employee, "image")
-            if image and not image.startswith(('http://', 'https://')):
-                employee_image = f"{site_url}{image}"
-            elif image:
-                employee_image = image
-        
-        row = {
-            'sales_person': sales_person,
-            'sales_team': sales_team,
-            'company': target.company,
-            'branch': target.branch,
-            'target': target.monthly_target,
-            'month_count': num_months,
-            'total_target': target.monthly_target * num_months,
-            'total_sales': total_sales,
-            'total_payment': total_payment,
-            'overall_total_payment': overall_total_payment,
-            'period_start': effective_start,
-            'period_end': effective_end,
-            'achievement': (total_sales / (target.monthly_target * num_months) * 100) if (target.monthly_target * num_months) else 0,
-            'employee_image': employee_image
-        }
-        result.append(row)
-    
-    # Add total row
-    if result:
-        target_sum = sum(d['target'] for d in result)
-        month_count_sum = sum(d['month_count'] for d in result)
-        total_target_sum = sum(d['total_target'] for d in result)
-        total_sales_sum = sum(d['total_sales'] for d in result)
-        total_payment_sum = sum(d['total_payment'] for d in result)
-        avg_achievement = sum(d['achievement'] for d in result) / len(result)
-        
-        result.append({
-            'sales_person': 'Total',
-            'sales_team': '',
-            'company': '',
-            'branch': '',
-            'target': target_sum,
-            'month_count': month_count_sum,
-            'total_target': total_target_sum,
-            'total_sales': total_sales_sum,
-            'total_payment': total_payment_sum,
-            'achievement': avg_achievement,
-            'period_start': '',
-            'period_end': '',
-            'employee_image': ''
-        })
-    
-    return result
 
 @frappe.whitelist()
 def get_conditions(filters):
@@ -6667,4 +6532,446 @@ def get_catalogs_and_profiles():
             "status": "error",
             "message": str(e)
         }
+
+
+
+import frappe
+from frappe import _
+from frappe.utils import flt, getdate, date_diff, today, add_days, get_first_day, get_last_day, add_months
+from datetime import datetime, timedelta
+
+@frappe.whitelist(allow_guest=True)
+def draft_get_sales_order_list_prd(
+    search=None,
+    customer=None,
+    sales_person=None,
+    branch=None,
+    delivery_date_from=None,
+    delivery_date_to=None,
+    date_from=None,
+    date_to=None,
+    status=None,
+    delivery_filter=None,
+    is_internal_customer=None,
+    sort_by="delivery_date",
+    sort_order="ASC"
+):
+    
+    
+    try:
+        current_date = getdate(today())
+        
+        # Validate inputs
+        sort_by = sort_by if sort_by in ['name', 'customer', 'sales_person', 'transaction_date', 'delivery_date', 'grand_total', 'per_billed', 'per_delivered'] else 'delivery_date'
+        sort_order = sort_order.upper() if sort_order.upper() in ['ASC', 'DESC'] else 'ASC'
+        
+        # Build SQL conditions
+        conditions = ["so.docstatus = 0"]
+        params = []
+        
+        if search:
+            search = f"%{search}%"
+            conditions.append("(so.name LIKE %s OR so.customer LIKE %s OR COALESCE(st.sales_person, 'Unassigned') LIKE %s)")
+            params.extend([search, search, search])
+        
+        if customer:
+            conditions.append("so.customer = %s")
+            params.append(customer)
+        if is_internal_customer is not None:
+            conditions.append("so.is_internal_customer = %s")
+            params.append(1 if is_internal_customer else 0)
+        
+        if sales_person:
+            if sales_person == 'Unassigned':
+                conditions.append("st.sales_person IS NULL")
+            else:
+                conditions.append("st.sales_person = %s")
+                params.append(sales_person)
+        
+        if branch:
+            conditions.append("so.branch = %s")
+            params.append(branch)
+        
+        if delivery_date_from:
+            conditions.append("so.delivery_date >= %s")
+            params.append(getdate(delivery_date_from))
+        if delivery_date_to:
+            conditions.append("so.delivery_date <= %s")
+            params.append(getdate(delivery_date_to))
+        
+        if date_from:
+            conditions.append("so.transaction_date >= %s")
+            params.append(getdate(date_from))
+        if date_to:
+            conditions.append("so.transaction_date <= %s")
+            params.append(getdate(date_to))
+        
+        if delivery_filter:
+            if delivery_filter == 'today':
+                conditions.append("so.delivery_date = %s")
+                params.append(current_date)
+            elif delivery_filter == 'yesterday':
+                conditions.append("so.delivery_date = %s")
+                params.append(add_days(current_date, -1))
+            elif delivery_filter == 'this_month':
+                conditions.append("so.delivery_date BETWEEN %s AND %s")
+                params.extend([get_first_day(current_date), get_last_day(current_date)])
+            elif delivery_filter == 'due':
+                conditions.append("so.delivery_date <= %s")
+                params.append(current_date)
+            elif delivery_filter == 'next_month':
+                next_month = add_months(current_date, 1)
+                conditions.append("so.delivery_date BETWEEN %s AND %s")
+                params.extend([get_first_day(next_month), get_last_day(next_month)])
+        if status:
+            if isinstance(status, str):
+                conditions.append("so.status = %s")
+                params.append(status)
+            elif isinstance(status, list):
+                placeholders = ','.join(['%s'] * len(status))
+                conditions.append(f"so.status IN ({placeholders})")
+                params.extend(status)
+        
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+        
+        sales_orders_query = f"""
+            SELECT 
+                so.name as sales_order_number,
+                so.company,
+                so.branch,
+                so.customer,
+                COALESCE(st.sales_person, 'Unassigned') as sales_person,
+                COALESCE(sp.parent_sales_person, '') as parent_sales_person,
+                COALESCE(e.image, '') as sales_person_image,
+                so.grand_total,
+                so.per_billed as percent_amount_billed,
+                so.per_delivered as percent_amount_delivered,
+                so.status,
+                so.project,
+                so.project_description,
+                (so.grand_total * (100 - COALESCE(so.per_billed, 0)) / 100) as balance_to_bill_amount,
+                so.transaction_date as date,
+                so.delivery_date,
+                so.is_internal_customer
+            FROM `tabSales Order` so
+            LEFT JOIN `tabSales Team` st ON st.parent = so.name AND st.parenttype = 'Sales Order'
+            LEFT JOIN `tabSales Person` sp ON sp.name = st.sales_person
+            LEFT JOIN `tabEmployee` e ON e.name = sp.employee
+            WHERE {where_clause} and so.company = 'PRASTARA DECORATION DESIGN L.L.C'
+            ORDER BY 
+                CASE WHEN '{sort_by}' = 'sales_person' THEN COALESCE(st.sales_person, 'Unassigned') END {sort_order},
+                CASE WHEN '{sort_by}' = 'name' THEN so.name END {sort_order},
+                CASE WHEN '{sort_by}' = 'customer' THEN so.customer END {sort_order},
+                CASE WHEN '{sort_by}' = 'transaction_date' THEN so.transaction_date END {sort_order},
+                CASE WHEN '{sort_by}' = 'delivery_date' THEN so.delivery_date END {sort_order},
+                CASE WHEN '{sort_by}' = 'grand_total' THEN so.grand_total END {sort_order},
+                CASE WHEN '{sort_by}' = 'per_billed' THEN so.per_billed END {sort_order},
+                CASE WHEN '{sort_by}' = 'per_delivered' THEN so.per_delivered END {sort_order}
+        """
+        
+        sales_orders = frappe.db.sql(sales_orders_query, params, as_dict=True)
+
+        for order in sales_orders:
+            if order.date:
+                order['formatted_date'] = frappe.utils.formatdate(order.date)
+            if order.delivery_date:
+                order['formatted_delivery_date'] = frappe.utils.formatdate(order.delivery_date)
+
+        return {
+            "status": "success",
+            "data": {
+                "orders": sales_orders,
+                "filters_applied": {
+                    "search": search,
+                    "customer": customer,
+                    "sales_person": sales_person,
+                    "branch": branch,
+                    "delivery_date_from": delivery_date_from,
+                    "delivery_date_to": delivery_date_to,
+                    "date_from": date_from,
+                    "date_to": date_to,
+                    "delivery_filter": delivery_filter
+                },
+                "sort_info": {
+                    "sort_by": sort_by,
+                    "sort_order": sort_order
+                }
+            }
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Sales Order List API Error: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"An error occurred while fetching sales order list: {str(e)}",
+            "data": {
+                "orders": [],
+                "filters_applied": {},
+                "sort_info": {}
+            }
+        }
+
+
+
+
+import frappe
+from frappe import _
+from frappe.utils import getdate
+
+@frappe.whitelist()
+def get_financial_report(start_date='2025-01-01', end_date='2025-06-30', company=None, cost_center=None, report_type='detailed'):
+    """
+    Generate a financial report with key metrics, including monthly breakdown and previous year comparison.
+    
+    Args:
+        start_date (str): Start date for the report (default: '2025-01-01')
+        end_date (str): End date for the report (default: '2025-06-30')
+        company (str, optional): Company name (default: None, includes all companies)
+        cost_center (str, optional): Cost center name (default: None, includes all cost centers)
+        report_type (str): Type of report ('detailed' or 'summary', default: 'detailed')
+    
+    Returns:
+        list: List of dictionaries containing financial metrics with the following structure:
+              [
+                {
+                  "particular": "Revenue",
+                  "amount": 1000000,
+                  "previous_year_amount": 800000,
+                  "monthly_breakdown": [80000, 85000, ...], # 12 months current year
+                  "previous_year_monthly": [70000, 75000, ...] # 12 months previous year
+                }
+              ]
+    
+    Raises:
+        frappe.exceptions.ValidationError: If invalid inputs are provided.
+    """
+    from datetime import datetime, timedelta
+    from dateutil.relativedelta import relativedelta
+    import calendar
+    
+    # Input validation
+    try:
+        start_dt = getdate(start_date)
+        end_dt = getdate(end_date)
+    except ValueError:
+        frappe.throw(_("Invalid date format. Use YYYY-MM-DD."))
+    
+    if company and not frappe.db.exists("Company", company):
+        frappe.throw(_("Company {0} does not exist.").format(company))
+    
+    if cost_center and not frappe.db.exists("Cost Center", cost_center):
+        frappe.throw(_("Cost Center {0} does not exist.").format(cost_center))
+    
+    if report_type not in ['detailed', 'summary']:
+        frappe.throw(_("Invalid report_type. Use 'detailed' or 'summary'."))
+
+    # Use the actual date range provided
+    current_start_date = start_dt
+    current_end_date = end_dt
+    
+    # Calculate previous year date range (same period, previous year)
+    previous_start_date = start_dt.replace(year=start_dt.year - 1)
+    previous_end_date = end_dt.replace(year=end_dt.year - 1)
+    
+    def get_monthly_data(date_start, date_end, company_filter=None, cost_center_filter=None):
+        """Get monthly breakdown data for a specific date range"""
+        
+        # Build dynamic conditions
+        conditions = []
+        params = [date_start, date_end]
+        
+        if company_filter:
+            conditions.append("AND gle.company = %s")
+            params.append(company_filter)
+        
+        if cost_center_filter:
+            conditions.append("AND gle.cost_center = %s")
+            params.append(cost_center_filter)
+        
+        condition_str = " ".join(conditions)
+        
+        # Get months in the date range
+        months_in_range = []
+        current = date_start.replace(day=1)  # First day of start month
+        while current <= date_end:
+            months_in_range.append(current.month)
+            if current.month == 12:
+                current = current.replace(year=current.year + 1, month=1)
+            else:
+                current = current.replace(month=current.month + 1)
+        
+        monthly_query = f"""
+            SELECT 
+                a.custom_dashboard_parent AS category,
+                MONTH(gle.posting_date) AS month_num,
+                YEAR(gle.posting_date) AS year_num,
+                COALESCE(SUM(gle.debit - gle.credit), 0) AS net_amount
+            FROM 
+                `tabAccount` a
+            LEFT JOIN 
+                `tabGL Entry` gle ON a.name = gle.account
+            WHERE 
+                a.root_type IN ('Income', 'Expense')
+                AND gle.posting_date BETWEEN %s AND %s
+                AND gle.is_cancelled = 0
+                {condition_str}
+                AND a.custom_dashboard_parent IN (
+                    'Revenue', 'Cost of Sales', 'Direct Salary and Allowances', 'Direct Expenses',
+                    'AE and SE Expense', 'Other Income', 'Shared Allocation', 'Depreciation', 'Finance Cost'
+                )
+            GROUP BY 
+                a.custom_dashboard_parent, YEAR(gle.posting_date), MONTH(gle.posting_date)
+            ORDER BY 
+                a.custom_dashboard_parent, YEAR(gle.posting_date), MONTH(gle.posting_date)
+        """
+        
+        try:
+            monthly_raw = frappe.db.sql(monthly_query, params, as_dict=True)
+        except Exception as e:
+            frappe.log_error(f"Monthly query failed: {str(e)}", "Financial Report Monthly Error")
+            return {}
+        
+        # Process monthly data into structured format
+        monthly_data = {}
+        
+        # Initialize all months to 0 for each category (12 months for consistency)
+        categories = ['Revenue', 'Cost of Sales', 'Direct Salary and Allowances', 'Direct Expenses',
+                     'AE and SE Expense', 'Other Income', 'Shared Allocation', 'Depreciation', 'Finance Cost']
+        
+        for category in categories:
+            monthly_data[category] = [0.0] * 12  # 12 months
+        
+        # Fill in actual data
+        for row in monthly_raw:
+            category = row['category']
+            month_idx = row['month_num'] - 1  # Convert to 0-based index
+            if category in monthly_data:
+                monthly_data[category][month_idx] = float(row['net_amount'])
+        
+        return monthly_data, monthly_raw
+    
+    # Get monthly data for current and previous periods
+    current_monthly_data, current_raw_data = get_monthly_data(current_start_date, current_end_date, company, cost_center)
+    previous_monthly_data, previous_raw_data = get_monthly_data(previous_start_date, previous_end_date, company, cost_center)
+    
+    def calculate_derived_metrics(monthly_data):
+        """Calculate derived metrics from base categories"""
+        derived = {}
+        
+        # Total Direct Cost = Cost of Sales + Direct Salary and Allowances + Direct Expenses
+        derived['Total Direct Cost'] = [
+            monthly_data.get('Cost of Sales', [0]*12)[i] + 
+            monthly_data.get('Direct Salary and Allowances', [0]*12)[i] + 
+            monthly_data.get('Direct Expenses', [0]*12)[i]
+            for i in range(12)
+        ]
+        
+        # Gross Profit = Revenue - Total Direct Cost (Revenue is negative in GL, so we add)
+        derived['Gross Profit'] = [
+            -monthly_data.get('Revenue', [0]*12)[i] - derived['Total Direct Cost'][i]
+            for i in range(12)
+        ]
+        
+        # Gross Profit % = (Gross Profit / Revenue) * 100
+        derived['Gross Profit %'] = [
+            (derived['Gross Profit'][i] / -monthly_data.get('Revenue', [0]*12)[i] * 100) 
+            if monthly_data.get('Revenue', [0]*12)[i] != 0 else 0
+            for i in range(12)
+        ]
+        
+        # Profit Before Shared Allocations = Gross Profit - AE and SE Expense + Other Income
+        derived['Profit Before Shared Allocations'] = [
+            derived['Gross Profit'][i] - 
+            monthly_data.get('AE and SE Expense', [0]*12)[i] +
+            (-monthly_data.get('Other Income', [0]*12)[i])  # Other Income is negative in GL
+            for i in range(12)
+        ]
+        
+        # EBITDA = Profit Before Shared Allocations - Shared Allocation
+        derived['EBITDA'] = [
+            derived['Profit Before Shared Allocations'][i] - 
+            monthly_data.get('Shared Allocation', [0]*12)[i]
+            for i in range(12)
+        ]
+        
+        # EBIT = EBITDA - Depreciation
+        derived['EBIT'] = [
+            derived['EBITDA'][i] - monthly_data.get('Depreciation', [0]*12)[i]
+            for i in range(12)
+        ]
+        
+        # Net Profit Before Income Tax = EBIT - Finance Cost
+        derived['Net Profit Before Income Tax'] = [
+            derived['EBIT'][i] - monthly_data.get('Finance Cost', [0]*12)[i]
+            for i in range(12)
+        ]
+        
+        # Net Profit % = (Net Profit Before Income Tax / Revenue) * 100
+        derived['Net Profit %'] = [
+            (derived['Net Profit Before Income Tax'][i] / -monthly_data.get('Revenue', [0]*12)[i] * 100) 
+            if monthly_data.get('Revenue', [0]*12)[i] != 0 else 0
+            for i in range(12)
+        ]
+        
+        return derived
+    
+    # Calculate derived metrics for both periods
+    current_derived = calculate_derived_metrics(current_monthly_data)
+    previous_derived = calculate_derived_metrics(previous_monthly_data)
+    
+    # Combine base and derived data
+    current_monthly_data.update(current_derived)
+    previous_monthly_data.update(previous_derived)
+    
+    # Define the order of particulars
+    order = [
+        'Revenue', 'Cost of Sales', 'Direct Salary and Allowances', 
+        'Direct Expenses', 'Total Direct Cost', 'Gross Profit', 
+        'Gross Profit %', 'AE and SE Expense', 'Other Income',
+        'Profit Before Shared Allocations', 'Shared Allocation', 
+        'EBITDA', 'Depreciation', 'EBIT', 'Finance Cost',
+        'Net Profit Before Income Tax', 'Net Profit %'
+    ]
+    
+    # Extract cost centers from raw data
+    cost_centers_involved = set()
+    if current_raw_data:
+        for row in current_raw_data:
+            if 'cost_center' in row and row['cost_center']:
+                cost_centers_involved.add(row['cost_center'])
+    if previous_raw_data:
+        for row in previous_raw_data:
+            if 'cost_center' in row and row['cost_center']:
+                cost_centers_involved.add(row['cost_center'])
+    
+    cost_centers_list = list(cost_centers_involved) if cost_centers_involved else []
+    
+    # Build the result in the requested format
+    result = []
+    
+    for particular in order:
+        current_monthly = current_monthly_data.get(particular, [0] * 12)
+        previous_monthly = previous_monthly_data.get(particular, [0] * 12)
+        
+        # Adjust signs for display (Revenue and Other Income should be positive)
+        if particular in ['Revenue', 'Other Income']:
+            current_monthly = [-x for x in current_monthly]
+            previous_monthly = [-x for x in previous_monthly]
+        
+        # Calculate period totals
+        current_amount = sum(current_monthly)
+        previous_amount = sum(previous_monthly)
+        
+        result.append({
+            "particular": particular,
+            "amount": round(current_amount, 2),
+            "previous_year_amount": round(previous_amount, 2),
+            "monthly_breakdown": [round(x, 2) for x in current_monthly],
+            "previous_year_monthly": [round(x, 2) for x in previous_monthly],
+            "cost_centers": cost_centers_list,
+            "companies": [company] if company else [],
+            "cost_center": cost_center if cost_center else None
+        })
+    
+    return result
 
