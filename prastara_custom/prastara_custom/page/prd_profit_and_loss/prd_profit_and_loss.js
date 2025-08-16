@@ -1623,7 +1623,7 @@ frappe.pages['prd-profit-and-loss'].on_page_load = function(wrapper) {
 
 		// Use the updated financial report API with enhanced parameters
 		frappe.call({
-			method: 'qcshr.controller.variant_pricing.get_financial_report', // Replace with your actual method path
+			method: 'prastara_custom.controller.variant_pricing.get_financial_report', // Replace with your actual method path
 			args: {
 				start_date: start_date,
 				end_date: end_date,
@@ -1685,7 +1685,7 @@ frappe.pages['prd-profit-and-loss'].on_page_load = function(wrapper) {
 		
 		// Test the updated financial report API
 		frappe.call({
-			method: 'qcshr.controller.variant_pricing.get_financial_report', // Replace with your actual method path
+			method: 'prastara_custom.controller.variant_pricing.get_financial_report', // Replace with your actual method path
 			args: {
 				start_date: testStartDate,
 				end_date: testEndDate,
