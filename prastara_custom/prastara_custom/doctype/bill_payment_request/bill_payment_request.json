@@ -17,7 +17,8 @@
   "branch",
   "due_date",
   "due_amount",
-  "vat_template"
+  "vat_template",
+  "amended_from"
  ],
  "fields": [
   {
@@ -79,9 +80,20 @@
    "fieldtype": "Link",
    "label": "VAT Template",
    "options": "Purchase Taxes and Charges Template"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Bill Payment Request",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [
   {
    "custom": 1,
@@ -89,7 +101,7 @@
    "link_fieldname": "custom_bill_payment_request"
   }
  ],
- "modified": "2025-07-23 11:06:29.512407",
+ "modified": "2025-08-16 16:11:44.139763",
  "modified_by": "Administrator",
  "module": "Prastara Custom",
  "name": "Bill Payment Request",
