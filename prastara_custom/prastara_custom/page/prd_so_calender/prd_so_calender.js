@@ -43,7 +43,6 @@ class UltraModernSalesOrderDashboard {
             /* Ultra-Modern Sales Dashboard Styles */
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
             
-           
 :root {
     /* Enhanced Green Color Palette */
     --primary: #2e4d3a;
@@ -272,7 +271,7 @@ class UltraModernSalesOrderDashboard {
 
 .header-stats {
 
-    display: grid;
+    display: flex;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: var(--space-4);
     margin-top: var(--space-4);
@@ -352,7 +351,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
     
 .header-stat-value {
     font-size: 1.75rem;
-    font-weight: 800;
+    font-weight: 700;
     color: black;
     margin-bottom: var(--space-1);
     line-height: 1;
@@ -360,7 +359,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
 
 .header-stat-label {
     color: rgba(34, 34, 34, 0.9);
-    font-size: 0.875rem;
+    font-size: 0.800rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -369,7 +368,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
 
 .header-stat-amount {
     color: rgba(28, 28, 28, 0.8);
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     font-weight: 600;
     background: rgba(255, 255, 255, 0.1);
     padding: var(--space-1) var(--space-3);
@@ -432,7 +431,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
 
             .header-stat-label {
                 color: rgba(38, 38, 38, 0.9);
-                font-size: 0.875rem;
+                font-size: 0.800rem;
                 font-weight: 600;
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
@@ -2254,8 +2253,17 @@ showSearchSuggestions(query) {
             { id: 'list', icon: 'fa-list-ul', label: 'List', badge: '' },
             { id: 'sales-person', icon: 'fa-user-tie', label: 'Sales Team', badge: '' },
             { id: 'customer', icon: 'fa-building', label: 'Customers', badge: '' },
-            { id: 'calendar', icon: 'fa-calendar-alt', label: 'Calendar', badge: '' }
+            { id: 'calendar', icon: 'fa-calendar-alt', label: 'Calendar', badge: '' },
+            { id: 'draft-orders', icon: 'fa-list-ul', label: 'Draft Orders', badge: '' }
         ];
+
+            
+    // Fetch draft order count
+    this.fetchDraftOrderCount().then(count => {
+        const draftView = views.find(view => view.id === 'draft-orders');
+        if (draftView) {
+            draftView.badge = count > 0 ? `(${count})` : '';
+        }
         
         let html = '';
         views.forEach((view, index) => {
@@ -2274,7 +2282,59 @@ showSearchSuggestions(query) {
             const view = $(e.currentTarget).data('view');
             this.switchView(view);
         });
+    });
+        
     }
+
+
+// New method to fetch draft order count
+fetchDraftOrderCount() {
+    return new Promise((resolve, reject) => {
+        frappe.call({
+            method: 'prastara_custom.controller.variant_pricing.draft_get_sales_order_list_prd',
+            args: {
+                status: 'Draft',
+                company: 'PRASTARA DECORATION DESIGN L.L.C'
+            },
+            callback: (r) => {
+                if (r.message && r.message.status === 'success') {
+                    resolve(r.message.data.orders.length);
+                } else {
+                    resolve(0);
+                }
+            },
+            error: (err) => {
+                this.showToast('Failed to fetch draft order count', 'error');
+                resolve(0);
+            }
+        });
+    });
+}
+
+
+// New method to fetch draft order count
+fetchDraftOrderCount() {
+    return new Promise((resolve, reject) => {
+        frappe.call({
+            method: 'prastara_custom.controller.variant_pricing.draft_get_sales_order_list_prd',
+            args: {
+                status: 'Draft',
+                company: 'PRASTARA DECORATION DESIGN L.L.C'
+            },
+            callback: (r) => {
+                if (r.message && r.message.status === 'success') {
+                    resolve(r.message.data.orders.length);
+                } else {
+                    resolve(0);
+                }
+            },
+            error: (err) => {
+                this.showToast('Failed to fetch draft order count', 'error');
+                resolve(0);
+            }
+        });
+    });
+}
 
     setupModals() {
         // Enhanced modal structure
@@ -2354,16 +2414,31 @@ loadData() {
     const valueRanges = this.calculateValueRangeMetrics();
     
     const statsHtml = `
-        <div class="header-stat" data-range="below-10k">
+        <div class="header-stat" data-range="below-5k">
             <div class="header-stat-icon">
                 <i class="fa fa-shopping-basket"></i>
             </div>
             <div class="header-stat-content">
-                <div class="header-stat-value">${valueRanges.below10k.count}</div>
-                <div class="header-stat-label">Below AED 10K</div>
-                <div class="header-stat-amount">${frappe.format(valueRanges.below10k.total, {fieldtype: 'Currency'})}</div>
+                <div class="header-stat-value">${valueRanges.below5k.count}</div>
+                <div class="header-stat-label">Below AED 5K</div>
+                <div class="header-stat-amount">${frappe.format(valueRanges.below5k.total, {fieldtype: 'Currency'})}</div>
             </div>
         </div>
+
+
+         <div class="header-stat" data-range="5k-10k">
+            <div class="header-stat-icon" style="background: linear-gradient(135deg, #d55aa6ff 0%, #c75da5ff 100%);">
+                <i class="fa fa-shopping-basket"></i>
+            </div>
+            <div class="header-stat-content">
+                <div class="header-stat-value">${valueRanges.range5k10k.count}</div>
+                <div class="header-stat-label">AED 5K - AED 10K</div>
+                <div class="header-stat-amount">${frappe.format(valueRanges.range5k10k.total, {fieldtype: 'Currency'})}</div>
+            </div>
+        </div>
+
+
+
         <div class="header-stat" data-range="10k-25k">
             <div class="header-stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
                 <i class="fa fa-shopping-basket"></i>
@@ -2426,7 +2501,8 @@ loadData() {
 }
 calculateValueRangeMetrics() {
     const ranges = {
-        below10k: { count: 0, total: 0, orders: [] },
+        below5k: { count: 0, total: 0, orders: [] },
+        range5k10k: { count: 0, total: 0, orders: [] },
         range10k25k: { count: 0, total: 0, orders: [] },
         range25k50k: { count: 0, total: 0, orders: [] },
         range50k100k: { count: 0, total: 0, orders: [] },
@@ -2436,11 +2512,15 @@ calculateValueRangeMetrics() {
     this.filtered_orders.forEach(order => {
         const value = parseFloat(order.grand_total || 0);
         
-        if (value < 10000) {
-            ranges.below10k.count++;
-            ranges.below10k.total += value;
-            ranges.below10k.orders.push(order);
-        } else if (value >= 10000 && value < 25000) {
+        if (value < 5000) {
+            ranges.below5k.count++;
+            ranges.below5k.total += value;
+            ranges.below5k.orders.push(order);
+        } else if (value >= 5000 && value < 10000) {
+            ranges.range5k10k.count++;
+            ranges.range5k10k.total += value;
+            ranges.range5k10k.orders.push(order);
+        }else if (value >= 10000 && value < 25000) {
             ranges.range10k25k.count++;
             ranges.range10k25k.total += value;
             ranges.range10k25k.orders.push(order);
@@ -2471,9 +2551,13 @@ showValueRangeOrders(range) {
     let title = '';
     
     switch(range) {
-        case 'below-10k':
-            orders = valueRanges.below10k.orders;
-            title = 'Orders Below AED 10,000';
+        case 'below-5k':
+            orders = valueRanges.below5k.orders;
+            title = 'Orders Below AED 5,000';
+            break;
+        case '5k-10k':
+            orders = valueRanges.range5k10k.orders;
+            title = 'Orders AED 5,000 - AED 10,000';
             break;
         case '10k-25k':
             orders = valueRanges.range10k25k.orders;
@@ -2522,6 +2606,9 @@ showValueRangeOrders(range) {
                 break;
             case 'calendar':
                 this.renderModernCalendar();
+                break;
+            case 'draft-orders':
+                this.renderDraftOrdersTable();
                 break;
         }
     }
@@ -3063,7 +3150,7 @@ renderModernOrderCard(order) {
     };
 }
   populateFilterOptions() {
-    ['customers', 'sales_persons', 'branches', 'statuses', 'projects'].forEach(type => {
+    ['customers','sales_persons', 'branches', 'statuses', 'projects'].forEach(type => {
         const filterId = type === 'customers' ? 'customer-filter' :
                         type === 'sales_persons' ? 'sales-person-filter' :
                         type === 'branches' ? 'branch-filter' : 
@@ -3466,6 +3553,8 @@ clearAllFilters() {
         });
         return Object.values(groups).sort((a, b) => b.total_value - a.total_value);
     }
+
+   
 
     groupByCustomer() {
         const groups = {};
@@ -3920,6 +4009,229 @@ renderModernOrderRow(order) {
         this.content_area.html(html);
         this.setupSalesPersonHandlers();
     }
+
+
+
+
+// Modified renderDraftOrdersTable to include green toolbar
+renderDraftOrdersTable() {
+    this.fetchDraftOrderCount().then(count => {
+        this.content_area.html(`
+            <div class="table-modern-container" style="box-shadow: none; margin: 0;">
+                <div class="table-toolbar" style="padding: var(--space-4); background:#33544a; border-radius: var(--radius-lg); margin-bottom: var(--space-4); display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: var(--space-4);">
+                        <span style="font-weight: 600; color: white;">${count} Draft Order${count === 1 ? '' : 's'}</span>
+                        <div class="table-search-box">
+                            <i class="fa fa-search table-search-icon" style="color: white;"></i>
+                            <input type="text" class="table-search-input" placeholder="Search draft orders by order #, customer, project..." id="draft-orders-search" style="background: rgba(255, 255, 255, 0.1); color: white; border-color: rgba(255, 255, 255, 0.3);">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="export-draft-orders" style="padding: var(--space-2) var(--space-4); background: white; color: #33544a; border-color: white;">
+                        <i class="fa fa-download"></i> Export
+                    </button>
+                </div>
+                <div class="table-body">
+                    <table class="data-table" id="draft-orders-table">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Project</th>
+                                <th>Sales Person</th>
+                                <th>Delivery Date</th>
+                                <th>Grand Total</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="7" style="text-align: center; padding: var(--space-6);">
+                                <i class="fa fa-spinner fa-spin" style="font-size: 1.5rem; color: var(--text-muted);"></i>
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `);
+        
+        // Fetch and render draft orders
+        this.fetchDraftOrders().then(orders => {
+            if (!orders.length) {
+                this.content_area.find('#draft-orders-table tbody').html(`
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
+                            <i class="fa fa-inbox" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
+                            <div>No draft orders found</div>
+                        </td>
+                    </tr>
+                `);
+            } else {
+                const html = orders.map(order => `
+                    <tr data-order="${order.name}" style="cursor: pointer;">
+                        <td><strong style="color: var(--primary);">${order.name}</strong></td>
+                        <td>${order.customer}</td>
+                        <td>
+                            ${order.project ? `
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.85rem;">${order.project}</div>
+                                    ${order.project_description ? `<div style="font-size: 0.7rem; color: var(--text-muted);" title="${order.project_description}">${order.project_description.length > 20 ? order.project_description.substring(0, 20) + '...' : order.project_description}</div>` : ''}
+                                </div>
+                            ` : `<span style="color: var(--text-muted); font-size: 0.8rem;">No Project</span>`}
+                        </td>
+                        <td>${order.sales_person}</td>
+                        <td>
+                            ${order.delivery_date ? frappe.datetime.str_to_user(order.delivery_date) : 'No Date'}
+                            ${order.due_status ? this.getDueBadge(order.due_status, order.due_days_text) : ''}
+                        </td>
+                        <td><strong>${frappe.format(order.grand_total || 0, {fieldtype: 'Currency'})}</strong></td>
+                        <td><span class="status-badge status-normal">${order.status || 'Draft'}</span></td>
+                    </tr>
+                `).join('');
+                
+                this.content_area.find('#draft-orders-table tbody').html(html);
+                
+                // Setup search functionality
+                this.setupTableSearch('#draft-orders-search', '#draft-orders-table', ['name', 'customer', 'project', 'sales_person']);
+                
+                // Setup row click handlers
+                this.content_area.find('tbody tr[data-order]').on('click', (e) => {
+                    const orderName = $(e.currentTarget).data('order');
+                    this.showOrderDetails(orderName);
+                });
+                
+                // Setup export button handler
+                $('#export-draft-orders').on('click', () => {
+                    this.exportDraftOrders(orders);
+                });
+            }
+        });
+    });
+}
+
+// Updated fetchDraftOrders to handle getdate, date_diff, and today
+fetchDraftOrders() {
+    return new Promise((resolve, reject) => {
+        // Fallback date difference calculation
+        const calculateDateDiff = (date1, date2) => {
+            const d1 = new Date(date1);
+            const d2 = new Date(date2);
+            const diffTime = d1 - d2;
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        };
+
+        // Fallback getdate function
+        const parseDate = (dateStr) => {
+            return dateStr ? new Date(dateStr) : new Date();
+        };
+
+        // Fallback today function
+        const getToday = () => {
+            const today = new Date();
+            return today.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+        };
+
+        frappe.call({
+            method: 'prastara_custom.controller.variant_pricing.draft_get_sales_order_list_prd',
+            args: {
+                status: 'Draft',
+                company: 'PRASTARA DECORATION DESIGN L.L.C'
+            },
+            callback: (r) => {
+                if (r.message && r.message.status === 'success') {
+                    const orders = r.message.data.orders.map(order => {
+                        // Use frappe.utils.getdate if available, else fallback
+                        const deliveryDate = order.delivery_date ? (frappe.utils.getdate ? frappe.utils.getdate(order.delivery_date) : parseDate(order.delivery_date)) : null;
+                        // Use frappe.utils.today if available, else fallback
+                        const todayDate = frappe.utils.today ? (frappe.utils.getdate ? frappe.utils.getdate(frappe.utils.today()) : parseDate(getToday())) : parseDate(getToday());
+                        
+                        // Calculate due days using frappe.utils.date_diff or fallback
+                        const dueDays = deliveryDate ? (frappe.utils.date_diff ? frappe.utils.date_diff(deliveryDate, todayDate) : calculateDateDiff(deliveryDate, todayDate)) : 999999;
+                        
+                        return {
+                            ...order,
+                            name: order.sales_order_number,
+                            due_days: dueDays,
+                            due_days_text: deliveryDate ? this.formatDueDays(dueDays) : 'No delivery date',
+                            due_status: deliveryDate ? this.getDueStatus(dueDays) : 'none',
+                            formatted_transaction_date: order.formatted_date,
+                            formatted_delivery_date: order.formatted_delivery_date
+                        };
+                    });
+                    resolve(orders);
+                } else {
+                    this.showToast('Failed to load draft orders', 'error');
+                    resolve([]);
+                }
+            },
+            error: (err) => {
+                this.showToast('Failed to load draft orders: ' + err.message, 'error');
+                resolve([]);
+            }
+        });
+    });
+}
+
+// New method to export draft orders as CSV
+exportDraftOrders(orders) {
+    const headers = ['Order #', 'Customer', 'Project', 'Project Description', 'Sales Person', 'Delivery Date', 'Grand Total', 'Status'];
+    const rows = orders.map(order => [
+        order.name,
+        order.customer,
+        order.project || 'No Project',
+        order.project_description || '',
+        order.sales_person,
+        order.delivery_date ? frappe.datetime.str_to_user(order.delivery_date) : 'No Date',
+        frappe.format(order.grand_total || 0, {fieldtype: 'Currency'}),
+        order.status || 'Draft'
+    ]);
+
+    let csvContent = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csvContent += row.map(cell => `"${cell.toString().replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'draft_orders_export.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// Ensure getDueBadge is defined for consistent styling
+getDueBadge(dueStatus, dueDaysText) {
+    const badgeClass = {
+        overdue: 'status-overdue',
+        'due-today': 'status-pending',
+        upcoming: 'status-normal',
+        none: 'status-normal'
+    }[dueStatus] || 'status-normal';
+    
+    return `<span class="status-badge ${badgeClass}">${dueDaysText}</span>`;
+}
+
+// Ensure showToast is defined for notifications
+showToast(message, type) {
+    const bgColor = {
+        success: 'var(--success)',
+        error: 'var(--error)',
+        info: 'var(--info)'
+    }[type] || 'var(--info)';
+    
+    const toast = $(`
+        <div class="toast-notification" style="position: fixed; bottom: 20px; right: 20px; background: ${bgColor}; color: white; padding: var(--space-3); border-radius: var(--radius); box-shadow: var(--shadow-md); z-index: 1000;">
+            ${message}
+        </div>
+    `);
+    
+    $('body').append(toast);
+    toast.fadeIn(300);
+    setTimeout(() => {
+        toast.fadeOut(300, () => toast.remove());
+    }, 3000);
+}
 
     renderModernCustomerView() {
         const customerData = this.data.by_customer;
