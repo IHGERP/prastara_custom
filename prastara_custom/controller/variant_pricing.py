@@ -5485,6 +5485,7 @@ from dateutil.relativedelta import relativedelta
 
 @frappe.whitelist()
 def get_sales_data(filters=None):
+    frappe.errprint(filters)
     """Fetch sales target data with HTTPS image URLs, including HOD and company targets."""
     # Handle stringified filters from frontend
     if isinstance(filters, str):
@@ -6448,7 +6449,7 @@ def get_sales_order_details(sales_order_name):
                     "transaction_date": safe_get_attr(order, 'transaction_date'),
                     "delivery_date": safe_get_attr(order, 'delivery_date'),
                     "company": safe_get_attr(order, 'company'),
-                    "project_description": safe_get_attr(order, 'custom_project_description'),
+                    "custom_project_description": safe_get_attr(order, 'custom_project_description'),
                     "project": safe_get_attr(order, 'project'),
                     "status": safe_get_attr(order, 'status'),
                     "net_total": flt(safe_get_attr(order, 'net_total'), 0),
@@ -6648,7 +6649,7 @@ def draft_get_sales_order_list_prd(
                 so.per_delivered as percent_amount_delivered,
                 so.status,
                 so.project,
-                so.project_description,
+                so.custom_project_description,
                 (so.grand_total * (100 - COALESCE(so.per_billed, 0)) / 100) as balance_to_bill_amount,
                 so.transaction_date as date,
                 so.delivery_date,

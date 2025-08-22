@@ -2124,7 +2124,7 @@ showSearchSuggestions(query) {
         (order.sales_person || '').toLowerCase().includes(lowerQuery) ||
         (order.status || '').toLowerCase().includes(lowerQuery) ||
         (order.project || '').toLowerCase().includes(lowerQuery) ||
-        (order.project_description || '').toLowerCase().includes(lowerQuery)
+        (order.custom_project_description || '').toLowerCase().includes(lowerQuery)
     ).slice(0, 8);
     
     if (matches.length === 0) {
@@ -2144,9 +2144,9 @@ showSearchSuggestions(query) {
                     ${order.customer} • ${order.sales_person} • ${frappe.format(order.grand_total, {fieldtype: 'Currency'})}
                     ${order.project ? ` • 📋 ${order.project}` : ''}
                 </div>
-                ${order.project_description ? `
+                ${order.custom_project_description ? `
                     <div style="font-size: 0.75rem; color: var(--text-light); margin-top: var(--space-1);">
-                        ${order.project_description.length > 60 ? order.project_description.substring(0, 60) + '...' : order.project_description}
+                        ${order.custom_project_description.length > 60 ? order.custom_project_description.substring(0, 60) + '...' : order.custom_project_description}
                     </div>
                 ` : ''}
             </div>
@@ -2996,10 +2996,10 @@ renderModernOrderCard(order) {
                             <div class="order-info-value">${order.project}</div>
                         </div>
                     ` : ''}
-                    ${order.project_description ? `
+                    ${order.custom_project_description ? `
                         <div class="order-info-item">
                             <div class="order-info-label">Project Description</div>
-                            <div class="order-info-value" title="${order.project_description}">${order.project_description.length > 30 ? order.project_description.substring(0, 30) + '...' : order.project_description}</div>
+                            <div class="order-info-value" title="${order.custom_project_description}">${order.custom_project_description.length > 30 ? order.custom_project_description.substring(0, 30) + '...' : order.custom_project_description}</div>
                         </div>
                     ` : ''}
                     <div class="order-info-item">
@@ -3245,7 +3245,7 @@ applyFilters() {
             (order.sales_person || '').toLowerCase().includes(globalSearch) ||
             (order.status || '').toLowerCase().includes(globalSearch) ||
             (order.project || '').toLowerCase().includes(globalSearch) ||
-            (order.project_description || '').toLowerCase().includes(globalSearch)
+            (order.custom_project_description || '').toLowerCase().includes(globalSearch)
         );
     }
     
@@ -3862,7 +3862,7 @@ renderModernOrderRow(order) {
                 ${order.project ? `
                     <div>
                         <div style="font-weight: 600;">${order.project}</div>
-                        ${order.project_description ? `<div style="font-size: 0.75rem; color: var(--text-muted);" title="${order.project_description}">${order.project_description.length > 25 ? order.project_description.substring(0, 25) + '...' : order.project_description}</div>` : ''}
+                        ${order.custom_project_description ? `<div style="font-size: 0.75rem; color: var(--text-muted);" title="${order.custom_project_description}">${order.custom_project_description.length > 25 ? order.custom_project_description.substring(0, 25) + '...' : order.custom_project_description}</div>` : ''}
                     </div>
                 ` : `<span style="color: var(--text-muted);">No Project</span>`}
             </td>
@@ -4073,7 +4073,7 @@ renderDraftOrdersTable() {
                             ${order.project ? `
                                 <div>
                                     <div style="font-weight: 600; font-size: 0.85rem;">${order.project}</div>
-                                    ${order.project_description ? `<div style="font-size: 0.7rem; color: var(--text-muted);" title="${order.project_description}">${order.project_description.length > 20 ? order.project_description.substring(0, 20) + '...' : order.project_description}</div>` : ''}
+                                    ${order.custom_project_description ? `<div style="font-size: 0.7rem; color: var(--text-muted);" title="${order.custom_project_description}">${order.custom_project_description.length > 20 ? order.custom_project_description.substring(0, 20) + '...' : order.custom_project_description}</div>` : ''}
                                 </div>
                             ` : `<span style="color: var(--text-muted); font-size: 0.8rem;">No Project</span>`}
                         </td>
@@ -4177,7 +4177,7 @@ exportDraftOrders(orders) {
         order.name,
         order.customer,
         order.project || 'No Project',
-        order.project_description || '',
+        order.custom_project_description || '',
         order.sales_person,
         order.delivery_date ? frappe.datetime.str_to_user(order.delivery_date) : 'No Date',
         frappe.format(order.grand_total || 0, {fieldtype: 'Currency'}),
@@ -4633,7 +4633,7 @@ renderCalendarGrid(year, month) {
                                 ${order.project ? `
                                     <div>
                                         <div style="font-weight: 600; font-size: 0.85rem;">${order.project}</div>
-                                        ${order.project_description ? `<div style="font-size: 0.7rem; color: var(--text-muted);" title="${order.project_description}">${order.project_description.length > 20 ? order.project_description.substring(0, 20) + '...' : order.project_description}</div>` : ''}
+                                        ${order.custom_project_description ? `<div style="font-size: 0.7rem; color: var(--text-muted);" title="${order.custom_project_description}">${order.custom_project_description.length > 20 ? order.custom_project_description.substring(0, 20) + '...' : order.custom_project_description}</div>` : ''}
                                     </div>
                                 ` : `<span style="color: var(--text-muted); font-size: 0.8rem;">No Project</span>`}
                             </td>
@@ -6549,7 +6549,7 @@ setupDetailTabHandlers() {
         order.name,
         order.customer,
         order.project || '',
-        order.project_description || '',
+        order.custom_project_description || '',
         order.sales_person,
         order.delivery_date,
         order.status || 'Unknown',
@@ -6655,7 +6655,7 @@ applyGlobalFilter(query) {
         (order.status || '').toLowerCase().includes(lowerQuery) ||
         (order.branch || '').toLowerCase().includes(lowerQuery) ||
         (order.project || '').toLowerCase().includes(lowerQuery) ||
-        (order.project_description || '').toLowerCase().includes(lowerQuery)
+        (order.custom_project_description || '').toLowerCase().includes(lowerQuery)
     );
     
     this.processData();
