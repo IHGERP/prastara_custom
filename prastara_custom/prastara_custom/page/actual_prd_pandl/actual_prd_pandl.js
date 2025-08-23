@@ -5,15 +5,6 @@ frappe.pages['actual-prd-pandl'].on_page_load = function(wrapper) {
 		single_column: true
 	});
 
-	/*
-	 * SETUP INSTRUCTIONS:
-	 * 1. Replace 'your_app.your_module.get_financial_report' with your actual API method path
-	 * 2. Ensure your Account doctype has 'custom_dashboard_parent' field with values:
-	 *    - Revenue, Cost of Sales, Direct Salary and Allowances, Direct Expenses
-	 *    - AE and SE Expense, Other Income, Shared Allocation, Depreciation, Finance Cost
-	 * 3. The API returns data with 'companies' and 'cost_centers' arrays for summary view
-	 */
-
 	// Load required external libraries
 	$('<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">').appendTo('head');
 
