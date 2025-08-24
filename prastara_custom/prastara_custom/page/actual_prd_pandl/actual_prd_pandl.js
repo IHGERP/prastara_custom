@@ -7,8 +7,6 @@ frappe.pages['actual-prd-pandl'].on_page_load = function(wrapper) {
 
 	// Load required external libraries
 	$('<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">').appendTo('head');
-
-	// Define setQuickFilter function globally before HTML is rendered
 	window.setQuickFilter = function(period, clickedElement) {
 		console.log('setQuickFilter called with:', period, clickedElement);
 		console.log('window.plFilters status:', window.plFilters);
