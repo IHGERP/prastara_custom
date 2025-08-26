@@ -5340,131 +5340,131 @@ def get_dashboard_data(filters=None):
 @frappe.whitelist()
 # Server Script: get_available_employees
 # Server Script: get_available_employees
-def get_available_employees():
-    # Get parameters from the request
-    doc_name = frappe.form_dict.get('doc_name')
-    from_date = frappe.form_dict.get('from_date')
-    to_date = frappe.form_dict.get('to_date')
-    from_time = frappe.form_dict.get('from_time')
-    to_time = frappe.form_dict.get('to_time')
+# def get_available_employees():
+#     # Get parameters from the request
+#     doc_name = frappe.form_dict.get('doc_name')
+#     from_date = frappe.form_dict.get('from_date')
+#     to_date = frappe.form_dict.get('to_date')
+#     from_time = frappe.form_dict.get('from_time')
+#     to_time = frappe.form_dict.get('to_time')
 
-    # Validate required fields
-    if not from_date or not to_date:
-        return {
-            'status': 'error',
-            'message': 'From Date and To Date are required.'
-        }
+#     # Validate required fields
+#     if not from_date or not to_date:
+#         return {
+#             'status': 'error',
+#             'message': 'From Date and To Date are required.'
+#         }
 
-    # Set default times if not provided
-    from_time = from_time or '00:00:00'
-    to_time = to_time or '23:59:59'
+#     # Set default times if not provided
+#     from_time = from_time or '00:00:00'
+#     to_time = to_time or '23:59:59'
 
-    # Convert dates and times
-    try:
-        from_date = frappe.utils.getdate(from_date)
-        to_date = frappe.utils.getdate(to_date)
-        from_time = frappe.utils.get_time(from_time)
-        to_time = frappe.utils.get_time(to_time)
-    except Exception as e:
-        return {
-            'status': 'error',
-            'message': f'Invalid date or time format: {str(e)}'
-        }
+#     # Convert dates and times
+#     try:
+#         from_date = frappe.utils.getdate(from_date)
+#         to_date = frappe.utils.getdate(to_date)
+#         from_time = frappe.utils.get_time(from_time)
+#         to_time = frappe.utils.get_time(to_time)
+#     except Exception as e:
+#         return {
+#             'status': 'error',
+#             'message': f'Invalid date or time format: {str(e)}'
+#         }
 
-    # Get all active employees
-    employees = frappe.get_all(
-        'Employee',
-        filters={
-            'company': 'METROPLUS ADVERTISING LLC',
-            'branch': 'METROPLUS OPERATION',
-            'status': 'Active'
-        },
-        fields=['name', 'employee_name', 'designation', 'image'],
-        order_by='designation asc'
-    )
+#     # Get all active employees
+#     employees = frappe.get_all(
+#         'Employee',
+#         filters={
+#             'company': 'METROPLUS ADVERTISING LLC',
+#             'branch': 'METROPLUS OPERATION',
+#             'status': 'Active'
+#         },
+#         fields=['name', 'employee_name', 'designation', 'image'],
+#         order_by='designation asc'
+#     )
 
-    if not employees:
-        return {
-            'status': 'error',
-            'message': 'No active employees found for METROPLUS ADVERTISING LLC, METROPLUS OPERATION.'
-        }
+#     if not employees:
+#         return {
+#             'status': 'error',
+#             'message': 'No active employees found for METROPLUS ADVERTISING LLC, METROPLUS OPERATION.'
+#         }
 
-    # Get existing team members in current document if it exists
-    current_team = []
-    if doc_name and frappe.db.exists('Project Work Schedule', doc_name):
-        current_team = frappe.get_all(
-            'Project Work Schedule Teams',
-            filters={'parent': doc_name},
-            fields=['employee']
-        )
-    current_team_employees = set(team.employee for team in current_team)
+#     # Get existing team members in current document if it exists
+#     current_team = []
+#     if doc_name and frappe.db.exists('Project Work Schedule', doc_name):
+#         current_team = frappe.get_all(
+#             'Project Work Schedule Teams',
+#             filters={'parent': doc_name},
+#             fields=['employee']
+#         )
+#     current_team_employees = set(team.employee for team in current_team)
 
-    # Get existing schedules from other documents
-    team_schedules = frappe.get_all(
-        'Project Work Schedule Teams',
-        filters={
-            'parent': ['!=', doc_name],
-            'docstatus': ['!=', 2]
-        },
-        fields=['employee', 'parent']
-    )
+#     # Get existing schedules from other documents
+#     team_schedules = frappe.get_all(
+#         'Project Work Schedule Teams',
+#         filters={
+#             'parent': ['!=', doc_name],
+#             'docstatus': ['!=', 2]
+#         },
+#         fields=['employee', 'parent']
+#     )
 
-    # Create availability map
-    availability_map = {}
+#     # Create availability map
+#     availability_map = {}
     
-    # Check current document first
-    for emp in current_team_employees:
-        availability_map[emp] = {
-            'is_available': False,
-            'conflict': 'Already assigned'
-        }
+#     # Check current document first
+#     for emp in current_team_employees:
+#         availability_map[emp] = {
+#             'is_available': False,
+#             'conflict': 'Already assigned'
+#         }
 
-    # Check other schedules
-    for schedule in team_schedules:
-        if schedule.employee in availability_map:  # Skip if already marked from current doc
-            continue
+#     # Check other schedules
+#     for schedule in team_schedules:
+#         if schedule.employee in availability_map:  # Skip if already marked from current doc
+#             continue
             
-        parent = frappe.get_doc('Project Work Schedule', schedule.parent)
-        schedule_from_date = frappe.utils.getdate(parent.from_date)
-        schedule_to_date = frappe.utils.getdate(parent.to_date)
-        schedule_from_time = frappe.utils.get_time(parent.from_time or '00:00:00')
-        schedule_to_time = frappe.utils.get_time(parent.to_time or '23:59:59')
+#         parent = frappe.get_doc('Project Work Schedule', schedule.parent)
+#         schedule_from_date = frappe.utils.getdate(parent.from_date)
+#         schedule_to_date = frappe.utils.getdate(parent.to_date)
+#         schedule_from_time = frappe.utils.get_time(parent.from_time or '00:00:00')
+#         schedule_to_time = frappe.utils.get_time(parent.to_time or '23:59:59')
 
-        if (
-            (from_date <= schedule_to_date and to_date >= schedule_from_date) and
-            (from_time <= schedule_to_time and to_time >= schedule_from_time)
-        ):
-            project_desc = parent.get('custom_project_description') or f"Schedule {parent.name}"
-            availability_map[schedule.employee] = {
-                'is_available': False,
-                'conflict': f'"{project_desc}"'
-            }
+#         if (
+#             (from_date <= schedule_to_date and to_date >= schedule_from_date) and
+#             (from_time <= schedule_to_time and to_time >= schedule_from_time)
+#         ):
+#             project_desc = parent.get('custom_project_description') or f"Schedule {parent.name}"
+#             availability_map[schedule.employee] = {
+#                 'is_available': False,
+#                 'conflict': f'"{project_desc}"'
+#             }
 
-    # Prepare response
-    employee_list = []
-    for emp in employees:
-        availability = availability_map.get(emp.name, {'is_available': True})
-        employee_list.append({
-            'name': emp.name,
-            'employee_name': emp.employee_name,
-            'designation': emp.designation,
-            'image': emp.image,
-            'is_available': availability['is_available'],
-            'conflict': availability.get('conflict') if not availability['is_available'] else None
-        })
+#     # Prepare response
+#     employee_list = []
+#     for emp in employees:
+#         availability = availability_map.get(emp.name, {'is_available': True})
+#         employee_list.append({
+#             'name': emp.name,
+#             'employee_name': emp.employee_name,
+#             'designation': emp.designation,
+#             'image': emp.image,
+#             'is_available': availability['is_available'],
+#             'conflict': availability.get('conflict') if not availability['is_available'] else None
+#         })
 
-    return {
-        'status': 'success',
-        'employees': employee_list
-    }
+#     return {
+#         'status': 'success',
+#         'employees': employee_list
+#     }
 
 # Make the function available as an API endpoint
-frappe.whitelist(allow_guest=False)
-def endpoint():
-    return get_available_employees()
+# frappe.whitelist(allow_guest=False)
+# def endpoint():
+#     return get_available_employees()
 
-# Set this as the main function for the API
-response = endpoint()
+# # Set this as the main function for the API
+# response = endpoint()
 
 
 
@@ -6976,4 +6976,408 @@ def get_financial_report(start_date='2025-01-01', end_date='2025-06-30', company
     
     return result
 
+
+
+
+
+import frappe
+from frappe import _
+from frappe.utils import flt, getdate
+import json
+import traceback
+
+@frappe.whitelist()
+def get_period_wise_quotation_report(from_date, to_date, company=None, branch=None, account_incharge=None, created_by=None, customer=None, status="all", quotation_to=None, amount_min=None, amount_max=None, margin_min=None, margin_max=None, search_query=None):
+    """
+    Get quotation report data for the sales intelligence dashboard
+    """
+    try:
+        # Add debug logging
+        frappe.logger().info(f"Dashboard API called with params: from_date={from_date}, to_date={to_date}, company={company}, status={status}")
+        
+        # Parse JSON strings if they are passed as strings
+        def safe_parse_json(value):
+            if isinstance(value, str) and value.strip():
+                try:
+                    return json.loads(value)
+                except (json.JSONDecodeError, ValueError):
+                    return value
+            return value
+        
+        def safe_parse_number(value):
+            if value is None or value == "" or value == "null":
+                return None
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return None
+        
+        # Parse array parameters
+        company = safe_parse_json(company) if company else None
+        branch = safe_parse_json(branch) if branch else None
+        account_incharge = safe_parse_json(account_incharge) if account_incharge else None
+        created_by = safe_parse_json(created_by) if created_by else None
+        quotation_to = safe_parse_json(quotation_to) if quotation_to else None
+        status = safe_parse_json(status) if status else "all"
+        
+        # Parse numeric parameters
+        amount_min = safe_parse_number(amount_min)
+        amount_max = safe_parse_number(amount_max)
+        margin_min = safe_parse_number(margin_min)
+        margin_max = safe_parse_number(margin_max)
+        
+        # Clean search query
+        search_query = search_query.strip() if search_query else None
+        
+        # Validate dates
+        if not from_date or not to_date:
+            frappe.throw(_("From Date and To Date are required"))
+        
+        # Convert string dates to date objects for comparison
+        from_date_obj = getdate(from_date)
+        to_date_obj = getdate(to_date)
+        
+        if from_date_obj > to_date_obj:
+            frappe.throw(_("From Date cannot be after To Date"))
+
+        # Build WHERE conditions dynamically
+        where_conditions = [
+            "q.docstatus IN (0, 1)",
+            "q.transaction_date >= %(from_date)s",
+            "q.transaction_date <= %(to_date)s"
+        ]
+        
+        query_params = {
+            'from_date': from_date,
+            'to_date': to_date
+        }
+        
+        # Add company filter
+        if company and company != "" and company != []:
+            if isinstance(company, list) and len(company) > 0:
+                # Filter out empty strings
+                company = [c for c in company if c and str(c).strip()]
+                if company:
+                    placeholders = ', '.join(['%(company_{})s'.format(i) for i in range(len(company))])
+                    where_conditions.append("q.company IN ({})".format(placeholders))
+                    for i, comp in enumerate(company):
+                        query_params['company_{}'.format(i)] = comp
+            elif isinstance(company, str) and company.strip():
+                where_conditions.append("q.company = %(company)s")
+                query_params['company'] = company
+                
+        # Add branch filter
+        if branch and branch != "" and branch != []:
+            if isinstance(branch, list) and len(branch) > 0:
+                branch = [b for b in branch if b and str(b).strip()]
+                if branch:
+                    placeholders = ', '.join(['%(branch_{})s'.format(i) for i in range(len(branch))])
+                    where_conditions.append("q.branch IN ({})".format(placeholders))
+                    for i, br in enumerate(branch):
+                        query_params['branch_{}'.format(i)] = br
+            elif isinstance(branch, str) and branch.strip():
+                where_conditions.append("q.branch = %(branch)s")
+                query_params['branch'] = branch
+                
+        # Add account incharge filter
+        if account_incharge and account_incharge != "" and account_incharge != []:
+            if isinstance(account_incharge, list) and len(account_incharge) > 0:
+                account_incharge = [a for a in account_incharge if a and str(a).strip()]
+                if account_incharge:
+                    placeholders = ', '.join(['%(account_incharge_{})s'.format(i) for i in range(len(account_incharge))])
+                    where_conditions.append("q.account_incharge IN ({})".format(placeholders))
+                    for i, acc in enumerate(account_incharge):
+                        query_params['account_incharge_{}'.format(i)] = acc
+            elif isinstance(account_incharge, str) and account_incharge.strip():
+                where_conditions.append("q.account_incharge = %(account_incharge)s")
+                query_params['account_incharge'] = account_incharge
+                
+        # Add created by filter
+        if created_by and created_by != "" and created_by != []:
+            if isinstance(created_by, list) and len(created_by) > 0:
+                created_by = [c for c in created_by if c and str(c).strip()]
+                if created_by:
+                    placeholders = ', '.join(['%(created_by_{})s'.format(i) for i in range(len(created_by))])
+                    where_conditions.append("q.owner IN ({})".format(placeholders))
+                    for i, creator in enumerate(created_by):
+                        query_params['created_by_{}'.format(i)] = creator
+            elif isinstance(created_by, str) and created_by.strip():
+                where_conditions.append("q.owner = %(created_by)s")
+                query_params['created_by'] = created_by
+                
+        # Add customer filter
+        if customer and customer != "":
+            where_conditions.append("(q.party_name = %(customer)s OR q.customer_name = %(customer)s)")
+            query_params['customer'] = customer
+            
+        # Status filter
+        if status and status != "all" and status != []:
+            if isinstance(status, list) and len(status) > 0:
+                status = [s for s in status if s and str(s).strip()]
+                if status:
+                    placeholders = ', '.join(['%(status_{})s'.format(i) for i in range(len(status))])
+                    where_conditions.append("q.status IN ({})".format(placeholders))
+                    for i, stat in enumerate(status):
+                        query_params['status_{}'.format(i)] = stat
+            elif isinstance(status, str) and status.strip() and status != "all":
+                where_conditions.append("q.status = %(status)s")
+                query_params['status'] = status
+                
+        # Quotation type filter (Customer/Lead)
+        if quotation_to and quotation_to != "" and quotation_to != []:
+            if isinstance(quotation_to, list) and len(quotation_to) > 0:
+                quotation_to = [q for q in quotation_to if q and str(q).strip()]
+                if quotation_to:
+                    placeholders = ', '.join(['%(quotation_to_{})s'.format(i) for i in range(len(quotation_to))])
+                    where_conditions.append("q.quotation_to IN ({})".format(placeholders))
+                    for i, qt in enumerate(quotation_to):
+                        query_params['quotation_to_{}'.format(i)] = qt
+            elif isinstance(quotation_to, str) and quotation_to.strip():
+                where_conditions.append("q.quotation_to = %(quotation_to)s")
+                query_params['quotation_to'] = quotation_to
+                
+        # Amount range filter
+        if amount_min is not None:
+            where_conditions.append("q.base_grand_total >= %(amount_min)s")
+            query_params['amount_min'] = amount_min
+            
+        if amount_max is not None:
+            where_conditions.append("q.base_grand_total <= %(amount_max)s")
+            query_params['amount_max'] = amount_max
+
+        # Search query filter
+        if search_query and search_query.strip():
+            search_term = '%{}%'.format(search_query.strip())
+            search_conditions = [
+                "q.name LIKE %(search_term)s",
+                "q.party_name LIKE %(search_term)s", 
+                "q.customer_name LIKE %(search_term)s",
+                "q.project_description LIKE %(search_term)s",
+                "q.account_incharge LIKE %(search_term)s"
+            ]
+            where_conditions.append("({})".format(" OR ".join(search_conditions)))
+            query_params['search_term'] = search_term
+
+        # First get count for performance info
+        count_query = """
+            SELECT COUNT(*) as total_count
+            FROM `tabQuotation` q
+            WHERE {where_clause}
+        """.format(where_clause=" AND ".join(where_conditions))
+        
+        count_result = frappe.db.sql(count_query, query_params, as_dict=True)
+        total_count = count_result[0].total_count if count_result else 0
+        
+        frappe.logger().info(f"Total matching quotations: {total_count}")
+        
+        # Main query with all joins (no LIMIT clause)
+        query = """
+            SELECT 
+                q.name as quotation,
+                q.party_name,
+                q.customer_name,
+                q.project_description,
+                q.transaction_date,
+                q.valid_till,
+                q.account_incharge,
+                q.owner,
+                q.company,
+                q.branch,
+                q.total_qty,
+                q.base_net_total,
+                q.base_total_taxes_and_charges,
+                q.base_grand_total,
+                q.order_lost_reason,
+                q.status,
+                q.source,
+                q.opportunity,
+                q.workflow_state,
+                q.quotation_to,
+                COALESCE(u1.full_name, q.account_incharge) as account_incharge_full_name,
+                u1.user_image as account_incharge_image,
+                COALESCE(u2.full_name, q.owner) as owner_full_name,
+                u2.user_image as owner_image,
+                q.creation,
+                q.modified
+            FROM `tabQuotation` q
+            LEFT JOIN `tabUser` u1 ON q.account_incharge = u1.name
+            LEFT JOIN `tabUser` u2 ON q.owner = u2.name
+            WHERE {where_clause}
+            ORDER BY q.transaction_date DESC, q.creation DESC
+        """.format(where_clause=" AND ".join(where_conditions))
+
+        frappe.logger().info(f"Executing query without limit")
+        
+        quotations = frappe.db.sql(query, query_params, as_dict=True)
+        
+        frappe.logger().info(f"Retrieved {len(quotations)} quotations out of {total_count} total")
+
+        if not quotations:
+            return {
+                'data': [],
+                'total_count': total_count,
+                'retrieved_count': 0,
+                'is_limited': False
+            }
+
+        # Get all quotation names for batch processing
+        quotation_names = [q.quotation for q in quotations]
+        
+        # Batch fetch all quotation items with item details
+        items_by_quotation = {}
+        followups_by_quotation = {}
+        
+        if quotation_names:
+            try:
+                # Get items with standard buying cost from tabItem Price or 60% of rate
+                items_query = """
+                    SELECT 
+                        qi.parent,
+                        qi.item_code,
+                        qi.description,
+                        qi.brand,
+                        qi.image,
+                        qi.qty,
+                        qi.rate,
+                        qi.amount,
+                        COALESCE(ip.price_list_rate, qi.rate * 0.6) as standard_buying,
+                        COALESCE(i.is_stock_item, 0) as is_stock_item,
+                        i.item_group
+                    FROM `tabQuotation Item` qi
+                    LEFT JOIN `tabItem` i ON qi.item_code = i.name
+                    LEFT JOIN `tabItem Price` ip ON qi.item_code = ip.item_code AND ip.price_list = 'Standard Buying'
+                    WHERE qi.parent IN ({})
+                    ORDER BY qi.parent, qi.idx
+                """.format(','.join(['%s'] * len(quotation_names)))
+                
+                all_items = frappe.db.sql(items_query, quotation_names, as_dict=True)
+                
+                # Group items by quotation
+                for item in all_items:
+                    if item.parent not in items_by_quotation:
+                        items_by_quotation[item.parent] = []
+                    items_by_quotation[item.parent].append(item)
+                
+            except Exception as e:
+                frappe.logger().error(f"Error fetching items: {str(e)}")
+                # Continue without items if there's an error
+            
+            try:
+                # Get followups
+                followups_query = """
+                    SELECT 
+                        parent,
+                        method,
+                        followup_date_time,
+                        followup_by,
+                        notes
+                    FROM `tabQuotation Followup`
+                    WHERE parent IN ({})
+                    ORDER BY parent, followup_date_time ASC
+                """.format(','.join(['%s'] * len(quotation_names)))
+                
+                all_followups = frappe.db.sql(followups_query, quotation_names, as_dict=True)
+                
+                # Group followups by quotation
+                for followup in all_followups:
+                    if followup.parent not in followups_by_quotation:
+                        followups_by_quotation[followup.parent] = []
+                    followups_by_quotation[followup.parent].append(followup)
+                
+            except Exception as e:
+                frappe.logger().error(f"Error fetching followups: {str(e)}")
+                # Continue without followups if there's an error
+
+        # Process results
+        result = []
+        for quotation in quotations:
+            try:
+                items = items_by_quotation.get(quotation.quotation, [])
+                followups = followups_by_quotation.get(quotation.quotation, [])
+                
+                # Calculate profit efficiently
+                expected_profit, profit_percentage = calculate_profit_fast(items, quotation.base_grand_total)
+                
+                # Apply margin filters if specified
+                if margin_min is not None and profit_percentage < margin_min:
+                    continue
+                if margin_max is not None and profit_percentage > margin_max:
+                    continue
+                
+                # Build result object
+                quotation_dict = dict(quotation)
+                quotation_dict.update({
+                    "expected_profit": expected_profit,
+                    "profit_percentage": profit_percentage,
+                    "items": items,
+                    "followups": followups,
+                    "items_count": len(items),
+                    "followups_count": len(followups)
+                })
+                
+                result.append(quotation_dict)
+                
+            except Exception as e:
+                frappe.logger().error(f"Error processing quotation {quotation.quotation}: {str(e)}")
+                # Continue with next quotation
+
+        frappe.logger().info(f"Returning {len(result)} quotations after processing")
+        
+        return {
+            'data': result,
+            'total_count': total_count,
+            'retrieved_count': len(result),
+            'is_limited': False
+        }
+        
+    except Exception as e:
+        error_message = f"Error in get_period_wise_quotation_report: {str(e)}"
+        frappe.logger().error(f"{error_message}\n{traceback.format_exc()}")
+        frappe.log_error(f"Sales Dashboard Error: {str(e)}\n{traceback.format_exc()}", "Sales Intelligence Dashboard")
+        
+        return {
+            'data': [],
+            'total_count': 0,
+            'retrieved_count': 0,
+            'is_limited': False,
+            'error': str(e)
+        }
+
+
+
+
+@frappe.whitelist()
+def calculate_profit_fast(items, grand_total):
+    """
+    Fast profit calculation for quotation items
+    """
+    try:
+        if not items or not grand_total:
+            return 0, 0
+            
+        total_cost = 0
+        total_amount = 0
+        
+        for item in items:
+            qty = flt(item.get('qty', 0))
+            rate = flt(item.get('rate', 0))
+            buying_cost = flt(item.get('standard_buying', 0))
+            
+            item_amount = qty * rate
+            item_cost = qty * buying_cost
+            
+            total_amount += item_amount
+            total_cost += item_cost
+        
+        if total_amount == 0:
+            return 0, 0
+            
+        profit_amount = total_amount - total_cost
+        profit_percentage = (profit_amount / total_amount) * 100 if total_amount > 0 else 0
+        
+        return profit_amount, round(profit_percentage, 2)
+        
+    except Exception as e:
+        frappe.logger().error(f"Error calculating profit: {str(e)}")
+        return 0, 0
 
