@@ -3582,7 +3582,7 @@ calculatePipeline(quote) {
                     quote.party_name,
                     quote.account_incharge,
                     quote.account_incharge_full_name,
-                    quote.project_description,
+                    quote.custom_project_description,
                     quote.status,
                     quote.workflow_state
                 ].filter(Boolean).join(' ').toLowerCase();

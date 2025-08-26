@@ -7152,7 +7152,7 @@ def get_period_wise_quotation_report(from_date, to_date, company=None, branch=No
                 "q.name LIKE %(search_term)s",
                 "q.party_name LIKE %(search_term)s", 
                 "q.customer_name LIKE %(search_term)s",
-                "q.project_description LIKE %(search_term)s",
+                "q.custom_project_description LIKE %(search_term)s",
                 "q.account_incharge LIKE %(search_term)s"
             ]
             where_conditions.append("({})".format(" OR ".join(search_conditions)))
@@ -7176,7 +7176,7 @@ def get_period_wise_quotation_report(from_date, to_date, company=None, branch=No
                 q.name as quotation,
                 q.party_name,
                 q.customer_name,
-                q.project_description,
+                q.custom_project_description,
                 q.transaction_date,
                 q.valid_till,
                 q.account_incharge,
