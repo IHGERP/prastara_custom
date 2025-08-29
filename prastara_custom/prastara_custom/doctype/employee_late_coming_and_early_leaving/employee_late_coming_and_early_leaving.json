@@ -29,7 +29,6 @@
   "request_doc",
   "details_section",
   "request_details",
-  "amended_from",
   "hod_approve_by",
   "hr_approved_by",
   "approved_by",
@@ -173,15 +172,6 @@
   {
    "fieldname": "request_details",
    "fieldtype": "Text Editor"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Employee Late Coming and Early Leaving",
-   "print_hide": 1,
-   "read_only": 1
   },
   {
    "allow_on_submit": 1,
