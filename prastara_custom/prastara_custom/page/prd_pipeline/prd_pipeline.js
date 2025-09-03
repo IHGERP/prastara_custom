@@ -15,6 +15,7 @@ class EnhancedSalesIntelligence {
        // In the constructor, replace the pipelines object:
 this.data = {
     quotations: [],
+    cancelled_quotations: [],
     filtered: [],
     stats: {},
     metadata: {},
@@ -47,10 +48,10 @@ this.data = {
             from_date: frappe.datetime.add_days(frappe.datetime.get_today(), -30),
             to_date: frappe.datetime.get_today(),
             status: 'all',
-            company: [],
-            branch: [],
-            account_incharge: [],
-            created_by: [],
+            company: 'LED WORLD LLC',
+            branch: '',
+            account_incharge: '',
+            created_by: '',
             customer: null,
             amount_min: null,
             amount_max: null,
@@ -75,9 +76,10 @@ this.data = {
         this.injectStyles();
         this.setupPage();
         this.bindEvents();
+        this.setupCategoryFilter(); // Initialize category filter
         this.detectCurrentPreset(); // Check if current date range matches a preset
         await this.loadData();
-        this.renderCurrentSection();
+        await this.renderCurrentSection();
     }
 
     loadFontAwesome() {
@@ -559,6 +561,38 @@ this.data = {
                     background: var(--accent-blue);
                     border-color: var(--accent-blue);
                     transform: translateY(-1px);
+                }
+
+                .table-category-controls {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    margin-left: 1rem;
+                    padding-left: 1rem;
+                    border-left: 1px solid var(--border-color);
+                }
+
+                .filter-label {
+                    color: var(--text-secondary);
+                    font-size: 0.875rem;
+                    font-weight: 500;
+                }
+
+                .category-select {
+                    background: rgba(30, 41, 59, 0.8);
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    padding: 0.5rem 0.75rem;
+                    color: var(--text-primary);
+                    cursor: pointer;
+                    font-size: 0.875rem;
+                    min-width: 120px;
+                }
+
+                .category-select:focus {
+                    outline: none;
+                    border-color: var(--accent-blue);
+                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
                 }
 
                 .table-info {
@@ -1917,6 +1951,240 @@ this.data = {
     color: var(--text-muted) !important;
 }
 
+/* Select dropdown improvements */
+select.form-control {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23ffffff' d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 16px 12px !important;
+    padding-right: 2.5rem !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+}
+
+select.form-control option {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    padding: 0.5rem !important;
+}
+
+/* Searchable Dropdown Styles */
+.searchable-dropdown {
+    position: relative;
+    width: 100%;
+}
+
+.searchable-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.searchable-input {
+    width: 100% !important;
+    padding-right: 2.5rem !important;
+    box-sizing: border-box !important;
+    height: auto !important; /* Match form-control height */
+}
+
+/* Ensure consistent form control alignment */
+#advanced-filters .form-group {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+}
+
+#advanced-filters .form-control,
+#advanced-filters .searchable-input {
+    height: 38px !important; /* Standard form control height */
+    padding: 0.375rem 0.75rem !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--border-radius-sm) !important;
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+#advanced-filters .searchable-input {
+    padding-right: 2.5rem !important; /* Keep space for dropdown arrow */
+}
+
+#advanced-filters .searchable-dropdown {
+    width: 100% !important;
+    display: block !important;
+}
+
+#advanced-filters .searchable-input-container {
+    position: relative !important;
+    width: 100% !important;
+    display: block !important; /* Change from flex to block */
+}
+
+#advanced-filters label {
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.5rem !important;
+    display: block !important;
+    font-size: 0.875rem !important;
+}
+
+/* Ensure consistent row and column alignment */
+#advanced-filters .row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+#advanced-filters .col-md-6 {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+}
+
+.dropdown-arrow {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+    z-index: 2;
+    font-size: 0.75rem;
+}
+
+.searchable-options {
+    position: fixed; /* Fixed position to prevent modal scroll interference */
+    min-width: 200px; /* Ensure minimum width */
+    background: #ffffff !important; /* Solid white background for better visibility */
+    border: 2px solid var(--border-color) !important;
+    border-radius: var(--border-radius-sm);
+    height: auto; /* Auto height to fit content */
+    max-height: 320px; /* About 8-10 options visible (40px each) */
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 99999; /* Very high z-index to appear above modal */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important; /* Enhanced shadow for better visibility */
+    /* Position will be set dynamically by JavaScript */
+    
+    /* Custom scrollbar for better visibility */
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-blue) transparent;
+}
+
+.searchable-options::-webkit-scrollbar {
+    width: 8px;
+}
+
+.searchable-options::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.searchable-options::-webkit-scrollbar-thumb {
+    background: var(--accent-blue);
+    border-radius: 4px;
+    border: 1px solid var(--bg-secondary);
+}
+
+.searchable-options::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-blue-hover, #2563eb);
+}
+
+.searchable-option {
+    padding: 0.75rem 1rem !important; /* Increased padding for better visibility */
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    color: #333333 !important; /* Dark text for better contrast on white background */
+    background-color: #ffffff !important; /* Solid white background */
+    border-bottom: 1px solid #e5e7eb !important; /* Light gray border */
+    font-size: 0.875rem !important; /* Explicit font size */
+    line-height: 1.4 !important; /* Better line height */
+    white-space: nowrap !important; /* Prevent text wrapping */
+    overflow: hidden !important; /* Handle long text */
+    text-overflow: ellipsis !important; /* Show ellipsis for long text */
+    font-weight: 500 !important; /* Medium weight for better readability */
+}
+
+.searchable-option:hover {
+    background-color: #f3f4f6 !important; /* Light gray hover */
+    color: #1f2937 !important; /* Darker text on hover */
+    font-weight: 600 !important;
+}
+
+.searchable-option.selected {
+    background-color: #3b82f6 !important; /* Blue selection background */
+    color: #ffffff !important; /* White text on blue */
+    font-weight: 600 !important;
+}
+
+/* Highlighted search match styling */
+.searchable-option.search-match {
+    background-color: #e6f7ff !important; /* Light blue highlight for matches */
+    border-left: 3px solid #1890ff !important;
+    color: #1f2937 !important; /* Dark text for readability */
+    font-weight: 600 !important;
+}
+
+.searchable-option.search-match:hover {
+    background-color: #bae7ff !important; /* Darker blue on hover */
+    color: #1f2937 !important;
+}
+
+.searchable-option.search-no-match {
+    opacity: 0.6 !important; /* Slightly dim non-matching options but keep them visible */
+    background-color: #ffffff !important;
+    color: #6b7280 !important; /* Gray text for non-matches */
+    font-weight: 400 !important;
+}
+
+/* Highlighted text within options */
+.search-highlight {
+    background-color: #ffeb3b !important; /* Bright yellow highlight */
+    color: #1f2937 !important; /* Dark text for contrast */
+    font-weight: bold !important;
+    padding: 1px 3px !important;
+    border-radius: 3px !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+}
+
+.searchable-option:last-child {
+    border-bottom: none;
+}
+
+.searchable-options::-webkit-scrollbar {
+    width: 8px; /* Slightly wider for better visibility */
+}
+
+.searchable-options::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+.searchable-options::-webkit-scrollbar-thumb {
+    background: var(--accent-blue); /* More visible blue color */
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Border for definition */
+}
+
+.searchable-options::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-purple); /* Purple on hover */
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Focus state for searchable input */
+.searchable-input:focus {
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+
+.searchable-input:focus + .dropdown-arrow {
+    color: var(--accent-blue);
+}
+
 .form-control:disabled {
     background: rgba(51, 65, 85, 0.4) !important;
     opacity: 0.6;
@@ -2720,6 +2988,16 @@ this.data = {
     animation: loadingFadeIn 0.3s ease-out;
 }
 
+/* Quotation Details Modal - Targeted Z-Index */
+#quotationDetailsModal {
+    z-index: 10001 !important;
+}
+
+#quotationDetailsModal.show,
+#quotationDetailsModal.in {
+    z-index: 10001 !important;
+}
+
 @keyframes loadingFadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -3024,6 +3302,14 @@ this.data = {
                                 <i class="fa fa-times-circle"></i>
                                 <span>Lost Quotations</span>
                             </a>
+                            <a href="#" class="nav-item" data-section="cancelled">
+                                <i class="fa fa-ban"></i>
+                                <span>Cancelled Quotations</span>
+                            </a>
+                            <a href="#" class="nav-item" data-section="opportunities">
+                                <i class="fa fa-lightbulb"></i>
+                                <span>Opportunities</span>
+                            </a>
                         </div>
                     </nav>
                 </aside>
@@ -3188,13 +3474,31 @@ this.data = {
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem; display: block;">Company</label>
-                                            <select class="form-control" id="filter-company" multiple></select>
+                                            <div class="searchable-dropdown" id="company-dropdown">
+                                                <div class="searchable-input-container">
+                                                    <input type="text" class="form-control searchable-input" id="filter-company-input" placeholder="Search companies..." autocomplete="off">
+                                                    <div class="dropdown-arrow"><i class="fa fa-chevron-down"></i></div>
+                                                </div>
+                                                <div class="searchable-options" id="company-options" style="display: none;">
+                                                    <div class="searchable-option" data-value="">All Companies</div>
+                                                </div>
+                                                <input type="hidden" id="filter-company" value="">
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem; display: block;">Branch</label>
-                                            <select class="form-control" id="filter-branch" multiple></select>
+                                            <div class="searchable-dropdown" id="branch-dropdown">
+                                                <div class="searchable-input-container">
+                                                    <input type="text" class="form-control searchable-input" id="filter-branch-input" placeholder="Search branches..." autocomplete="off">
+                                                    <div class="dropdown-arrow"><i class="fa fa-chevron-down"></i></div>
+                                                </div>
+                                                <div class="searchable-options" id="branch-options" style="display: none;">
+                                                    <div class="searchable-option" data-value="">All Branches</div>
+                                                </div>
+                                                <input type="hidden" id="filter-branch" value="">
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -3206,19 +3510,36 @@ this.data = {
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem; display: block;">Account Manager</label>
-                                            <select class="form-control" id="filter-account-manager" multiple></select>
+                                            <div class="searchable-dropdown" id="account-manager-dropdown">
+                                                <div class="searchable-input-container">
+                                                    <input type="text" class="form-control searchable-input" id="filter-account-manager-input" placeholder="Search account managers..." autocomplete="off">
+                                                    <div class="dropdown-arrow"><i class="fa fa-chevron-down"></i></div>
+                                                </div>
+                                                <div class="searchable-options" id="account-manager-options" style="display: none;">
+                                                    <div class="searchable-option" data-value="">All Managers</div>
+                                                </div>
+                                                <input type="hidden" id="filter-account-manager" value="">
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem; display: block;">Status</label>
-                                            <select class="form-control" id="filter-status" multiple>
-                                                <option value="Open">Open</option>
-                                                <option value="Ordered">Ordered</option>
-                                                <option value="Partially Ordered">Partially Ordered</option>
-                                                <option value="Expired">Expired</option>
-                                                <option value="Lost">Lost</option>
-                                            </select>
+                                            <div class="searchable-dropdown" id="status-dropdown">
+                                                <div class="searchable-input-container">
+                                                    <input type="text" class="form-control searchable-input" id="filter-status-input" placeholder="Search status..." autocomplete="off">
+                                                    <div class="dropdown-arrow"><i class="fa fa-chevron-down"></i></div>
+                                                </div>
+                                                <div class="searchable-options" id="status-options" style="display: none;">
+                                                    <div class="searchable-option" data-value="all">All Status</div>
+                                                    <div class="searchable-option" data-value="Open">Open</div>
+                                                    <div class="searchable-option" data-value="Ordered">Ordered</div>
+                                                    <div class="searchable-option" data-value="Partially Ordered">Partially Ordered</div>
+                                                    <div class="searchable-option" data-value="Expired">Expired</div>
+                                                    <div class="searchable-option" data-value="Lost">Lost</div>
+                                                </div>
+                                                <input type="hidden" id="filter-status" value="">
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -3274,7 +3595,7 @@ this.data = {
                             </button>
                             <button type="button" class="btn btn-primary" id="open-quotation">
                                 <i class="fa fa-external-link-alt"></i>
-                                Open in ERP
+                                Open in New Tab
                             </button>
                         </div>
                     </div>
@@ -3385,10 +3706,10 @@ this.data = {
         });
 
         // Global Search
-        $('#global-search').on('input', frappe.utils.debounce((e) => {
+        $('#global-search').on('input', frappe.utils.debounce(async (e) => {
             this.filters.search_query = e.target.value;
             this.applyFilters();
-            this.renderCurrentSection();
+            await this.renderCurrentSection();
         }, 300));
 
         // Date range picker
@@ -3456,9 +3777,330 @@ this.data = {
         $('#open-quotation').on('click', () => {
             const quotationName = $('#open-quotation').data('quotation');
             if (quotationName) {
-                frappe.set_route('Form', 'Quotation', quotationName);
+                window.open('/app/quotation/' + quotationName, '_blank');
             }
         });
+
+        // Searchable dropdown functionality
+        this.initSearchableDropdowns();
+    }
+
+    initSearchableDropdowns() {
+        // Company searchable dropdown
+        this.setupSearchableDropdown('company', '#filter-company-input', '#company-options', '#filter-company');
+        
+        // Branch searchable dropdown
+        this.setupSearchableDropdown('branch', '#filter-branch-input', '#branch-options', '#filter-branch');
+        
+        // Account Manager searchable dropdown
+        this.setupSearchableDropdown('account-manager', '#filter-account-manager-input', '#account-manager-options', '#filter-account-manager');
+        
+        // Status searchable dropdown
+        this.setupSearchableDropdown('status', '#filter-status-input', '#status-options', '#filter-status');
+    }
+
+    setupSearchableDropdown(dropdownName, inputSelector, optionsSelector, hiddenInputSelector) {
+        const input = $(inputSelector);
+        const options = $(optionsSelector);
+        const hiddenInput = $(hiddenInputSelector);
+
+        // Show options when input is focused or clicked
+        input.on('focus click', (e) => {
+            e.stopPropagation();
+            $('.searchable-options').not(options).hide(); // Hide other dropdowns
+            this.positionDropdown(input, options); // Position dropdown correctly
+            options.show();
+            // Show all options initially, regardless of current input value
+            this.showAllSearchableOptions(dropdownName);
+            // Clear any existing 'no results' messages
+            options.find('.no-results').remove();
+        });
+
+        // Filter options as user types
+        input.on('input', () => {
+            const searchTerm = input.val();
+            this.filterSearchableOptions(dropdownName, searchTerm);
+            if (!options.is(':visible')) {
+                this.positionDropdown(input, options);
+                options.show();
+            }
+        });
+
+        // Handle option selection
+        options.on('click', '.searchable-option:not(.no-results)', (e) => {
+            e.stopPropagation();
+            const selectedOption = $(e.target);
+            const value = selectedOption.data('value');
+            const text = selectedOption.text();
+
+            // Update input and hidden field
+            if (value === '') {
+                // If "All Branches" or "All Managers" is selected, clear the input
+                input.val('');
+            } else {
+                input.val(text);
+            }
+            hiddenInput.val(value);
+
+            // Update visual selection
+            options.find('.searchable-option').removeClass('selected');
+            selectedOption.addClass('selected');
+
+            // Hide options
+            options.hide();
+        });
+
+        // Handle keyboard navigation
+        input.on('keydown', (e) => {
+            const allOptions = options.find('.searchable-option:not(.no-results)');
+            const currentSelected = allOptions.filter('.selected');
+            let newSelected;
+
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    if (!options.is(':visible')) {
+                        options.show();
+                        this.filterSearchableOptions(dropdownName, input.val());
+                        return;
+                    }
+                    newSelected = currentSelected.length ? currentSelected.nextAll('.searchable-option:not(.no-results)').first() : allOptions.first();
+                    if (newSelected.length) {
+                        allOptions.removeClass('selected');
+                        newSelected.addClass('selected');
+                        this.scrollToOption(options, newSelected);
+                    }
+                    break;
+                
+                case 'ArrowUp':
+                    e.preventDefault();
+                    if (!options.is(':visible')) return;
+                    newSelected = currentSelected.length ? currentSelected.prevAll('.searchable-option:not(.no-results)').first() : allOptions.last();
+                    if (newSelected.length) {
+                        allOptions.removeClass('selected');
+                        newSelected.addClass('selected');
+                        this.scrollToOption(options, newSelected);
+                    }
+                    break;
+                
+                case 'Enter':
+                    e.preventDefault();
+                    if (options.is(':visible') && currentSelected.length) {
+                        currentSelected.click();
+                    }
+                    break;
+                
+                case 'Escape':
+                    options.hide();
+                    input.blur();
+                    break;
+            }
+        });
+
+        // Hide options when clicking outside
+        $(document).on('click', (e) => {
+            if (!$(e.target).closest(`#${dropdownName}-dropdown`).length) {
+                options.hide();
+            }
+        });
+
+        // Reposition dropdown on scroll and resize
+        $(window).on('scroll resize', () => {
+            if (options.is(':visible')) {
+                this.positionDropdown(input, options);
+            }
+        });
+
+        // Also handle modal scroll
+        $('.modal-body, .frappe-control').on('scroll', () => {
+            if (options.is(':visible')) {
+                this.positionDropdown(input, options);
+            }
+        });
+    }
+
+    positionDropdown(input, options) {
+        const inputOffset = input.offset();
+        const inputHeight = input.outerHeight();
+        const inputWidth = input.outerWidth();
+        
+        // Always position below the input (force downward)
+        const top = inputOffset.top + inputHeight + 1; // Add 1px gap
+        const left = inputOffset.left;
+        
+        options.css({
+            'top': top + 'px',
+            'left': left + 'px',
+            'width': inputWidth + 'px'
+        });
+    }
+
+    showAllSearchableOptions(dropdownName) {
+        const options = $(`#${dropdownName}-options`);
+        // Show all options and remove search styling
+        options.find('.searchable-option:not(.no-results)')
+            .show()
+            .removeClass('search-match search-no-match')
+            .each(function() {
+                // Remove any highlighted text
+                const originalText = $(this).data('original-text') || $(this).text();
+                $(this).html(originalText);
+            });
+        options.find('.no-results').remove();
+    }
+
+    filterSearchableOptions(dropdownName, searchTerm) {
+        const options = $(`#${dropdownName}-options`);
+        
+        // If no search term, show all options without highlighting
+        if (!searchTerm || searchTerm.trim() === '') {
+            this.showAllSearchableOptions(dropdownName);
+            return;
+        }
+        
+        const searchTermLower = searchTerm.toLowerCase();
+        let hasMatches = false;
+
+        options.find('.searchable-option:not(.no-results)').each(function() {
+            const $option = $(this);
+            const originalText = $option.data('original-text') || $option.text();
+            
+            // Store original text if not already stored
+            if (!$option.data('original-text')) {
+                $option.data('original-text', originalText);
+            }
+            
+            const optionTextLower = originalText.toLowerCase();
+            
+            // Always show the option, but style it differently
+            $option.show();
+            
+            if (optionTextLower.includes(searchTermLower)) {
+                // Option matches search - highlight it
+                $option.removeClass('search-no-match').addClass('search-match');
+                
+                // Highlight the matching text
+                const highlightedText = this.highlightSearchText(originalText, searchTerm);
+                $option.html(highlightedText);
+                hasMatches = true;
+            } else {
+                // Option doesn't match - dim it but keep it visible
+                $option.removeClass('search-match').addClass('search-no-match');
+                $option.html(originalText);
+            }
+        });
+
+        // Remove any existing "no results" message since we always show all options
+        options.find('.no-results').remove();
+        
+        // If there are no matches, add a subtle indicator at the top
+        if (!hasMatches && searchTerm.trim()) {
+            options.prepend('<div class="no-results searchable-option" style="color: var(--accent-orange); font-style: italic; cursor: default; background: rgba(245, 158, 11, 0.1); border-bottom: 1px solid var(--accent-orange);">No matches found - showing all options</div>');
+        }
+    }
+
+    highlightSearchText(text, searchTerm) {
+        if (!searchTerm || !text) return text;
+        
+        const searchTermLower = searchTerm.toLowerCase();
+        const textLower = text.toLowerCase();
+        const index = textLower.indexOf(searchTermLower);
+        
+        if (index === -1) return text;
+        
+        const beforeMatch = text.substring(0, index);
+        const match = text.substring(index, index + searchTerm.length);
+        const afterMatch = text.substring(index + searchTerm.length);
+        
+        return beforeMatch + '<span class="search-highlight">' + match + '</span>' + afterMatch;
+    }
+
+    scrollToOption(container, option) {
+        const containerTop = container.scrollTop();
+        const containerHeight = container.height();
+        const optionTop = option.position().top;
+        const optionHeight = option.outerHeight();
+
+        if (optionTop < 0) {
+            container.scrollTop(containerTop + optionTop);
+        } else if (optionTop + optionHeight > containerHeight) {
+            container.scrollTop(containerTop + optionTop + optionHeight - containerHeight);
+        }
+    }
+    
+    // Category filter event handler (legacy - no longer needed with table-based filters)
+    setupCategoryFilter() {
+        // This function is now handled by the table controls directly
+        // Individual table category filters are managed by filterTableByCategory
+    }
+    
+    // Helper function to identify items tables
+    isItemsTable(tableId) {
+        return ['items-by-count', 'items-by-value', 'low-margin-items'].includes(tableId);
+    }
+    
+    // Helper function to get unique categories from data
+    getUniqueCategories(data) {
+        const categories = [...new Set(data.map(item => item.category).filter(Boolean))];
+        return categories.sort();
+    }
+    
+    // Function to fetch item details from Item doctype
+    async fetchItemCategories(itemCodes) {
+        try {
+            const response = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Item',
+                    fields: ['item_code', 'category_list', 'is_stock_item'],
+                    filters: [
+                        ['item_code', 'in', itemCodes]
+                    ],
+                    limit_page_length: 0  // Get all items
+                }
+            });
+            
+            const itemDetails = {};
+            if (response.message) {
+                response.message.forEach(item => {
+                    itemDetails[item.item_code] = {
+                        category: item.category_list || 'Uncategorized',
+                        is_stock_item: item.is_stock_item || 0
+                    };
+                });
+            }
+            
+            return itemDetails;
+        } catch (error) {
+            console.error('Error fetching item details:', error);
+            // Return empty object to fallback to defaults
+            return {};
+        }
+    }
+
+    // Function to filter table by category (called from table controls)
+    filterTableByCategory(tableId, category) {
+        const table = $(`#${tableId}`);
+        if (table.length) {
+            const rows = table.find('tbody tr');
+            
+            rows.each(function() {
+                const row = $(this);
+                const categoryCell = row.find('td').eq(2); // Category is the 3rd column (index 2)
+                const rowCategory = categoryCell.text().trim();
+                
+                if (!category || category === '' || rowCategory === category) {
+                    row.show();
+                } else {
+                    row.hide();
+                }
+            });
+            
+            // Update the info text to show filtered count
+            const visibleRows = table.find('tbody tr:visible').length;
+            const totalRows = table.find('tbody tr').length;
+            $(`#${tableId}-info`).text(`Showing ${visibleRows} of ${totalRows} records`);
+        }
     }
 
  // In the loadData() method, add this after processData():
@@ -3469,15 +4111,24 @@ async loadData() {
         // Check if this is a request for all data
         const requestAllData = this.requestAllData || false;
         
+        // Debug: Log API parameters being sent
+        console.log('API Call Parameters:', {
+            from_date: this.filters.from_date,
+            to_date: this.filters.to_date,
+            company: this.filters.company,
+            branch: this.filters.branch,
+            status: this.filters.status
+        });
+
         const response = await frappe.call({
-            method: 'prastara_custom.controller.variant_pricing.get_period_wise_quotation_report',
+            method: 'prastara_custom.controller.variant_pricing.get_ldw_quotation_report',
             args: {
                 from_date: this.filters.from_date,
                 to_date: this.filters.to_date,
-                company: this.filters.company,
-                branch: this.filters.branch,
-                account_incharge: this.filters.account_incharge,
-                created_by: this.filters.created_by,
+                company: this.filters.company ? [this.filters.company] : [],
+                branch: this.filters.branch ? [this.filters.branch] : [],
+                account_incharge: this.filters.account_incharge ? [this.filters.account_incharge] : [],
+                created_by: this.filters.created_by ? [this.filters.created_by] : [],
                 customer: this.filters.customer,
                 status: this.filters.status === 'all' ? null : this.filters.status,
                 quotation_to: this.filters.quotation_to,
@@ -3494,12 +4145,29 @@ async loadData() {
         if (response.message) {
             this.data.quotations = response.message.data || response.message || [];
             
+            // Debug: Log API response details
+            console.log('API Response:', {
+                total_quotations_received: this.data.quotations.length,
+                sample_quotation: this.data.quotations[0],
+                date_range_of_received_data: this.data.quotations.length > 0 ? {
+                    earliest: Math.min(...this.data.quotations.map(q => new Date(q.transaction_date).getTime())),
+                    latest: Math.max(...this.data.quotations.map(q => new Date(q.transaction_date).getTime()))
+                } : 'No data'
+            });
+            
+            // Debug: Status breakdown of received data
+            const apiStatusBreakdown = {};
+            this.data.quotations.forEach(q => {
+                apiStatusBreakdown[q.status] = (apiStatusBreakdown[q.status] || 0) + 1;
+            });
+            console.log('API Status Breakdown:', apiStatusBreakdown);
+            
             // Fix metadata handling
             // Check if filters are applied (excluding default date range)
-            const hasFilters = this.filters.company.length > 0 || 
-                              this.filters.branch.length > 0 || 
-                              this.filters.account_incharge.length > 0 || 
-                              this.filters.created_by.length > 0 || 
+            const hasFilters = this.filters.company && this.filters.company !== '' || 
+                              this.filters.branch && this.filters.branch !== '' || 
+                              this.filters.account_incharge && this.filters.account_incharge !== '' || 
+                              this.filters.created_by && this.filters.created_by !== '' || 
                               this.filters.customer || 
                               this.filters.status !== 'all' || 
                               this.filters.amount_min || 
@@ -3515,12 +4183,25 @@ async loadData() {
                 has_filters: hasFilters
             };
             
-            this.processData();
+            // Load cancelled quotations data BEFORE processing overview stats
+            const cancelledData = await this.loadCancelledQuotations();
+            this.cancelledQuotationsData = cancelledData;
+            console.log('Loaded cancelled quotations data for overview calculation:', cancelledData);
+            
+            await this.processData();
             
             // Add debugging
             this.debugWorkflowStates(); // Add this line
             
-            this.renderCurrentSection();
+            // Load opportunity data
+            await this.loadOpportunityData();
+            
+            // Load additional doctype data for opportunities section
+            await this.loadSiteVisitData();
+            await this.loadDesignRequestData();
+            await this.loadPermitData();
+            
+            await this.renderCurrentSection();
         }
     } catch (error) {
         console.error('Failed to load data:', error);
@@ -3530,7 +4211,326 @@ async loadData() {
     }
 }
 
-    processData() {
+    async loadCancelledQuotations() {
+        try {
+            this.showLoading();
+            
+            const response = await frappe.call({
+                method: 'prastara_custom.controller.variant_pricing.get_cancelled_quotations',
+                args: {
+                    from_date: this.filters.from_date,
+                    to_date: this.filters.to_date,
+                    company: this.filters.company ? [this.filters.company] : [],
+                    branch: this.filters.branch ? [this.filters.branch] : [],
+                    account_incharge: this.filters.account_incharge ? [this.filters.account_incharge] : [],
+                    customer: this.filters.customer
+                }
+            });
+            
+            if (response && response.message) {
+                this.data.cancelled_quotations = response.message.data || [];
+                console.log('Loaded cancelled quotations:', this.data.cancelled_quotations.length);
+                return response.message;
+            } else {
+                this.data.cancelled_quotations = [];
+                return { data: [], total_count: 0 };
+            }
+        } catch (error) {
+            console.error('Failed to load cancelled quotations:', error);
+            this.data.cancelled_quotations = [];
+            return { data: [], total_count: 0 };
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    async loadSiteVisitData() {
+        try {
+            // Build filters - only date range since these doctypes don't have company field
+            let filters = {};
+            
+            if (this.filters.from_date && this.filters.to_date) {
+                filters.creation = ['between', [this.filters.from_date, this.filters.to_date]];
+            }
+            
+            // Try to get status field, fallback to basic fields if not permitted
+            let fields = ['name', 'customer', 'creation', 'modified'];
+            
+            // Try to add status field, but handle gracefully if not permitted
+            try {
+                const testResponse = await frappe.call({
+                    method: 'frappe.client.get_list',
+                    args: {
+                        doctype: 'Site Visit',
+                        fields: ['name', 'customer', 'status', 'creation', 'modified'],
+                        filters: filters,
+                        limit: 1,
+                        order_by: 'creation desc'
+                    }
+                });
+                // If successful, use full field list including status
+                fields = ['name', 'customer', 'status', 'creation', 'modified'];
+            } catch (error) {
+                console.log('Status field not available for Site Visit, using basic fields');
+            }
+            
+            const response = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Site Visit',
+                    fields: fields,
+                    filters: filters,
+                    limit: 1000,
+                    order_by: 'creation desc'
+                }
+            });
+            
+            let siteVisits = response.message || [];
+            
+            // Filter by company through relationship with opportunities/quotations if company filter is applied
+            if (this.filters.company && this.data.opportunities && this.data.opportunities.length > 0) {
+                // Get customers from filtered opportunities
+                const companyCustomers = new Set(
+                    this.data.opportunities
+                        .filter(opp => !this.filters.company || opp.company === this.filters.company)
+                        .map(opp => opp.customer_name || opp.party_name)
+                );
+                
+                // Filter site visits to only those customers
+                siteVisits = siteVisits.filter(visit => 
+                    companyCustomers.has(visit.customer)
+                );
+            }
+            
+            this.data.site_visits = siteVisits;
+            console.log(`Loaded ${this.data.site_visits.length} site visits filtered for company: ${this.filters.company || 'All'}`);
+            return { data: this.data.site_visits, total_count: this.data.site_visits.length };
+        } catch (error) {
+            console.error('Failed to load site visit data:', error);
+            this.data.site_visits = [];
+            return { data: [], total_count: 0 };
+        }
+    }
+
+    async loadDesignRequestData() {
+        try {
+            // Build filters - only date range since these doctypes don't have company field
+            let filters = {};
+            
+            if (this.filters.from_date && this.filters.to_date) {
+                filters.creation = ['between', [this.filters.from_date, this.filters.to_date]];
+            }
+            
+            // Try to get status field, fallback to basic fields if not permitted
+            let fields = ['name', 'customer', 'creation', 'modified'];
+            
+            // Try to add status field, but handle gracefully if not permitted
+            try {
+                const testResponse = await frappe.call({
+                    method: 'frappe.client.get_list',
+                    args: {
+                        doctype: 'Design Request',
+                        fields: ['name', 'customer', 'status', 'creation', 'modified'],
+                        filters: filters,
+                        limit: 1,
+                        order_by: 'creation desc'
+                    }
+                });
+                // If successful, use full field list including status
+                fields = ['name', 'customer', 'status', 'creation', 'modified'];
+            } catch (error) {
+                console.log('Status field not available for Design Request, using basic fields');
+            }
+            
+            const response = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Design Request',
+                    fields: fields,
+                    filters: filters,
+                    limit: 1000,
+                    order_by: 'creation desc'
+                }
+            });
+            
+            let designRequests = response.message || [];
+            
+            // Filter by company through relationship with opportunities/quotations if company filter is applied
+            if (this.filters.company && this.data.opportunities && this.data.opportunities.length > 0) {
+                // Get customers from filtered opportunities
+                const companyCustomers = new Set(
+                    this.data.opportunities
+                        .filter(opp => !this.filters.company || opp.company === this.filters.company)
+                        .map(opp => opp.customer_name || opp.party_name)
+                );
+                
+                // Filter design requests to only those customers
+                designRequests = designRequests.filter(request => 
+                    companyCustomers.has(request.customer)
+                );
+            }
+            
+            this.data.design_requests = designRequests;
+            console.log(`Loaded ${this.data.design_requests.length} design requests filtered for company: ${this.filters.company || 'All'}`);
+            return { data: this.data.design_requests, total_count: this.data.design_requests.length };
+        } catch (error) {
+            console.error('Failed to load design request data:', error);
+            this.data.design_requests = [];
+            return { data: [], total_count: 0 };
+        }
+    }
+
+    async loadPermitData() {
+        try {
+            // Build filters - only date range since these doctypes don't have company field
+            let filters = {};
+            
+            if (this.filters.from_date && this.filters.to_date) {
+                filters.creation = ['between', [this.filters.from_date, this.filters.to_date]];
+            }
+            
+            const response = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Permit',
+                    fields: ['name', 'customer', 'workflow_state', 'creation', 'modified'],
+                    filters: filters,
+                    limit: 1000,
+                    order_by: 'creation desc'
+                }
+            });
+            
+            let permits = response.message || [];
+            
+            // Filter by company through relationship with opportunities/quotations if company filter is applied
+            if (this.filters.company && this.data.opportunities && this.data.opportunities.length > 0) {
+                // Get customers from filtered opportunities
+                const companyCustomers = new Set(
+                    this.data.opportunities
+                        .filter(opp => !this.filters.company || opp.company === this.filters.company)
+                        .map(opp => opp.customer_name || opp.party_name)
+                );
+                
+                // Filter permits to only those customers
+                permits = permits.filter(permit => 
+                    companyCustomers.has(permit.customer)
+                );
+            }
+            
+            this.data.permits = permits;
+            console.log(`Loaded ${this.data.permits.length} permits filtered for company: ${this.filters.company || 'All'}`);
+            return { data: this.data.permits, total_count: this.data.permits.length };
+        } catch (error) {
+            console.error('Failed to load permit data:', error);
+            this.data.permits = [];
+            return { data: [], total_count: 0 };
+        }
+    }
+
+    async loadOpportunityData() {
+        try {
+            const response = await frappe.call({
+                method: 'prastara_custom.controller.variant_pricing.get_opportunity_report',
+                args: {
+                    from_date: this.filters.from_date,
+                    to_date: this.filters.to_date,
+                    company: this.filters.company ? [this.filters.company] : [],
+                    branch: this.filters.branch ? [this.filters.branch] : [],
+                    account_incharge: this.filters.account_incharge ? [this.filters.account_incharge] : [],
+                    customer: this.filters.customer,
+                    status: this.filters.status === 'all' ? null : this.filters.status
+                }
+            });
+            
+            if (response && response.message) {
+                this.data.opportunities = response.message.data || [];
+                console.log('Loaded opportunities:', this.data.opportunities.length);
+                if (this.data.opportunities.length > 0) {
+                    console.log('Sample opportunity:', this.data.opportunities[0]);
+                }
+                
+                // Process opportunity data to link with quotations
+                this.processOpportunityData();
+                
+                return response.message;
+            } else {
+                this.data.opportunities = [];
+                return { data: [], total_count: 0 };
+            }
+        } catch (error) {
+            console.error('Failed to load opportunity data:', error);
+            this.data.opportunities = [];
+            return { data: [], total_count: 0 };
+        }
+    }
+
+    processOpportunityData() {
+        // Calculate opportunity statistics grouped by status
+        this.data.opportunity_stats = {
+            total: this.data.opportunities.length,
+            by_status: {},
+            quoted: 0,
+            not_quoted: 0,
+            quoted_opportunities: [],
+            not_quoted_opportunities: []
+        };
+
+        // Group opportunities by status
+        this.data.opportunities.forEach(opp => {
+            const status = opp.status || 'Open';
+            
+            // Map specific statuses for grouping
+            let groupedStatus = status;
+            if (status.toLowerCase() === 'quotation') {
+                groupedStatus = 'Quotation';
+            } else if (status.toLowerCase() === 'lost') {
+                groupedStatus = 'Lost';
+            } else if (status.toLowerCase() === 'converted') {
+                groupedStatus = 'Converted';
+            } else if (status.toLowerCase() === 'overdue') {
+                groupedStatus = 'Overdue';
+            } else {
+                groupedStatus = 'Open';
+            }
+            
+            if (!this.data.opportunity_stats.by_status[groupedStatus]) {
+                this.data.opportunity_stats.by_status[groupedStatus] = {
+                    count: 0,
+                    opportunities: []
+                };
+            }
+            
+            this.data.opportunity_stats.by_status[groupedStatus].count++;
+            this.data.opportunity_stats.by_status[groupedStatus].opportunities.push(opp);
+            
+            // Check if this opportunity has quotations using the opportunity field in quotations
+            const relatedQuotes = this.data.quotations.filter(quote => 
+                quote.opportunity === opp.name  // Primary link through opportunity field
+            );
+            
+            if (relatedQuotes.length > 0) {
+                this.data.opportunity_stats.quoted++;
+                opp.quotations = relatedQuotes;
+                opp.quotation_count = relatedQuotes.length;
+                this.data.opportunity_stats.quoted_opportunities.push(opp);
+            } else {
+                this.data.opportunity_stats.not_quoted++;
+                opp.quotation_count = 0;
+                this.data.opportunity_stats.not_quoted_opportunities.push(opp);
+            }
+        });
+
+        console.log('Opportunity stats:', this.data.opportunity_stats);
+        
+        // Debug quotation-opportunity linking
+        const quotationsWithOpportunity = this.data.quotations.filter(q => q.opportunity);
+        console.log(`Found ${quotationsWithOpportunity.length} quotations with opportunity field out of ${this.data.quotations.length} total quotations`);
+        if (quotationsWithOpportunity.length > 0) {
+            console.log('Sample quotation with opportunity:', quotationsWithOpportunity[0]);
+        }
+    }
+
+    async processData() {
         // Add calculated fields
         this.data.quotations = this.data.quotations.map(quote => {
             quote.pipeline = this.calculatePipeline(quote);
@@ -3540,7 +4540,7 @@ async loadData() {
         });
         
         this.applyFilters();
-        this.calculateStats();
+        await this.calculateStats();
     }
 
 calculatePipeline(quote) {
@@ -3582,7 +4582,7 @@ calculatePipeline(quote) {
                     quote.party_name,
                     quote.account_incharge,
                     quote.account_incharge_full_name,
-                    quote.custom_project_description,
+                    quote.project_description,
                     quote.status,
                     quote.workflow_state
                 ].filter(Boolean).join(' ').toLowerCase();
@@ -3596,7 +4596,7 @@ calculatePipeline(quote) {
         });
     }
 
-    calculateStats() {
+    async calculateStats() {
         const data = this.data.filtered;
         
         // Overview Stats
@@ -3611,8 +4611,8 @@ calculatePipeline(quote) {
         // Margin Stats
         this.data.stats.margin = this.calculateMarginStats(data);
         
-        // Items Stats
-        this.data.stats.items = this.calculateItemsStats(data);
+        // Items Stats (now async)
+        this.data.stats.items = await this.calculateItemsStats(data);
         
         // Follow-up Stats
         this.data.stats.followup = this.calculateFollowupStats(data);
@@ -3623,68 +4623,166 @@ calculatePipeline(quote) {
     
 
     calculateOverviewStats(data) {
-        const pendingQuotes = data.filter(q => ['Open', 'Expired'].includes(q.status));
-        
-        // Value range analysis for pending quotes
-        const valueRanges = {
-            '0-10K': { min: 0, max: 10000, quotes: [], count: 0, amount: 0 },
-            '10K-25K': { min: 10000, max: 25000, quotes: [], count: 0, amount: 0 },
-            '25K-50K': { min: 25000, max: 50000, quotes: [], count: 0, amount: 0 },
-            '50K-100K': { min: 50000, max: 100000, quotes: [], count: 0, amount: 0 },
-            '100K+': { min: 100000, max: Infinity, quotes: [], count: 0, amount: 0 }
-        };
-        
-        pendingQuotes.forEach(quote => {
-            const amount = quote.base_grand_total || 0;
-            Object.keys(valueRanges).forEach(range => {
-                const rangeConfig = valueRanges[range];
-                if (amount >= rangeConfig.min && amount < rangeConfig.max) {
-                    rangeConfig.quotes.push(quote);
-                    rangeConfig.count++;
-                    rangeConfig.amount += amount;
+    // Debug: Log current date range and total data count
+    console.log(`Date Range: ${this.filters.from_date} to ${this.filters.to_date}`);
+    console.log(`Total quotations in filtered data: ${data.length}`);
+    
+    // DEBUG: Check for cancelled status fields and values
+    console.log('=== DEBUGGING CANCELLED STATUS ===');
+    const cancelledStatusFields = new Set();
+    const cancelledStatusValues = new Set();
+    
+    data.forEach((q, index) => {
+        // Check all possible field names that might contain cancelled status
+        Object.keys(q).forEach(key => {
+            if (key.toLowerCase().includes('cancel') || key.toLowerCase().includes('cancell')) {
+                cancelledStatusFields.add(key);
+                if (q[key]) {
+                    cancelledStatusValues.add(`${key}: "${q[key]}"`);
+                    if (index < 5) { // Log first 5 for debugging
+                        console.log(`Row ${index}: ${key} = "${q[key]}"`);
+                    }
                 }
-            });
+            }
+        });
+    });
+    
+    console.log('Found cancelled-related fields:', Array.from(cancelledStatusFields));
+    console.log('Found cancelled-related values:', Array.from(cancelledStatusValues));
+    
+    // Calculate counts based on STATUS (simplified logic as requested)
+    const wonQuotes = data.filter(q => ['Ordered', 'Partially Ordered'].includes(q.status));
+    const lostQuotes = data.filter(q => q.status === 'Lost');
+    const draftQuotes = data.filter(q => q.status === 'Draft');
+    const pendingQuotes = data.filter(q => ['Open', 'Expired'].includes(q.status));
+    
+    // Use cached cancelled quotations data if available, otherwise try to filter from main data
+    let cancelledNotAmendedQuotes = [];
+    
+    if (this.cancelledQuotationsData && this.cancelledQuotationsData.data) {
+        cancelledNotAmendedQuotes = this.cancelledQuotationsData.data || [];
+        console.log(`Overview section: Using cached cancelled data: ${cancelledNotAmendedQuotes.length} quotes`);
+        console.log(`Overview section: Cancelled data structure:`, this.cancelledQuotationsData);
+        console.log(`Overview section: Sample cancelled quotes:`, cancelledNotAmendedQuotes.slice(0, 2));
+    } else {
+        // Fallback: try to filter from main data if cached data not available
+        console.log('No cached cancelled data, trying to filter from main data');
+        cancelledNotAmendedQuotes = data.filter(q => {
+            const cancelStatus = q.custom_cancel_status || q.custom_cancell_status;
+            
+            if (!cancelStatus) return false;
+            
+            // Check for exact match with the value used in the detailed section
+            const possibleValues = [
+                'Cancelled But Not Amended',
+                'cancelled but not amended',
+                'Cancelled but not amended',
+                'CANCELLED BUT NOT AMENDED'
+            ];
+            
+            return possibleValues.some(value => 
+                cancelStatus.toString().trim().toLowerCase() === value.toLowerCase()
+            );
         });
         
-        return {
-            total: {
-                count: data.length,
-                amount: data.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
-            },
-            won: {
-                count: data.filter(q => ['Ordered', 'Partially Ordered'].includes(q.status)).length,
-                amount: data.filter(q => ['Ordered', 'Partially Ordered'].includes(q.status))
-                    .reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
-            },
-            pending: {
-                count: pendingQuotes.length,
-                amount: pendingQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
-            },
-            lost: {
-                count: data.filter(q => q.status === 'Lost').length,
-                amount: data.filter(q => q.status === 'Lost')
-                    .reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
-            },
-            draft: {
-                count: data.filter(q => q.status === 'Draft').length,
-                amount: data.filter(q => q.status === 'Draft')
-                    .reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
-            },
-            // New workflow state-based stats
-            draftWorkflow: {
-                count: data.filter(q => q.workflow_state === 'Draft').length,
-                amount: data.filter(q => q.workflow_state === 'Draft')
-                    .reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
-            },
-            pendingDeptApproval: {
-                count: data.filter(q => q.workflow_state === 'Pending Dept Approval').length,
-                amount: data.filter(q => q.workflow_state === 'Pending Dept Approval')
-                    .reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
-            },
-            valueRanges: valueRanges,
-            statusWise: this.calculateStatusWiseBreakdown(data)
-        };
+        if (cancelledNotAmendedQuotes.length === 0) {
+            console.log('No cancelled quotes found in main data either, will show 0');
+        }
     }
+    
+    // Additional debugging for cancelled quotes
+    console.log(`Cancelled but not amended quotes found: ${cancelledNotAmendedQuotes.length}`);
+    if (cancelledNotAmendedQuotes.length > 0) {
+        console.log('Sample cancelled quotes:', cancelledNotAmendedQuotes.slice(0, 3).map(q => ({
+            id: q.id || q.quote_id,
+            status: q.status,
+            custom_cancel_status: q.custom_cancel_status,
+            custom_cancell_status: q.custom_cancell_status,
+            all_cancel_fields: Object.keys(q).filter(k => k.toLowerCase().includes('cancel')).reduce((obj, k) => {
+                obj[k] = q[k];
+                return obj;
+            }, {})
+        })));
+    }
+    
+    // Debug: Log status-wise breakdown
+    const statusCount = {};
+    data.forEach(q => {
+        statusCount[q.status] = (statusCount[q.status] || 0) + 1;
+    });
+    console.log('Status-wise breakdown:', statusCount);
+    
+    // Value range analysis for pending quotes
+    const valueRanges = {
+        '0-10K': { min: 0, max: 10000, quotes: [], count: 0, amount: 0 },
+        '10K-25K': { min: 10000, max: 25000, quotes: [], count: 0, amount: 0 },
+        '25K-50K': { min: 25000, max: 50000, quotes: [], count: 0, amount: 0 },
+        '50K-100K': { min: 50000, max: 100000, quotes: [], count: 0, amount: 0 },
+        '100K+': { min: 100000, max: Infinity, quotes: [], count: 0, amount: 0 }
+    };
+    
+    pendingQuotes.forEach(quote => {
+        const amount = quote.base_grand_total || 0;
+        Object.keys(valueRanges).forEach(range => {
+            const rangeConfig = valueRanges[range];
+            if (amount >= rangeConfig.min && amount < rangeConfig.max) {
+                rangeConfig.quotes.push(quote);
+                rangeConfig.count++;
+                rangeConfig.amount += amount;
+            }
+        });
+    });
+    
+    // Additional workflow-based filter (NOT included in total)
+    const pendingDeptApprovalQuotes = data.filter(q => q.workflow_state === 'Pending Dept Approval');
+    
+    // Calculate total: Won + Lost + Draft + Pending + Cancelled (NOT including Pending Dept Approval)
+    const newTotalCount = wonQuotes.length + lostQuotes.length + draftQuotes.length + pendingQuotes.length + cancelledNotAmendedQuotes.length;
+    const newTotalAmount = wonQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0) +
+                          lostQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0) +
+                          draftQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0) +
+                          pendingQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0) +
+                          cancelledNotAmendedQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0);
+
+    console.log('=== FINAL COUNTS ===');
+    console.log(`Won: ${wonQuotes.length}, Lost: ${lostQuotes.length}, Draft: ${draftQuotes.length}`);
+    console.log(`Pending: ${pendingQuotes.length}, Cancelled: ${cancelledNotAmendedQuotes.length}`);
+    console.log(`Total: ${newTotalCount}`);
+
+    return {
+        total: {
+            count: newTotalCount,
+            amount: newTotalAmount
+        },
+        won: {
+            count: wonQuotes.length,
+            amount: wonQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
+        },
+        pending: {
+            count: pendingQuotes.length,
+            amount: pendingQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
+        },
+        lost: {
+            count: lostQuotes.length,
+            amount: lostQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
+        },
+        draft: {
+            count: draftQuotes.length,
+            amount: draftQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
+        },
+        pendingDeptApproval: {
+            count: pendingDeptApprovalQuotes.length,
+            amount: pendingDeptApprovalQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
+        },
+        // New cancelled but not amended stats
+        cancelledNotAmended: {
+            count: cancelledNotAmendedQuotes.length,
+            amount: cancelledNotAmendedQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
+        },
+        valueRanges: valueRanges,
+        statusWise: this.calculateStatusWiseBreakdown(data)
+    };
+}
 
     calculateStatusWiseBreakdown(data) {
         const statuses = [...new Set(data.map(q => q.status))];
@@ -3709,20 +4807,21 @@ calculatePipelineStats(data) {
     
     console.log('Calculating pipeline stats for', data.length, 'quotations');
     
-    // Consider ALL quotations that have pipeline workflow states, not just Open ones
+    // Consider quotations that have pipeline workflow states but exclude Ordered/Partially Ordered
     const quotationsWithPipeline = data.filter(quote => {
         const pipeline = this.calculatePipeline(quote);
-        return pipeline !== 'None';
+        const isOrderedStatus = ['Ordered', 'Partially Ordered'].includes(quote.status);
+        return pipeline !== 'None' && !isOrderedStatus;
     });
     
     console.log('Found', quotationsWithPipeline.length, 'quotations with pipeline workflow states');
     
-    // Also include quotations that are Open but don't have pipeline states
-    const openQuotesWithoutPipeline = data.filter(quote => {
-        return quote.status === 'Open' && this.calculatePipeline(quote) === 'None';
+    // Include ALL quotations that don't have pipeline states (regardless of status)
+    const quotesWithoutPipeline = data.filter(quote => {
+        return this.calculatePipeline(quote) === 'None';
     });
     
-    console.log('Found', openQuotesWithoutPipeline.length, 'Open quotations without pipeline states');
+    console.log('Found', quotesWithoutPipeline.length, 'quotations without pipeline states');
     
     // Process all quotations with pipeline states
     quotationsWithPipeline.forEach(quote => {
@@ -3735,8 +4834,8 @@ calculatePipelineStats(data) {
         }
     });
     
-    // Add Open quotations without pipeline to 'None' category
-    openQuotesWithoutPipeline.forEach(quote => {
+    // Add ALL quotations without pipeline to 'None' category
+    quotesWithoutPipeline.forEach(quote => {
         this.data.pipelines['None'].quotes.push(quote);
         this.data.pipelines['None'].value += quote.base_grand_total || 0;
     });
@@ -3852,18 +4951,34 @@ calculatePipelineStats(data) {
         })).sort((a, b) => parseFloat(b.avg_margin) - parseFloat(a.avg_margin));
     }
 
-    calculateItemsStats(data) {
+    async calculateItemsStats(data) {
         const itemMap = new Map();
+        const itemCodes = new Set();
+        
+        // First pass: collect all unique item codes
+        data.forEach(quote => {
+            if (quote.items) {
+                quote.items.forEach(item => {
+                    itemCodes.add(item.item_code);
+                });
+            }
+        });
+        
+        // Fetch item details from Item doctype
+        const itemDetails = await this.fetchItemCategories(Array.from(itemCodes));
         
         data.forEach(quote => {
             if (quote.items) {
                 quote.items.forEach(item => {
                     const key = item.item_code;
                     if (!itemMap.has(key)) {
+                        const itemInfo = itemDetails[item.item_code] || { category: 'Uncategorized', is_stock_item: 0 };
                         itemMap.set(key, {
                             item_code: item.item_code,
                             brand: item.brand,
                             image: item.image,
+                            category: itemInfo.category,
+                            is_stock_item: itemInfo.is_stock_item,
                             total_qty: 0,
                             total_value: 0,
                             total_cost: 0,
@@ -3895,12 +5010,46 @@ calculatePipelineStats(data) {
             total_profit: item.total_value - item.total_cost
         }));
         
+        // Calculate category statistics
+        const categoryStats = {};
+        itemsArray.forEach(item => {
+            const category = item.category || 'Uncategorized';
+            if (!categoryStats[category]) {
+                categoryStats[category] = {
+                    name: category,
+                    item_count: 0,
+                    total_value: 0,
+                    total_quotes: 0
+                };
+            }
+            categoryStats[category].item_count++;
+            categoryStats[category].total_value += item.total_value;
+            categoryStats[category].total_quotes += item.quote_count;
+        });
+        
+        // Find top category by item count
+        const categoriesByCount = Object.values(categoryStats).sort((a, b) => b.item_count - a.item_count);
+        const topCategoryByCount = categoriesByCount[0] || { name: 'None', item_count: 0 };
+        
+        // Filter stock items only (is_stock_item = 1)
+        const stockItems = itemsArray.filter(item => item.is_stock_item === 1);
+        
+        // Calculate most popular stock item for the card
+        const mostPopularStockItem = stockItems.length > 0 ? 
+            [...stockItems].sort((a, b) => b.quote_count - a.quote_count)[0] : 
+            { item_code: 'N/A', quote_count: 0 };
+        
         return {
             all: itemsArray,
+            stockItems: stockItems,
             mostQuotedByCount: [...itemsArray].sort((a, b) => b.quote_count - a.quote_count).slice(0, 20),
+            mostQuotedStockByCount: [...stockItems].sort((a, b) => b.quote_count - a.quote_count).slice(0, 20),
             mostQuotedByValue: [...itemsArray].sort((a, b) => b.total_value - a.total_value).slice(0, 20),
             lowMarginItems: itemsArray.filter(item => parseFloat(item.avg_margin) < 15)
-                .sort((a, b) => parseFloat(a.avg_margin) - parseFloat(b.avg_margin))
+                .sort((a, b) => parseFloat(a.avg_margin) - parseFloat(b.avg_margin)),
+            categoryStats: categoriesByCount,
+            topCategoryByCount: topCategoryByCount,
+            mostPopularStockItem: mostPopularStockItem
         };
     }
 
@@ -4065,10 +5214,34 @@ debugWorkflowStates() {
 }
     calculateCustomerSegmentation(customers) {
         const segments = {
-            vip: { name: 'VIP Customers', customers: [], criteria: 'High value & frequency' },
-            loyal: { name: 'Loyal Customers', customers: [], criteria: 'Consistent engagement' },
-            potential: { name: 'Potential Growth', customers: [], criteria: 'Growing engagement' },
-            atrisk: { name: 'At Risk', customers: [], criteria: 'Declining engagement' }
+            vip: { 
+                name: 'VIP Customers', 
+                customers: [], 
+                criteria: 'Total value > AED 100K + Conversion > 50%',
+                description: 'High-value customers with excellent conversion rates. These are your most profitable clients who consistently close deals.',
+                actionable: 'Focus on retention and upselling opportunities.'
+            },
+            loyal: { 
+                name: 'Loyal Customers', 
+                customers: [], 
+                criteria: 'Conversion > 30% + Active within 60 days',
+                description: 'Reliable customers with good conversion rates and regular engagement. They trust your business and convert well.',
+                actionable: 'Maintain relationship and explore expansion opportunities.'
+            },
+            potential: { 
+                name: 'Potential Growth', 
+                customers: [], 
+                criteria: 'All other active customers with some engagement',
+                description: 'Customers with moderate activity who could be developed into higher value segments with proper nurturing.',
+                actionable: 'Invest in relationship building and targeted offers.'
+            },
+            atrisk: { 
+                name: 'At Risk', 
+                customers: [], 
+                criteria: 'No activity > 90 days OR Low conversion < 20%',
+                description: 'Customers who have gone quiet or consistently reject proposals. They may be considering alternatives.',
+                actionable: 'Immediate re-engagement needed or risk losing them.'
+            }
         };
         
         customers.forEach(customer => {
@@ -4095,7 +5268,92 @@ debugWorkflowStates() {
             }
         });
         
+        // Calculate top 5 customers by quotation count
+        segments.topQuoteCustomers = customers.length > 0 ? 
+            customers
+                .sort((a, b) => b.total_quotes - a.total_quotes)
+                .slice(0, 5) : [];
+        
+        // Keep single top customer for backward compatibility
+        segments.topQuoteCustomer = segments.topQuoteCustomers.length > 0 ? 
+            segments.topQuoteCustomers[0] : null;
+            
+        // Calculate continuous non-converting customers
+        segments.continuousQuoteCustomers = this.findContinuousNonConvertingCustomers();
+        
         return segments;
+    }
+    
+    findContinuousNonConvertingCustomers() {
+        if (!this.quotations || this.quotations.length === 0) return [];
+        
+        const customerQuotes = {};
+        
+        // Group quotations by customer and sort by creation date
+        this.quotations.forEach(quote => {
+            if (!quote.customer) return;
+            
+            if (!customerQuotes[quote.customer]) {
+                customerQuotes[quote.customer] = [];
+            }
+            
+            customerQuotes[quote.customer].push({
+                name: quote.quotation,
+                status: quote.status,
+                creation: quote.creation,
+                customer: quote.customer
+            });
+        });
+        
+        const continuousCustomers = [];
+        
+        // Check each customer for continuous patterns
+        Object.keys(customerQuotes).forEach(customerName => {
+            const quotes = customerQuotes[customerName].sort((a, b) => new Date(a.creation) - new Date(b.creation));
+            let continuousCount = 0;
+            let maxContinuous = 0;
+            let currentStreak = [];
+            let longestStreak = [];
+            
+            for (let i = 0; i < quotes.length; i++) {
+                const quote = quotes[i];
+                
+                if (quote.status === 'Won' || quote.status === 'Ordered') {
+                    // Reset count if customer won/ordered
+                    if (continuousCount >= 5) {
+                        // Customer had 5+ continuous before this win, record it
+                        if (currentStreak.length >= longestStreak.length) {
+                            longestStreak = [...currentStreak];
+                        }
+                    }
+                    continuousCount = 0;
+                    currentStreak = [];
+                } else if (['Lost', 'Expired', 'Cancelled'].includes(quote.status)) {
+                    // Count non-converting quotes
+                    continuousCount++;
+                    currentStreak.push(quote);
+                    if (currentStreak.length > longestStreak.length) {
+                        longestStreak = [...currentStreak];
+                    }
+                }
+            }
+            
+            // Check if customer currently has 5+ continuous non-converting quotes
+            if (continuousCount >= 5 || longestStreak.length >= 5) {
+                continuousCustomers.push({
+                    customer: customerName,
+                    continuous_count: Math.max(continuousCount, longestStreak.length),
+                    current_streak: continuousCount,
+                    longest_streak: longestStreak.length,
+                    streak_start: longestStreak.length > 0 ? longestStreak[0].creation : null,
+                    streak_end: longestStreak.length > 0 ? longestStreak[longestStreak.length - 1].creation : null,
+                    total_quotes: quotes.length,
+                    won_quotes: quotes.filter(q => q.status === 'Won' || q.status === 'Ordered').length
+                });
+            }
+        });
+        
+        return continuousCustomers.sort((a, b) => b.continuous_count - a.continuous_count);
     }
     
     calculateCustomerInsights(customers) {
@@ -4113,12 +5371,12 @@ debugWorkflowStates() {
         };
     }
 
-    navigateToSection(section) {
+    async navigateToSection(section) {
         $('.nav-item').removeClass('active');
         $(`.nav-item[data-section="${section}"]`).addClass('active');
         
         this.currentSection = section;
-        this.renderCurrentSection();
+        await this.renderCurrentSection();
         this.updatePageTitle(section);
     }
 
@@ -4131,7 +5389,9 @@ debugWorkflowStates() {
             items: { title: 'Items Analysis', subtitle: 'Product performance insights' },
             followup: { title: 'Follow-up Tracker', subtitle: 'Manage customer follow-ups' },
             customers: { title: 'Customer Insights', subtitle: 'Customer behavior analysis' },
-            lost: { title: 'Lost Quotations', subtitle: 'Analyze lost opportunities and reasons' }
+            lost: { title: 'Lost Quotations', subtitle: 'Analyze lost opportunities and reasons' },
+            cancelled: { title: 'Cancelled Quotations', subtitle: 'Analyze cancelled but not amended quotations' },
+            opportunities: { title: 'Opportunities', subtitle: 'Track opportunity to quotation conversion' }
         };
         
         const sectionInfo = titles[section] || titles.overview;
@@ -4139,7 +5399,7 @@ debugWorkflowStates() {
         $('#page-subtitle').text(sectionInfo.subtitle);
     }
 
-    renderCurrentSection() {
+    async renderCurrentSection() {
         let content = '';
         
         switch(this.currentSection) {
@@ -4166,6 +5426,12 @@ debugWorkflowStates() {
                 break;
             case 'lost':
                 content = this.renderLostQuotationsSection();
+                break;
+            case 'cancelled':
+                content = await this.renderCancelledQuotationsSection();
+                break;
+            case 'opportunities':
+                content = this.renderOpportunitiesSection();
                 break;
             default:
                 content = this.renderOverviewSection();
@@ -4206,6 +5472,7 @@ debugWorkflowStates() {
             
             <!-- Main Stats Overview -->
             <div class="stats-grid">
+                <!-- 1. Total Quotations -->
                 <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('total_quotations')">
                     <div class="stat-card-header">
                         <div class="stat-card-content">
@@ -4226,6 +5493,7 @@ debugWorkflowStates() {
                     </span>
                 </div>
                 
+                <!-- 2. Won Quotations -->
                 <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('won_quotations')">
                     <div class="stat-card-header">
                         <div class="stat-card-content">
@@ -4246,26 +5514,7 @@ debugWorkflowStates() {
                     </span>
                 </div>
                 
-                <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('pending_quotations')">
-                    <div class="stat-card-header">
-                        <div class="stat-card-content">
-                            <h3 class="stat-card-title">
-                                <i class="fa fa-clock" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
-                                Pending Quotations
-                            </h3>
-                            <p class="stat-card-value">${stats.pending.count.toLocaleString()}</p>
-                            <p class="stat-card-amount">AED ${this.formatCurrency(stats.pending.amount)}</p>
-                        </div>
-                        <div class="stat-card-icon warning">
-                            <i class="fa fa-clock"></i>
-                        </div>
-                    </div>
-                    <span class="click-indicator">
-                        <i class="fa fa-mouse-pointer"></i>
-                        Click to view details
-                    </span>
-                </div>
-                
+                <!-- 3. Conversion Rate -->
                 <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('conversion_rate')">
                     <div class="stat-card-header">
                         <div class="stat-card-content">
@@ -4290,6 +5539,7 @@ debugWorkflowStates() {
                     </span>
                 </div>
                 
+                <!-- 4. Draft Quotations -->
                 <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('draft_quotations')">
                     <div class="stat-card-header">
                         <div class="stat-card-content">
@@ -4310,6 +5560,7 @@ debugWorkflowStates() {
                     </span>
                 </div>
                 
+                <!-- 5. Pending Dept Approval -->
                 <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('pending_dept_approval_quotations')">
                     <div class="stat-card-header">
                         <div class="stat-card-content">
@@ -4322,6 +5573,69 @@ debugWorkflowStates() {
                         </div>
                         <div class="stat-card-icon warning">
                             <i class="fa fa-hourglass-half"></i>
+                        </div>
+                    </div>
+                    <span class="click-indicator">
+                        <i class="fa fa-mouse-pointer"></i>
+                        Click to view details
+                    </span>
+                </div>
+                
+                <!-- 6. Pending Quotations -->
+                <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('pending_quotations')">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-clock" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
+                                Pending Quotations
+                            </h3>
+                            <p class="stat-card-value">${stats.pending.count.toLocaleString()}</p>
+                            <p class="stat-card-amount">AED ${this.formatCurrency(stats.pending.amount)}</p>
+                        </div>
+                        <div class="stat-card-icon warning">
+                            <i class="fa fa-clock"></i>
+                        </div>
+                    </div>
+                    <span class="click-indicator">
+                        <i class="fa fa-mouse-pointer"></i>
+                        Click to view details
+                    </span>
+                </div>
+                
+                <!-- 7. Lost Quotations -->
+                <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('lost_quotations')">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-times-circle" style="color: var(--accent-red); margin-right: 0.5rem;"></i>
+                                Lost Quotations
+                            </h3>
+                            <p class="stat-card-value">${stats.lost.count.toLocaleString()}</p>
+                            <p class="stat-card-amount">AED ${this.formatCurrency(stats.lost.amount)}</p>
+                        </div>
+                        <div class="stat-card-icon danger">
+                            <i class="fa fa-times-circle"></i>
+                        </div>
+                    </div>
+                    <span class="click-indicator">
+                        <i class="fa fa-mouse-pointer"></i>
+                        Click to view details
+                    </span>
+                </div>
+                
+                <!-- 8. Cancelled but not amended Quotations -->
+                <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('cancelled_not_amended_quotations')">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-ban" style="color: var(--accent-purple); margin-right: 0.5rem;"></i>
+                                Cancelled (Not Amended)
+                            </h3>
+                            <p class="stat-card-value">${stats.cancelledNotAmended.count.toLocaleString()}</p>
+                            <p class="stat-card-amount">AED ${this.formatCurrency(stats.cancelledNotAmended.amount)}</p>
+                        </div>
+                        <div class="stat-card-icon" style="background: linear-gradient(135deg, var(--accent-purple), #8b5cf6);">
+                            <i class="fa fa-ban"></i>
                         </div>
                     </div>
                     <span class="click-indicator">
@@ -4399,6 +5713,7 @@ debugWorkflowStates() {
                     { key: 'base_grand_total', label: 'Amount', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
                     { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
                     { key: 'profit_percentage', label: 'Margin', sortable: true, type: 'margin', icon: 'fa-percentage' },
+                    { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
                     { key: 'actions', label: 'Actions', sortable: false, type: 'actions', icon: 'fa-cog' }
                 ])}
             </div>
@@ -4444,15 +5759,15 @@ renderPipelineSection() {
                     <div class="pipeline-legend">
                         <span class="legend-item legend-a">
                             <span class="legend-dot"></span>
-                            High Confidence (90-100%)
+                            Very High Confidence (90-100%)
                         </span>
                         <span class="legend-item legend-b">
                             <span class="legend-dot"></span>
-                            Medium Confidence (50-75%)
+                            High Confidence (75-90%)
                         </span>
                         <span class="legend-item legend-c">
                             <span class="legend-dot"></span>
-                            Low Confidence (0-50%)
+                            Medium Confidence (50-75%)
                         </span>
                         <span class="legend-item legend-none">
                             <span class="legend-dot"></span>
@@ -4467,10 +5782,10 @@ renderPipelineSection() {
                         <div class="stage-header">
                             <div class="stage-info">
                                 <div class="stage-title">Pipeline A</div>
-                                <div class="stage-subtitle">High Confidence</div>
+                                <div class="stage-subtitle">Very High Confidence</div>
                             </div>
                             <div class="stage-probability">
-                                <div class="probability-badge probability-high">90-100%</div>
+                                <div class="probability-badge probability-very-high">90-100%</div>
                             </div>
                         </div>
                         
@@ -4489,7 +5804,7 @@ renderPipelineSection() {
                             <div class="progress-bar">
                                 <div class="progress-fill progress-a" style="width: 95%"></div>
                             </div>
-                            <div class="progress-text">95% Weight Factor</div>
+                            <div class="progress-text">98% Weight Factor</div>
                         </div>
                         
                         ${pipelines.A.quotes.length > 0 ? `<div class="stage-click-hint"><i class="fa fa-mouse-pointer"></i> Click to view details</div>` : `<div class="stage-empty"><i class="fa fa-inbox"></i> No quotations in this pipeline</div>`}
@@ -4500,10 +5815,10 @@ renderPipelineSection() {
                         <div class="stage-header">
                             <div class="stage-info">
                                 <div class="stage-title">Pipeline B</div>
-                                <div class="stage-subtitle">Medium Confidence</div>
+                                <div class="stage-subtitle">High Confidence</div>
                             </div>
                             <div class="stage-probability">
-                                <div class="probability-badge probability-medium">50-75%</div>
+                                <div class="probability-badge probability-high">75-90%</div>
                             </div>
                         </div>
                         
@@ -4520,9 +5835,9 @@ renderPipelineSection() {
                         
                         <div class="stage-progress">
                             <div class="progress-bar">
-                                <div class="progress-fill progress-b" style="width: 62.5%"></div>
+                                <div class="progress-fill progress-b" style="width: 82.5%"></div>
                             </div>
-                            <div class="progress-text">62.5% Weight Factor</div>
+                            <div class="progress-text">82.5% Weight Factor</div>
                         </div>
                         
                         ${pipelines.B.quotes.length > 0 ? `<div class="stage-click-hint"><i class="fa fa-mouse-pointer"></i> Click to view details</div>` : `<div class="stage-empty"><i class="fa fa-inbox"></i> No quotations in this pipeline</div>`}
@@ -4533,10 +5848,10 @@ renderPipelineSection() {
                         <div class="stage-header">
                             <div class="stage-info">
                                 <div class="stage-title">Pipeline C</div>
-                                <div class="stage-subtitle">Low Confidence</div>
+                                <div class="stage-subtitle">Medium Confidence</div>
                             </div>
                             <div class="stage-probability">
-                                <div class="probability-badge probability-low">0-50%</div>
+                                <div class="probability-badge probability-medium">50-75%</div>
                             </div>
                         </div>
                         
@@ -4553,17 +5868,17 @@ renderPipelineSection() {
                         
                         <div class="stage-progress">
                             <div class="progress-bar">
-                                <div class="progress-fill progress-c" style="width: 25%"></div>
+                                <div class="progress-fill progress-c" style="width: 62.5%"></div>
                             </div>
-                            <div class="progress-text">25% Weight Factor</div>
+                            <div class="progress-text">62.5% Weight Factor</div>
                         </div>
                         
                         ${pipelines.C.quotes.length > 0 ? `<div class="stage-click-hint"><i class="fa fa-mouse-pointer"></i> Click to view details</div>` : `<div class="stage-empty"><i class="fa fa-inbox"></i> No quotations in this pipeline</div>`}
                     </div>
 
+
                     <!-- No Pipeline -->
-                    ${pipelines.None.quotes.length > 0 ? `
-                    <div class="pipeline-stage-card pipeline-none" onclick="frappe.sales_intelligence.showPipelineDetails('None')">
+                    <div class="pipeline-stage-card pipeline-none ${pipelines.None.quotes.length === 0 ? 'empty' : ''}" onclick="frappe.sales_intelligence.showPipelineDetails('None')">
                         <div class="stage-header">
                             <div class="stage-info">
                                 <div class="stage-title">No Pipeline</div>
@@ -4596,9 +5911,8 @@ renderPipelineSection() {
                             <div class="progress-text">Requires Pipeline Assignment</div>
                         </div>
                         
-                        <div class="stage-click-hint"><i class="fa fa-exclamation-triangle"></i> Click to review unassigned quotations</div>
+                        ${pipelines.None.quotes.length > 0 ? `<div class="stage-click-hint"><i class="fa fa-exclamation-triangle"></i> Click to review unassigned quotations</div>` : `<div class="stage-empty"><i class="fa fa-inbox"></i> No quotations without pipeline</div>`}
                     </div>
-                    ` : ''}
                 </div>
             </div>
 
@@ -5196,12 +6510,12 @@ getPipelineStatusBreakdown() {
                             <div class="stat-card-content">
                                 <h3 class="stat-card-title">
                                     <i class="fa fa-star" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
-                                    Most Popular Item
+                                    Most Popular Stock Item
                                 </h3>
-                                <p class="stat-card-value">${stats.mostQuotedByCount[0]?.quote_count || 0}</p>
+                                <p class="stat-card-value">${stats.mostPopularStockItem?.quote_count || 0}</p>
                                 <p class="stat-card-amount">
                                     <i class="fa fa-trophy" style="color: var(--accent-orange); margin-right: 0.25rem;"></i>
-                                    ${stats.mostQuotedByCount[0]?.item_code || 'N/A'}
+                                    ${stats.mostPopularStockItem?.item_code || 'N/A'}
                                 </p>
                             </div>
                             <div class="stat-card-icon info">
@@ -5245,6 +6559,25 @@ getPipelineStatusBreakdown() {
                             </div>
                             <div class="stat-card-icon info">
                                 <i class="fa fa-chart-line"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-crown" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
+                                    Top Category
+                                </h3>
+                                <p class="stat-card-value">${stats.topCategoryByCount.item_count}</p>
+                                <p class="stat-card-amount">
+                                    <i class="fa fa-layer-group" style="color: var(--accent-orange); margin-right: 0.25rem;"></i>
+                                    ${stats.topCategoryByCount.name}
+                                </p>
+                            </div>
+                            <div class="stat-card-icon warning">
+                                <i class="fa fa-crown"></i>
                             </div>
                         </div>
                     </div>
@@ -5313,6 +6646,7 @@ getPipelineStatusBreakdown() {
                     ${this.renderTableWithControls('items-by-count', stats.mostQuotedByCount, [
                         { key: 'item_code', label: 'Item', sortable: true, icon: 'fa-cube', type: 'item_with_image' },
                         { key: 'brand', label: 'Brand', sortable: true, icon: 'fa-tag' },
+                        { key: 'category', label: 'Category', sortable: true, icon: 'fa-layer-group' },
                         { key: 'quote_count', label: 'Quote Count', sortable: true, icon: 'fa-hashtag' },
                         { key: 'total_qty', label: 'Total Qty', sortable: true, icon: 'fa-boxes' },
                         { key: 'total_value', label: 'Total Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
@@ -5338,6 +6672,7 @@ getPipelineStatusBreakdown() {
                     ${this.renderTableWithControls('items-by-value', stats.mostQuotedByValue, [
                         { key: 'item_code', label: 'Item Code', sortable: true, icon: 'fa-cube' },
                         { key: 'brand', label: 'Brand', sortable: true, icon: 'fa-tag' },
+                        { key: 'category', label: 'Category', sortable: true, icon: 'fa-layer-group' },
                         { key: 'total_value', label: 'Total Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
                         { key: 'total_cost', label: 'Total Cost', sortable: true, type: 'currency', icon: 'fa-coins' },
                         { key: 'total_profit', label: 'Total Profit', sortable: true, type: 'currency', icon: 'fa-chart-line' },
@@ -5364,6 +6699,7 @@ getPipelineStatusBreakdown() {
                     ${this.renderTableWithControls('low-margin-items', stats.lowMarginItems, [
                         { key: 'item_code', label: 'Item Code', sortable: true, icon: 'fa-cube' },
                         { key: 'brand', label: 'Brand', sortable: true, icon: 'fa-tag' },
+                        { key: 'category', label: 'Category', sortable: true, icon: 'fa-layer-group' },
                         { key: 'avg_margin', label: 'Avg Margin', sortable: true, type: 'margin', icon: 'fa-percentage' },
                         { key: 'total_value', label: 'Total Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
                         { key: 'total_cost', label: 'Total Cost', sortable: true, type: 'currency', icon: 'fa-coins' },
@@ -5611,9 +6947,17 @@ getPipelineStatusBreakdown() {
                             <i class="fa fa-layer-group"></i>
                             Customer Segmentation
                         </h2>
-                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
-                            <i class="fa fa-users-cog"></i>
-                            <span>Customer categories based on behavior</span>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                                <i class="fa fa-users-cog"></i>
+                                <span>Customer categories based on value, conversion rate, and engagement patterns</span>
+                            </div>
+                            <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid var(--accent-blue);">
+                                <p style="margin: 0; font-size: 0.875rem; color: var(--text-secondary);">
+                                    <strong style="color: var(--accent-blue);">💡 How Classifications Work:</strong><br>
+                                    Customers are automatically categorized based on their business value, quote conversion rates, and recent activity patterns to help you prioritize your sales efforts effectively.
+                                </p>
+                            </div>
                         </div>
                     </div>
                     
@@ -5625,7 +6969,11 @@ getPipelineStatusBreakdown() {
                                 </div>
                                 <h4 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${stats.segments.vip.customers.length}</h4>
                                 <p style="font-size: 1rem; font-weight: 600; color: var(--accent-orange); margin: 0 0 0.5rem 0;">${stats.segments.vip.name}</p>
-                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">${stats.segments.vip.criteria}</p>
+                                <div style="background: rgba(249, 115, 22, 0.1); padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">
+                                    <p style="font-size: 0.75rem; color: var(--accent-orange); margin: 0 0 0.25rem 0; font-weight: 600;">Criteria:</p>
+                                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">${stats.segments.vip.criteria}</p>
+                                </div>
+                                <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">${stats.segments.vip.description}</p>
                             </div>
                         </div>
                         
@@ -5636,7 +6984,11 @@ getPipelineStatusBreakdown() {
                                 </div>
                                 <h4 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${stats.segments.loyal.customers.length}</h4>
                                 <p style="font-size: 1rem; font-weight: 600; color: var(--accent-green); margin: 0 0 0.5rem 0;">${stats.segments.loyal.name}</p>
-                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">${stats.segments.loyal.criteria}</p>
+                                <div style="background: rgba(16, 185, 129, 0.1); padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">
+                                    <p style="font-size: 0.75rem; color: var(--accent-green); margin: 0 0 0.25rem 0; font-weight: 600;">Criteria:</p>
+                                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">${stats.segments.loyal.criteria}</p>
+                                </div>
+                                <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">${stats.segments.loyal.description}</p>
                             </div>
                         </div>
                         
@@ -5647,7 +6999,11 @@ getPipelineStatusBreakdown() {
                                 </div>
                                 <h4 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${stats.segments.potential.customers.length}</h4>
                                 <p style="font-size: 1rem; font-weight: 600; color: var(--accent-blue); margin: 0 0 0.5rem 0;">${stats.segments.potential.name}</p>
-                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">${stats.segments.potential.criteria}</p>
+                                <div style="background: rgba(59, 130, 246, 0.1); padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">
+                                    <p style="font-size: 0.75rem; color: var(--accent-blue); margin: 0 0 0.25rem 0; font-weight: 600;">Criteria:</p>
+                                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">${stats.segments.potential.criteria}</p>
+                                </div>
+                                <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">${stats.segments.potential.description}</p>
                             </div>
                         </div>
                         
@@ -5658,7 +7014,43 @@ getPipelineStatusBreakdown() {
                                 </div>
                                 <h4 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${stats.segments.atrisk.customers.length}</h4>
                                 <p style="font-size: 1rem; font-weight: 600; color: var(--accent-red); margin: 0 0 0.5rem 0;">${stats.segments.atrisk.name}</p>
-                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">${stats.segments.atrisk.criteria}</p>
+                                <div style="background: rgba(239, 68, 68, 0.1); padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">
+                                    <p style="font-size: 0.75rem; color: var(--accent-red); margin: 0 0 0.25rem 0; font-weight: 600;">Criteria:</p>
+                                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">${stats.segments.atrisk.criteria}</p>
+                                </div>
+                                <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">${stats.segments.atrisk.description}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Top Customer by Quotation Count -->
+                        <div class="segment-card segment-top-quotes" onclick="frappe.sales_intelligence.showTopQuoteCustomer()">
+                            <div style="margin-bottom: 1rem;">
+                                <div style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--accent-purple, #8b5cf6), #7c3aed); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 24px;">
+                                    <i class="fa fa-chart-bar"></i>
+                                </div>
+                                <h4 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${stats.segments.topQuoteCustomers && stats.segments.topQuoteCustomers.length > 0 ? stats.segments.topQuoteCustomers[0].total_quotes : 0}</h4>
+                                <p style="font-size: 1rem; font-weight: 600; color: var(--accent-purple, #8b5cf6); margin: 0 0 0.5rem 0;">Top 5 Customers</p>
+                                <div style="background: rgba(139, 92, 246, 0.1); padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">
+                                    <p style="font-size: 0.75rem; color: var(--accent-purple, #8b5cf6); margin: 0 0 0.25rem 0; font-weight: 600;">#1 Customer:</p>
+                                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0; word-break: break-word;">${stats.segments.topQuoteCustomers && stats.segments.topQuoteCustomers.length > 0 ? stats.segments.topQuoteCustomers[0].name : 'No data'}</p>
+                                </div>
+                                <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">Top 5 customers by quotation volume with detailed rankings, values, and conversion analytics.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- 5 Continuous Non-Converting Customers -->
+                        <div class="segment-card segment-continuous-quotes" onclick="frappe.sales_intelligence.showContinuousQuoteCustomers()">
+                            <div style="margin-bottom: 1rem;">
+                                <div style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--accent-yellow, #f59e0b), #d97706); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 24px;">
+                                    <i class="fa fa-refresh"></i>
+                                </div>
+                                <h4 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${stats.continuousQuoteCustomers ? stats.continuousQuoteCustomers.length : 0}</h4>
+                                <p style="font-size: 1rem; font-weight: 600; color: var(--accent-yellow, #f59e0b); margin: 0 0 0.5rem 0;">Continuous Non-Converting</p>
+                                <div style="background: rgba(245, 158, 11, 0.1); padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">
+                                    <p style="font-size: 0.75rem; color: var(--accent-yellow, #f59e0b); margin: 0 0 0.25rem 0; font-weight: 600;">Criteria:</p>
+                                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">5+ consecutive quotes without conversion</p>
+                                </div>
+                                <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">Customers taking multiple quotes but not converting. Requires immediate attention and strategy review.</p>
                             </div>
                         </div>
                     </div>
@@ -5828,6 +7220,17 @@ getPipelineStatusBreakdown() {
                             <i class="fa fa-sort-amount-down"></i>
                         </button>
                     </div>
+                    ${this.isItemsTable(tableId) ? `
+                    <div class="table-category-controls">
+                        <span class="filter-label">Category:</span>
+                        <select class="category-select" onchange="frappe.sales_intelligence.filterTableByCategory('${tableId}', this.value)" id="${tableId}-category-select">
+                            <option value="">All</option>
+                            ${this.getUniqueCategories(data).map(category => 
+                                `<option value="${category}">${category}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
             
@@ -5885,9 +7288,69 @@ getPipelineStatusBreakdown() {
                             </td>`;
                         } else if (col.type === 'actions') {
                             return `<td>
-                                <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); frappe.set_route('Form', 'Quotation', '${item.quotation}')" title="Open in Frappe">
+                                <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); window.open('/app/quotation/${item.quotation}', '_blank')" title="Open in new tab">
                                     <i class="fa fa-external-link-alt"></i>
                                 </button>
+                            </td>`;
+                        } else if (col.type === 'quotation_links') {
+                            const quotations = item.quotations || [];
+                            if (quotations.length === 0) {
+                                return `<td><span class="text-muted">No quotations</span></td>`;
+                            }
+                            return `<td>
+                                <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                                    ${quotations.slice(0, 3).map(quote => `
+                                        <button class="btn btn-xs btn-primary" onclick="event.stopPropagation(); window.open('/app/quotation/${quote.quotation}', '_blank')" title="Open ${quote.quotation} in new tab" style="padding: 0.15rem 0.3rem; font-size: 0.65rem; background: var(--accent-blue); border: 1px solid var(--accent-blue); color: white; border-radius: 3px;">
+                                            ${quote.quotation}
+                                        </button>
+                                    `).join('')}
+                                    ${quotations.length > 3 ? `<span class="text-muted" style="font-size: 0.75rem;">+${quotations.length - 3} more</span>` : ''}
+                                </div>
+                            </td>`;
+                        } else if (col.type === 'customer_link') {
+                            return `<td>
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <strong style="color: var(--accent-blue); cursor: pointer;" onclick="event.stopPropagation(); frappe.sales_intelligence.showCustomerDetails('${item[col.key]}')" title="View customer quotations">${item[col.key]}</strong>
+                                    <button class="btn btn-xs btn-outline-primary" onclick="event.stopPropagation(); frappe.sales_intelligence.showCustomerDetails('${item[col.key]}')" title="View quotations" style="padding: 0.15rem 0.3rem; font-size: 0.65rem; border: 1px solid var(--accent-blue); color: var(--accent-blue); border-radius: 3px;">
+                                        <i class="fa fa-eye" style="font-size: 0.65rem;"></i> ${item.total_quotes}
+                                    </button>
+                                </div>
+                            </td>`;
+                        } else if (col.type === 'opportunity_link') {
+                            return `<td>
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <strong style="color: var(--accent-blue); cursor: pointer;" onclick="event.stopPropagation(); window.open('/app/opportunity/${item[col.key]}', '_blank')" title="Open opportunity in new tab">${item[col.key]}</strong>
+                                    <button class="btn btn-xs btn-primary" onclick="event.stopPropagation(); window.open('/app/opportunity/${item[col.key]}', '_blank')" title="Open opportunity in new tab" style="padding: 0.15rem 0.3rem; font-size: 0.65rem; background: var(--accent-blue); border: 1px solid var(--accent-blue); color: white; border-radius: 3px;">
+                                        <i class="fa fa-external-link-alt" style="font-size: 0.65rem;"></i>
+                                    </button>
+                                </div>
+                            </td>`;
+                        } else if (col.type === 'site_visit_link') {
+                            return `<td>
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <strong style="color: var(--accent-orange); cursor: pointer;" onclick="event.stopPropagation(); window.open('/app/site-visit/${item[col.key]}', '_blank')" title="Open site visit in new tab">${item[col.key]}</strong>
+                                    <button class="btn btn-xs btn-primary" onclick="event.stopPropagation(); window.open('/app/site-visit/${item[col.key]}', '_blank')" title="Open site visit in new tab" style="padding: 0.15rem 0.3rem; font-size: 0.65rem; background: var(--accent-orange); border: 1px solid var(--accent-orange); color: white; border-radius: 3px;">
+                                        <i class="fa fa-external-link-alt" style="font-size: 0.65rem;"></i>
+                                    </button>
+                                </div>
+                            </td>`;
+                        } else if (col.type === 'design_request_link') {
+                            return `<td>
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <strong style="color: var(--accent-purple); cursor: pointer;" onclick="event.stopPropagation(); window.open('/app/design-request/${item[col.key]}', '_blank')" title="Open design request in new tab">${item[col.key]}</strong>
+                                    <button class="btn btn-xs btn-primary" onclick="event.stopPropagation(); window.open('/app/design-request/${item[col.key]}', '_blank')" title="Open design request in new tab" style="padding: 0.15rem 0.3rem; font-size: 0.65rem; background: var(--accent-purple); border: 1px solid var(--accent-purple); color: white; border-radius: 3px;">
+                                        <i class="fa fa-external-link-alt" style="font-size: 0.65rem;"></i>
+                                    </button>
+                                </div>
+                            </td>`;
+                        } else if (col.type === 'permit_link') {
+                            return `<td>
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <strong style="color: var(--accent-green); cursor: pointer;" onclick="event.stopPropagation(); window.open('/app/permit/${item[col.key]}', '_blank')" title="Open permit in new tab">${item[col.key]}</strong>
+                                    <button class="btn btn-xs btn-primary" onclick="event.stopPropagation(); window.open('/app/permit/${item[col.key]}', '_blank')" title="Open permit in new tab" style="padding: 0.15rem 0.3rem; font-size: 0.65rem; background: var(--accent-green); border: 1px solid var(--accent-green); color: white; border-radius: 3px;">
+                                        <i class="fa fa-external-link-alt" style="font-size: 0.65rem;"></i>
+                                    </button>
+                                </div>
                             </td>`;
                         } else if (col.type === 'days') {
                             const days = item[col.key] || 0;
@@ -5901,7 +7364,14 @@ getPipelineStatusBreakdown() {
                         } else if (col.key === 'customer_name') {
                             return `<td>${item.customer_name || item.party_name || item.name || 'Unknown'}</td>`;
                         } else if (col.key === 'quotation') {
-                            return `<td><strong>${item[col.key]}</strong></td>`;
+                            return `<td>
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <strong style="color: var(--text-primary);">${item[col.key]}</strong>
+                                    <button class="btn btn-xs btn-primary" onclick="event.stopPropagation(); window.open('/app/quotation/${item[col.key]}', '_blank')" title="Open quotation in new tab" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; background: var(--accent-blue); border: 1px solid var(--accent-blue); color: white; border-radius: 4px;">
+                                        <i class="fa fa-external-link-alt" style="font-size: 0.7rem;"></i>
+                                    </button>
+                                </div>
+                            </td>`;
                         } else if (col.type === 'item_with_image') {
                             return `<td>
                                 <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -6054,18 +7524,48 @@ getPipelineStatusBreakdown() {
 
     // Modal and detail methods
     showQuotationDetails(quotationName) {
-        const quote = this.data.quotations.find(q => q.quotation === quotationName);
-        if (!quote) return;
+        console.log('showQuotationDetails called with:', quotationName);
+        
+        const quote = this.data.quotations.find(q => q.quotation === quotationName || q.name === quotationName);
+        console.log('Found quote:', quote ? 'Yes' : 'No');
+        console.log('Sample quotation field names:', this.data.quotations.length > 0 ? Object.keys(this.data.quotations[0]) : 'No quotations loaded');
+        
+        if (!quote) {
+            console.error('Quotation not found:', quotationName);
+            frappe.msgprint(`Quotation ${quotationName} not found in current data.`);
+            return;
+        }
 
-        const content = this.generateQuotationDetailsContent(quote);
-        $('#quotation-title').html(`<i class="fa fa-file-alt"></i> ${quotationName} - Details`);
-        $('#quotation-content').html(content);
-        $('#open-quotation').data('quotation', quotationName);
-        $('#quotationDetailsModal').modal('show');
+        try {
+            const content = this.generateQuotationDetailsContent(quote);
+            console.log('Generated content length:', content.length);
+            
+            $('#quotation-title').html(`<i class="fa fa-file-alt"></i> ${quotationName} - Details`);
+            $('#quotation-content').html(content);
+            $('#open-quotation').data('quotation', quotationName);
+            
+            // Set higher z-index specifically for quotation modal
+            $('#quotationDetailsModal').css('z-index', '10001');
+            
+            // Check if modal elements exist
+            if ($('#quotationDetailsModal').length === 0) {
+                console.error('quotationDetailsModal element not found in DOM');
+                frappe.msgprint('Modal dialog not found. Please refresh the page.');
+                return;
+            }
+            
+            console.log('Opening modal...');
+            $('#quotationDetailsModal').modal('show');
+            
+        } catch (error) {
+            console.error('Error in showQuotationDetails:', error);
+            frappe.msgprint('Error opening quotation details. Please try again.');
+        }
     }
 
     generateQuotationDetailsContent(quote) {
-        return `
+        try {
+            return `
             <div class="quotation-details">
                 <div class="modal-section">
                     <h6><i class="fa fa-info-circle"></i>Basic Information</h6>
@@ -6219,6 +7719,16 @@ getPipelineStatusBreakdown() {
                 ` : ''}
             </div>
         `;
+        } catch (error) {
+            console.error('Error generating quotation details content:', error);
+            return `
+                <div class="alert alert-warning" role="alert">
+                    <i class="fa fa-exclamation-triangle"></i>
+                    Error loading quotation details. Please try refreshing the page.
+                    <br><small>Error: ${error.message}</small>
+                </div>
+            `;
+        }
     }
 
     showCustomerDetails(customerName) {
@@ -6231,6 +7741,7 @@ getPipelineStatusBreakdown() {
         const content = this.generateCustomerDetailsContent(customerName, customerQuotes);
         $('#quotation-title').html(`<i class="fa fa-building"></i> ${customerName} - Customer Analysis`);
         $('#quotation-content').html(content);
+        $('#quotationDetailsModal').css('z-index', '10001');
         $('#quotationDetailsModal').modal('show');
     }
 
@@ -6293,6 +7804,7 @@ getPipelineStatusBreakdown() {
                                     <th>Date</th>
                                     <th>Amount</th>
                                     <th>Status</th>
+                                    <th>Account Manager</th>
                                     <th>Margin</th>
                                     <th>Pipeline</th>
                                 </tr>
@@ -6300,10 +7812,18 @@ getPipelineStatusBreakdown() {
                             <tbody>
                                 ${quotes.map(quote => `
                                     <tr onclick="frappe.sales_intelligence.showQuotationDetails('${quote.quotation}')" style="cursor: pointer;">
-                                        <td><strong>${quote.quotation}</strong></td>
+                                        <td>
+                                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                <strong>${quote.quotation}</strong>
+                                                <button class="btn btn-xs btn-primary" onclick="event.stopPropagation(); window.open('/app/quotation/${quote.quotation}', '_blank')" title="Open quotation in new tab" style="padding: 0.2rem 0.4rem; font-size: 0.7rem; background: var(--accent-blue); border: 1px solid var(--accent-blue); color: white; border-radius: 3px;">
+                                                    <i class="fa fa-external-link-alt" style="font-size: 0.65rem;"></i>
+                                                </button>
+                                            </div>
+                                        </td>
                                         <td>${frappe.datetime.str_to_user(quote.transaction_date)}</td>
                                         <td>AED ${this.formatCurrency(quote.base_grand_total)}</td>
                                         <td><span class="status-badge ${this.getStatusClass(quote.status)}"><i class="fa ${this.getStatusIcon(quote.status)}" style="margin-right: 0.25rem;"></i>${quote.status}</span></td>
+                                        <td><span class="account-manager-badge" title="${quote.account_incharge_full_name || quote.account_incharge || 'Not assigned'}"><i class="fa fa-user" style="margin-right: 0.25rem; color: var(--accent-blue);"></i>${quote.account_incharge_full_name || quote.account_incharge || 'Not assigned'}</span></td>
                                         <td><span class="margin-badge ${this.getMarginClass(quote.profit_percentage)}">${quote.profit_percentage || 0}%</span></td>
                                         <td><span class="status-badge info"><i class="fa fa-layer-group" style="margin-right: 0.25rem;"></i>${quote.pipeline}</span></td>
                                     </tr>
@@ -6319,8 +7839,12 @@ getPipelineStatusBreakdown() {
 calculateBranchPipelineData() {
     const branchData = new Map();
     
-    // Consider ALL quotations with pipeline workflow states, not just Open ones
-    this.data.quotations.filter(q => this.calculatePipeline(q) !== 'None' || q.status === 'Open').forEach(quote => {
+    // Consider quotations with pipeline workflow states but exclude Ordered/Partially Ordered
+    this.data.quotations.filter(q => {
+        const pipeline = this.calculatePipeline(q);
+        const isOrderedStatus = ['Ordered', 'Partially Ordered'].includes(q.status);
+        return (pipeline !== 'None' && !isOrderedStatus) || (q.status === 'Open');
+    }).forEach(quote => {
         const branch = quote.branch || 'Unknown';
         
         if (!branchData.has(branch)) {
@@ -6370,8 +7894,12 @@ calculateBranchPipelineData() {
 calculateManagerPipelineData() {
     const managerData = new Map();
     
-    // Consider ALL quotations with pipeline workflow states, not just Open ones
-    this.data.quotations.filter(q => this.calculatePipeline(q) !== 'None' || q.status === 'Open').forEach(quote => {
+    // Consider quotations with pipeline workflow states but exclude Ordered/Partially Ordered
+    this.data.quotations.filter(q => {
+        const pipeline = this.calculatePipeline(q);
+        const isOrderedStatus = ['Ordered', 'Partially Ordered'].includes(q.status);
+        return (pipeline !== 'None' && !isOrderedStatus) || (q.status === 'Open');
+    }).forEach(quote => {
         const manager = quote.account_incharge_full_name || quote.account_incharge || 'Unknown';
         
         if (!managerData.has(manager)) {
@@ -6494,7 +8022,12 @@ renderUrgentPipelineActions() {
                     <div class="urgent-action-item ${urgencyType}" onclick="frappe.sales_intelligence.showQuotationDetails('${quote.quotation}')">
                         <div class="urgent-item-content">
                             <div class="urgent-item-main">
-                                <h6><i class="fa fa-file-alt" style="margin-right: 0.5rem; color: var(--accent-blue);"></i>${quote.quotation}</h6>
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <h6><i class="fa fa-file-alt" style="margin-right: 0.5rem; color: var(--accent-blue);"></i>${quote.quotation}</h6>
+                                    <button class="btn btn-xs btn-primary" onclick="event.stopPropagation(); window.open('/app/quotation/${quote.quotation}', '_blank')" title="Open quotation in new tab" style="padding: 0.2rem 0.4rem; font-size: 0.7rem; background: var(--accent-blue); border: 1px solid var(--accent-blue); color: white; border-radius: 3px;">
+                                        <i class="fa fa-external-link-alt" style="font-size: 0.65rem;"></i>
+                                    </button>
+                                </div>
                                 <p><i class="fa fa-building" style="margin-right: 0.5rem; color: var(--text-muted);"></i>${quote.customer_name || quote.party_name}</p>
                             </div>
                             <div class="urgent-item-details">
@@ -6585,6 +8118,14 @@ initializePipelineTimelineChart() {
             case 'pending_quotations':
                 data = this.data.filtered.filter(q => ['Open', 'Expired'].includes(q.status));
                 title = 'Pending Quotations';
+                break;
+            case 'lost_quotations':
+                data = this.data.filtered.filter(q => q.status === 'Lost');
+                title = 'Lost Quotations';
+                break;
+            case 'cancelled_not_amended_quotations':
+                data = this.data.filtered.filter(q => q.custom_cancell_status === 'Cancelled but not amended');
+                title = 'Cancelled but not amended Quotations';
                 break;
             case 'low_margin_quotes':
                 data = this.data.stats.margin.lowMargin;
@@ -6764,17 +8305,26 @@ initializePipelineTimelineChart() {
                                     <th><i class="fa fa-calendar" style="margin-right: 0.5rem;"></i>Date</th>
                                     <th><i class="fa fa-money-bill-wave" style="margin-right: 0.5rem;"></i>Amount</th>
                                     <th><i class="fa fa-flag" style="margin-right: 0.5rem;"></i>Status</th>
+                                    <th><i class="fa fa-user-tie" style="margin-right: 0.5rem;"></i>Account Manager</th>
                                     <th><i class="fa fa-percentage" style="margin-right: 0.5rem;"></i>Margin</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${quotes.slice(0, 10).map(quote => `
                                     <tr onclick="frappe.sales_intelligence.showQuotationDetails('${quote.quotation}')" style="cursor: pointer;">
-                                        <td><strong>${quote.quotation}</strong></td>
+                                        <td>
+                                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                <strong>${quote.quotation}</strong>
+                                                <button class="btn btn-xs btn-primary" onclick="event.stopPropagation(); window.open('/app/quotation/${quote.quotation}', '_blank')" title="Open quotation in new tab" style="padding: 0.2rem 0.4rem; font-size: 0.7rem; background: var(--accent-blue); border: 1px solid var(--accent-blue); color: white; border-radius: 3px;">
+                                                    <i class="fa fa-external-link-alt" style="font-size: 0.65rem;"></i>
+                                                </button>
+                                            </div>
+                                        </td>
                                         <td>${quote.customer_name || quote.party_name || 'Unknown'}</td>
                                         <td>${frappe.datetime.str_to_user(quote.transaction_date)}</td>
                                         <td>AED ${this.formatCurrency(quote.base_grand_total)}</td>
                                         <td><span class="status-badge ${this.getStatusClass(quote.status)}"><i class="fa ${this.getStatusIcon(quote.status)}" style="margin-right: 0.25rem;"></i>${quote.status}</span></td>
+                                        <td><span class="account-manager-badge" title="${quote.account_incharge_full_name || quote.account_incharge || 'Not assigned'}"><i class="fa fa-user" style="margin-right: 0.25rem; color: var(--accent-blue);"></i>${quote.account_incharge_full_name || quote.account_incharge || 'Not assigned'}</span></td>
                                         <td><span class="margin-badge ${this.getMarginClass(quote.profit_percentage)}">${quote.profit_percentage || 0}%</span></td>
                                     </tr>
                                 `).join('')}
@@ -6804,6 +8354,113 @@ initializePipelineTimelineChart() {
             stats.total_value / stats.total_quotes : 0;
         
         return stats;
+    }
+
+    showOpportunityDrilldown(type) {
+        const opportunityStats = this.data.opportunity_stats;
+        let data, title;
+        
+        switch(type) {
+            case 'total':
+                data = this.data.opportunities || [];
+                title = 'All Opportunities';
+                break;
+            case 'quoted':
+                data = opportunityStats.quoted_opportunities || [];
+                title = 'Quoted Opportunities';
+                break;
+            case 'not_quoted':
+                data = opportunityStats.not_quoted_opportunities || [];
+                title = 'Opportunities Needing Quotations';
+                break;
+            default:
+                // Check if it's a status-based filter
+                if (opportunityStats.by_status && opportunityStats.by_status[type]) {
+                    data = opportunityStats.by_status[type].opportunities || [];
+                    title = `${type} Opportunities`;
+                } else {
+                    data = this.data.opportunities || [];
+                    title = 'Opportunities';
+                }
+        }
+
+        const content = this.generateOpportunityDrilldownContent(data, type);
+        $('#drilldown-title').html(`<i class="fa fa-lightbulb"></i> ${title}`);
+        $('#drilldown-content').html(content);
+        $('#drilldownModal').modal('show');
+    }
+
+    generateOpportunityDrilldownContent(data, type) {
+        if (!data || data.length === 0) {
+            return '<div class="text-center" style="padding: 2rem;"><p style="color: var(--text-secondary);"><i class="fa fa-lightbulb" style="margin-right: 0.5rem; font-size: 1.2rem;"></i>No opportunities available for the selected criteria.</p></div>';
+        }
+
+        const totalValue = data.reduce((sum, opp) => sum + (opp.opportunity_amount || 0), 0);
+        const avgValue = data.length > 0 ? totalValue / data.length : 0;
+        const quotedCount = data.filter(opp => opp.quotations && opp.quotations.length > 0).length;
+        const quotationRate = data.length > 0 ? (quotedCount / data.length * 100).toFixed(1) : 0;
+
+        return `
+            <div class="drilldown-container">
+                <div class="modal-section">
+                    <h6><i class="fa fa-info-circle"></i>Summary</h6>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div style="text-align: center; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                                <h4 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${data.length}</h4>
+                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Total Opportunities</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div style="text-align: center; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                                <h4 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">AED ${this.formatCurrency(totalValue)}</h4>
+                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Total Value</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div style="text-align: center; padding: 1rem; background: rgba(245, 158, 11, 0.1); border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3);">
+                                <h4 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">AED ${this.formatCurrency(avgValue)}</h4>
+                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Average Value</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div style="text-align: center; padding: 1rem; background: rgba(139, 92, 246, 0.1); border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.3);">
+                                <h4 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${quotationRate}%</h4>
+                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Quotation Rate</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-section" style="margin-top: 1.5rem;">
+                    <h6><i class="fa fa-table"></i>Detailed Data</h6>
+                    ${this.renderTableWithControls('opportunity-drilldown-table', data.slice(0, 100), this.getOpportunityColumns(type))}
+                    ${data.length > 100 ? `<p style="color: var(--text-muted); margin-top: 1rem;">Showing first 100 of ${data.length} records.</p>` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    getOpportunityColumns(type) {
+        const baseColumns = [
+            { key: 'name', label: 'Opportunity', sortable: true, type: 'opportunity_link', icon: 'fa-lightbulb' },
+            { key: 'customer_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+            { key: 'opportunity_amount', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+            { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
+            { key: 'expected_closing', label: 'Expected Closing', sortable: true, type: 'date', icon: 'fa-calendar' }
+        ];
+
+        if (type === 'quoted') {
+            baseColumns.push({ 
+                key: 'quotations', 
+                label: 'Quotations', 
+                sortable: false, 
+                type: 'quotation_links', 
+                icon: 'fa-file-alt' 
+            });
+        }
+
+        return baseColumns;
     }
 
     showItemDetails(itemCode) {
@@ -6871,6 +8528,7 @@ initializePipelineTimelineChart() {
                         <div style="flex: 1;">
                             <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${itemCode}</h3>
                             ${firstItem.brand ? `<p style="font-size: 1rem; color: var(--text-secondary); margin: 0 0 0.5rem 0;"><i class="fa fa-tag" style="margin-right: 0.5rem;"></i>${firstItem.brand}</p>` : ''}
+                            ${firstItem.custom_category ? `<p style="font-size: 1rem; color: var(--text-secondary); margin: 0 0 0.5rem 0;"><i class="fa fa-layer-group" style="margin-right: 0.5rem;"></i><strong>Category:</strong> ${firstItem.custom_category}</p>` : ''}
                             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
                                 <span style="color: var(--accent-blue); font-weight: 600;">${itemStats.total_quotes} Quotes</span>
                                 <span style="color: var(--accent-green); font-weight: 600;">${itemStats.customers.size} Customers</span>
@@ -6939,6 +8597,7 @@ initializePipelineTimelineChart() {
                                     <th><i class="fa fa-file-alt" style="margin-right: 0.5rem;"></i>Quotation</th>
                                     <th><i class="fa fa-building" style="margin-right: 0.5rem;"></i>Customer</th>
                                     <th><i class="fa fa-calendar" style="margin-right: 0.5rem;"></i>Date</th>
+                                    <th><i class="fa fa-user-tie" style="margin-right: 0.5rem;"></i>Account Manager</th>
                                     <th><i class="fa fa-hashtag" style="margin-right: 0.5rem;"></i>Qty</th>
                                     <th><i class="fa fa-money-bill" style="margin-right: 0.5rem;"></i>Rate</th>
                                     <th><i class="fa fa-money-bill-wave" style="margin-right: 0.5rem;"></i>Amount</th>
@@ -6953,9 +8612,17 @@ initializePipelineTimelineChart() {
                                     const item = quote.items.find(i => i.item_code === itemCode);
                                     return `
                                         <tr onclick="frappe.sales_intelligence.showQuotationDetails('${quote.quotation}')" style="cursor: pointer;">
-                                            <td><strong>${quote.quotation}</strong></td>
+                                            <td>
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <strong>${quote.quotation}</strong>
+                                                    <button class="btn btn-xs btn-primary" onclick="event.stopPropagation(); window.open('/app/quotation/${quote.quotation}', '_blank')" title="Open quotation in new tab" style="padding: 0.2rem 0.4rem; font-size: 0.7rem; background: var(--accent-blue); border: 1px solid var(--accent-blue); color: white; border-radius: 3px;">
+                                                        <i class="fa fa-external-link-alt" style="font-size: 0.65rem;"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
                                             <td>${quote.customer_name || quote.party_name || 'Unknown'}</td>
                                             <td>${frappe.datetime.str_to_user(quote.transaction_date)}</td>
+                                            <td><span class="account-manager-badge" title="${quote.account_incharge_full_name || quote.account_incharge || 'Not assigned'}"><i class="fa fa-user" style="margin-right: 0.25rem; color: var(--accent-blue);"></i>${quote.account_incharge_full_name || quote.account_incharge || 'Not assigned'}</span></td>
                                             <td>${item.qty || 0}</td>
                                             <td>AED ${this.formatCurrency(item.rate || 0)}</td>
                                             <td>AED ${this.formatCurrency(item.amount || 0)}</td>
@@ -7021,9 +8688,9 @@ initializePipelineTimelineChart() {
                 </div>
                 
                 <div class="modal-section">
-                    <h6><i class="fa fa-list"></i>Customer Details</h6>
+                    <h6><i class="fa fa-list"></i>Customer Details <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: normal;">Click customer names to view their quotations</span></h6>
                     ${this.renderTableWithControls('segment-customers', customers, [
-                        { key: 'name', label: 'Customer Name', sortable: true },
+                        { key: 'name', label: 'Customer Name', sortable: true, type: 'customer_link' },
                         { key: 'total_quotes', label: 'Total Quotes', sortable: true },
                         { key: 'total_value', label: 'Total Value', sortable: true, type: 'currency' },
                         { key: 'conversion_rate', label: 'Conversion', sortable: true, type: 'conversion' },
@@ -7037,41 +8704,75 @@ initializePipelineTimelineChart() {
 
     // Filter and utility methods
     populateFilterOptions() {
-        // Populate company options
-        const companies = [...new Set(this.data.quotations.map(q => q.company).filter(Boolean))];
-        $('#filter-company').empty().append('<option value="">All Companies</option>');
-        companies.forEach(company => {
-            $('#filter-company').append(`<option value="${company}">${company}</option>`);
-        });
+        // Populate company options for searchable dropdown - restricted to LED WORLD LLC only
+        const companyOptions = $('#company-options');
+        if (companyOptions.find('.searchable-option:not([data-value=""])').length === 0) {
+            companyOptions.append(`<div class="searchable-option" data-value="LED WORLD LLC">LED WORLD LLC</div>`);
+        }
 
-        // Populate branch options
+        // Populate branch options for searchable dropdown
         const branches = [...new Set(this.data.quotations.map(q => q.branch).filter(Boolean))];
-        $('#filter-branch').empty().append('<option value="">All Branches</option>');
+        const branchOptions = $('#branch-options');
+        branchOptions.find('.searchable-option:not([data-value=""])').remove(); // Keep "All Branches" option
         branches.forEach(branch => {
-            $('#filter-branch').append(`<option value="${branch}">${branch}</option>`);
+            branchOptions.append(`<div class="searchable-option" data-value="${branch}">${branch}</div>`);
         });
 
-        // Populate account manager options
+        // Populate account manager options for searchable dropdown
         const managers = [...new Set(this.data.quotations.map(q => q.account_incharge).filter(Boolean))];
-        $('#filter-account-manager').empty().append('<option value="">All Managers</option>');
+        const managerOptions = $('#account-manager-options');
+        managerOptions.find('.searchable-option:not([data-value=""])').remove(); // Keep "All Managers" option
         managers.forEach(manager => {
             const displayName = this.data.quotations.find(q => q.account_incharge === manager)?.account_incharge_full_name || manager;
-            $('#filter-account-manager').append(`<option value="${manager}">${displayName}</option>`);
+            managerOptions.append(`<div class="searchable-option" data-value="${manager}">${displayName}</div>`);
         });
 
-        // Set current values
-        if (this.filters.company.length > 0) $('#filter-company').val(this.filters.company);
-        if (this.filters.branch.length > 0) $('#filter-branch').val(this.filters.branch);
-        if (this.filters.account_incharge.length > 0) $('#filter-account-manager').val(this.filters.account_incharge);
-        if (this.filters.status !== 'all') $('#filter-status').val(Array.isArray(this.filters.status) ? this.filters.status : [this.filters.status]);
+        // Set current values for searchable dropdowns
+        // Set company searchable dropdown value
+        if (this.filters.company) {
+            $('#filter-company').val(this.filters.company);
+            $('#filter-company-input').val(this.filters.company);
+        } else {
+            $('#filter-company').val('');
+            $('#filter-company-input').val('');
+        }
+        
+        // Set branch searchable dropdown value
+        if (this.filters.branch) {
+            $('#filter-branch').val(this.filters.branch);
+            $('#filter-branch-input').val(this.filters.branch);
+        } else {
+            $('#filter-branch').val('');
+            $('#filter-branch-input').val('');
+        }
+        
+        // Set account manager searchable dropdown value
+        if (this.filters.account_incharge) {
+            $('#filter-account-manager').val(this.filters.account_incharge);
+            const managerDisplayName = this.data.quotations.find(q => q.account_incharge === this.filters.account_incharge)?.account_incharge_full_name || this.filters.account_incharge;
+            $('#filter-account-manager-input').val(managerDisplayName);
+        } else {
+            $('#filter-account-manager').val('');
+            $('#filter-account-manager-input').val('');
+        }
+        
+        // Set status searchable dropdown value
+        if (this.filters.status && this.filters.status !== 'all') {
+            $('#filter-status').val(this.filters.status);
+            $('#filter-status-input').val(this.filters.status);
+        } else {
+            $('#filter-status').val('all');
+            $('#filter-status-input').val('All Status');
+        }
+        
         $('#filter-amount-min').val(this.filters.amount_min || '');
         $('#filter-amount-max').val(this.filters.amount_max || '');
     }
 
     applyAdvancedFilters() {
-        this.filters.company = $('#filter-company').val() || [];
-        this.filters.branch = $('#filter-branch').val() || [];
-        this.filters.account_incharge = $('#filter-account-manager').val() || [];
+        this.filters.company = $('#filter-company').val() || '';
+        this.filters.branch = $('#filter-branch').val() || '';
+        this.filters.account_incharge = $('#filter-account-manager').val() || '';
         this.filters.status = $('#filter-status').val() || 'all';
         this.filters.amount_min = parseFloat($('#filter-amount-min').val()) || null;
         this.filters.amount_max = parseFloat($('#filter-amount-max').val()) || null;
@@ -7084,10 +8785,10 @@ initializePipelineTimelineChart() {
             from_date: this.filters.from_date,
             to_date: this.filters.to_date,
             status: 'all',
-            company: [],
-            branch: [],
-            account_incharge: [],
-            created_by: [],
+            company: 'LED WORLD LLC',
+            branch: '',
+            account_incharge: '',
+            created_by: '',
             customer: null,
             amount_min: null,
             amount_max: null,
@@ -7100,6 +8801,13 @@ initializePipelineTimelineChart() {
         };
         
         $('#global-search').val('');
+        
+        // Reset searchable dropdowns
+        $('#filter-company-input').val('');
+        $('#filter-branch-input').val('');
+        $('#filter-account-manager-input').val('');
+        $('#filter-status-input').val('');
+        
         this.loadData();
     }
 
@@ -7634,7 +9342,14 @@ initializePipelineTimelineChart() {
                             <tbody>
                                 ${quotes.map(quote => `
                                     <tr onclick="frappe.sales_intelligence.showQuotationDetails('${quote.quotation}')" style="cursor: pointer;">
-                                        <td><strong>${quote.quotation}</strong></td>
+                                        <td>
+                                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                <strong>${quote.quotation}</strong>
+                                                <button class="btn btn-xs btn-primary" onclick="event.stopPropagation(); window.open('/app/quotation/${quote.quotation}', '_blank')" title="Open quotation in new tab" style="padding: 0.2rem 0.4rem; font-size: 0.7rem; background: var(--accent-blue); border: 1px solid var(--accent-blue); color: white; border-radius: 3px;">
+                                                    <i class="fa fa-external-link-alt" style="font-size: 0.65rem;"></i>
+                                                </button>
+                                            </div>
+                                        </td>
                                         <td>${quote.customer_name || quote.party_name || 'Unknown'}</td>
                                         <td>
                                             <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -7660,6 +9375,7 @@ initializePipelineTimelineChart() {
         const stats = this.data.stats.overview;
         const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost');
         
+        
         // Analyze lost reasons
         const reasonsMap = new Map();
         lostQuotes.forEach(quote => {
@@ -7678,7 +9394,7 @@ initializePipelineTimelineChart() {
             ...data
         })).sort((a, b) => b.amount - a.amount);
         
-        // Analyze by branch
+        // Analyze by branch for lost quotations
         const branchLossMap = new Map();
         lostQuotes.forEach(quote => {
             const branch = quote.branch || 'Unknown';
@@ -7695,7 +9411,7 @@ initializePipelineTimelineChart() {
             ...data
         })).sort((a, b) => b.amount - a.amount);
         
-        // Analyze by account manager
+        // Analyze by account manager for lost quotations
         const managerLossMap = new Map();
         lostQuotes.forEach(quote => {
             const manager = quote.account_incharge_full_name || quote.account_incharge || 'Unknown';
@@ -7711,6 +9427,7 @@ initializePipelineTimelineChart() {
             manager,
             ...data
         })).sort((a, b) => b.amount - a.amount);
+        
         
         return `
             <div class="lost-quotations-container">
@@ -7845,9 +9562,1219 @@ initializePipelineTimelineChart() {
             </div>
         `;
     }
+
+    async renderCancelledQuotationsSection() {
+        // Use cached cancelled quotations data if available, otherwise load fresh
+        let cancelledData;
+        if (this.cancelledQuotationsData) {
+            cancelledData = this.cancelledQuotationsData;
+            console.log('Using cached cancelled quotations data');
+        } else {
+            cancelledData = await this.loadCancelledQuotations();
+            this.cancelledQuotationsData = cancelledData;
+            console.log('Loading fresh cancelled quotations data');
+        }
+        const cancelledQuotes = cancelledData.data || [];
+        const stats = this.data.stats.overview;
+        
+        // Analyze by branch for cancelled but not amended quotations
+        const branchCancelledMap = new Map();
+        cancelledQuotes.forEach(quote => {
+            const branch = quote.branch || 'Unknown';
+            if (!branchCancelledMap.has(branch)) {
+                branchCancelledMap.set(branch, { count: 0, amount: 0 });
+            }
+            const branchData = branchCancelledMap.get(branch);
+            branchData.count++;
+            branchData.amount += quote.base_grand_total || 0;
+        });
+        
+        const branchCancelled = Array.from(branchCancelledMap.entries()).map(([branch, data]) => ({
+            branch,
+            ...data
+        })).sort((a, b) => b.amount - a.amount);
+        
+        // Analyze by account manager for cancelled but not amended quotations
+        const managerCancelledMap = new Map();
+        cancelledQuotes.forEach(quote => {
+            const manager = quote.account_incharge_full_name || quote.account_incharge || 'Unknown';
+            if (!managerCancelledMap.has(manager)) {
+                managerCancelledMap.set(manager, { count: 0, amount: 0 });
+            }
+            const managerData = managerCancelledMap.get(manager);
+            managerData.count++;
+            managerData.amount += quote.base_grand_total || 0;
+        });
+        
+        const managerCancelled = Array.from(managerCancelledMap.entries()).map(([manager, data]) => ({
+            manager,
+            ...data
+        })).sort((a, b) => b.amount - a.amount);
+        
+        return `
+            <div class="cancelled-quotations-container">
+                <!-- Cancelled But Not Amended Section -->
+                <div class="data-section">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <i class="fa fa-ban" style="color: var(--accent-orange);"></i>
+                            Cancelled But Not Amended Quotations
+                        </h2>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                            <i class="fa fa-info-circle"></i>
+                            <span>Quotations with custom_cancel_status = "Cancelled But Not Amended"</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Cancelled But Not Amended Overview -->
+                    <div class="stats-grid mb-4">
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-content">
+                                    <h3 class="stat-card-title">
+                                        <i class="fa fa-ban" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
+                                        Total Cancelled
+                                    </h3>
+                                    <p class="stat-card-value">${cancelledQuotes.length.toLocaleString()}</p>
+                                    <p class="stat-card-amount">AED ${this.formatCurrency(cancelledQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0))}</p>
+                                </div>
+                                <div class="stat-card-icon warning">
+                                    <i class="fa fa-ban"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-content">
+                                    <h3 class="stat-card-title">
+                                        <i class="fa fa-percentage" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
+                                        Cancellation Rate
+                                    </h3>
+                                    <p class="stat-card-value">${stats.total.count > 0 ? 
+                                        (stats.cancelledNotAmended.count / stats.total.count * 100).toFixed(1) : 0}%</p>
+                                    <p class="stat-card-amount">Of Total Quotations</p>
+                                </div>
+                                <div class="stat-card-icon info">
+                                    <i class="fa fa-percentage"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-card-header">
+                                <div class="stat-card-content">
+                                    <h3 class="stat-card-title">
+                                        <i class="fa fa-coins" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
+                                        Average Cancelled Value
+                                    </h3>
+                                    <p class="stat-card-value">AED ${cancelledQuotes.length > 0 ? 
+                                        this.formatCurrency(cancelledQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0) / cancelledQuotes.length) : '0'}</p>
+                                    <p class="stat-card-amount">Per Cancelled Quotation</p>
+                                </div>
+                                <div class="stat-card-icon warning">
+                                    <i class="fa fa-coins"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Branch-wise Cancelled Analysis -->
+                    <div class="data-section">
+                        <div class="section-header">
+                            <h2 class="section-title">
+                                <i class="fa fa-map-marker-alt"></i>
+                                Branch-wise Cancelled Analysis
+                            </h2>
+                        </div>
+                        
+                        <div class="table-container">
+                            ${this.renderTableWithControls('branch-cancelled-table', branchCancelled, [
+                                { key: 'branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' },
+                                { key: 'count', label: 'Cancelled Count', sortable: true, icon: 'fa-list' },
+                                { key: 'amount', label: 'Cancelled Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' }
+                            ])}
+                        </div>
+                    </div>
+                    
+                    <!-- Account Manager Cancelled Analysis -->
+                    <div class="data-section">
+                        <div class="section-header">
+                            <h2 class="section-title">
+                                <i class="fa fa-user-tie"></i>
+                                Account Manager Cancelled Analysis
+                            </h2>
+                        </div>
+                        
+                        <div class="table-container">
+                            ${this.renderTableWithControls('manager-cancelled-table', managerCancelled, [
+                                { key: 'manager', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
+                                { key: 'count', label: 'Cancelled Count', sortable: true, icon: 'fa-list' },
+                                { key: 'amount', label: 'Cancelled Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' }
+                            ])}
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Cancelled But Not Amended Quotations -->
+                    <div class="data-section">
+                        <div class="section-header">
+                            <h2 class="section-title">
+                                <i class="fa fa-clock"></i>
+                                Recent Cancelled But Not Amended Quotations
+                            </h2>
+                        </div>
+                        
+                        <div class="table-container">
+                            ${this.renderTableWithControls('recent-cancelled-table', 
+                                cancelledQuotes.sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date)).slice(0, 20), [
+                                { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
+                                { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                                { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                                { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                                { key: 'custom_cancel_status', label: 'Cancel Status', sortable: true, icon: 'fa-ban' },
+                                { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' }
+                            ])}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderOpportunitiesSection() {
+        return `
+            <div class="opportunities-container">
+                <!-- Tab Navigation -->
+                <div class="tab-navigation" style="margin-bottom: 2rem; width: 100%;">
+                    <div class="tab-buttons" style="display: flex; width: 100%; border-bottom: 3px solid var(--border-color); background: rgba(51, 65, 85, 0.15); border-radius: 12px 12px 0 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <button class="tab-button active" data-tab="opportunities" onclick="frappe.sales_intelligence.switchOpportunityTab('opportunities')" style="flex: 1; min-width: 200px; padding: 1.25rem 1.5rem; background: var(--accent-blue); color: white; border: none; border-radius: 12px 0 0 0; font-weight: 600; font-size: 1rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <i class="fa fa-lightbulb" style="font-size: 1.1rem;"></i>
+                            <span>Opportunities</span>
+                        </button>
+                        <button class="tab-button" data-tab="design-request" onclick="frappe.sales_intelligence.switchOpportunityTab('design-request')" style="flex: 1; min-width: 200px; padding: 1.25rem 1.5rem; background: rgba(51, 65, 85, 0.3); color: var(--text-primary); border: none; font-weight: 500; font-size: 1rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; border-left: 1px solid rgba(255,255,255,0.1);">
+                            <i class="fa fa-drafting-compass" style="font-size: 1.1rem;"></i>
+                            <span>Design Request</span>
+                        </button>
+                        <button class="tab-button" data-tab="site-visit" onclick="frappe.sales_intelligence.switchOpportunityTab('site-visit')" style="flex: 1; min-width: 200px; padding: 1.25rem 1.5rem; background: rgba(51, 65, 85, 0.3); color: var(--text-primary); border: none; font-weight: 500; font-size: 1rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; border-left: 1px solid rgba(255,255,255,0.1);">
+                            <i class="fa fa-map-marker-alt" style="font-size: 1.1rem;"></i>
+                            <span>Site Visit</span>
+                        </button>
+                        <button class="tab-button" data-tab="permit" onclick="frappe.sales_intelligence.switchOpportunityTab('permit')" style="flex: 1; min-width: 200px; padding: 1.25rem 1.5rem; background: rgba(51, 65, 85, 0.3); color: var(--text-primary); border: none; border-radius: 0 12px 0 0; font-weight: 500; font-size: 1rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; border-left: 1px solid rgba(255,255,255,0.1);">
+                            <i class="fa fa-file-signature" style="font-size: 1.1rem;"></i>
+                            <span>Permit</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab Contents -->
+                <div class="tab-content">
+                    <!-- Opportunities Tab -->
+                    <div class="tab-panel active" id="opportunities-tab">
+                        ${this.renderOpportunitiesTab()}
+                    </div>
+
+                    <!-- Design Request Tab -->
+                    <div class="tab-panel" id="design-request-tab" style="display: none;">
+                        ${this.renderDesignRequestTab()}
+                    </div>
+
+                    <!-- Site Visit Tab -->
+                    <div class="tab-panel" id="site-visit-tab" style="display: none;">
+                        ${this.renderSiteVisitTab()}
+                    </div>
+
+                    <!-- Permit Tab -->
+                    <div class="tab-panel" id="permit-tab" style="display: none;">
+                        ${this.renderPermitTab()}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderOpportunitiesTab() {
+        const opportunityStats = this.data.opportunity_stats || { 
+            total: 0, by_status: {}, quoted: 0, not_quoted: 0, 
+            quoted_opportunities: [], not_quoted_opportunities: [] 
+        };
+
+        // Show debug information if no opportunities
+        if (opportunityStats.total === 0) {
+            console.log('No opportunities found. Debug info:', {
+                opportunities: this.data.opportunities?.length || 0,
+                opportunityStats: opportunityStats,
+                filters: this.filters
+            });
+        }
+
+        return `
+            <div class="opportunities-tab-content">
+                <!-- Opportunity Overview Cards -->
+                <div class="stats-grid">
+                    <!-- Total Opportunities -->
+                    <div class="stat-card" onclick="frappe.sales_intelligence.showOpportunityDrilldown('total')">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-lightbulb" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
+                                    Total Opportunities
+                                </h3>
+                                <p class="stat-card-value">${opportunityStats.total.toLocaleString()}</p>
+                                <p class="stat-card-amount">In Current Period</p>
+                            </div>
+                            <div class="stat-card-icon">
+                                <i class="fa fa-lightbulb"></i>
+                            </div>
+                        </div>
+                        <span class="click-indicator">
+                            <i class="fa fa-mouse-pointer"></i>
+                            Click to view details
+                        </span>
+                    </div>
+
+                    <!-- Quoted Opportunities -->
+                    <div class="stat-card" onclick="frappe.sales_intelligence.showOpportunityDrilldown('quoted')">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-file-alt" style="color: var(--accent-green); margin-right: 0.5rem;"></i>
+                                    Quoted Opportunities
+                                </h3>
+                                <p class="stat-card-value">${opportunityStats.quoted.toLocaleString()}</p>
+                                <p class="stat-card-amount">Have Quotations</p>
+                            </div>
+                            <div class="stat-card-icon success">
+                                <i class="fa fa-file-alt"></i>
+                            </div>
+                        </div>
+                        <span class="click-indicator">
+                            <i class="fa fa-mouse-pointer"></i>
+                            Click to view details
+                        </span>
+                    </div>
+
+                    <!-- Not Quoted Opportunities -->
+                    <div class="stat-card" onclick="frappe.sales_intelligence.showOpportunityDrilldown('not_quoted')">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-exclamation-triangle" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
+                                    Not Quoted
+                                </h3>
+                                <p class="stat-card-value">${opportunityStats.not_quoted.toLocaleString()}</p>
+                                <p class="stat-card-amount">Need Quotations</p>
+                            </div>
+                            <div class="stat-card-icon warning">
+                                <i class="fa fa-exclamation-triangle"></i>
+                            </div>
+                        </div>
+                        <span class="click-indicator">
+                            <i class="fa fa-mouse-pointer"></i>
+                            Click to view details
+                        </span>
+                    </div>
+
+                    <!-- Status-based Opportunity Cards -->
+                    ${Object.entries(opportunityStats.by_status).map(([status, data]) => {
+                        const statusColors = {
+                            'Quotation': 'var(--accent-blue)',
+                            'Overdue': 'var(--accent-red)',
+                            'Converted': 'var(--accent-green)',
+                            'Lost': 'var(--accent-orange)',
+                            'Open': 'var(--accent-purple)'
+                        };
+                        
+                        const statusIcons = {
+                            'Quotation': 'fa-file-alt',
+                            'Overdue': 'fa-clock',
+                            'Converted': 'fa-check-circle',
+                            'Lost': 'fa-times-circle',
+                            'Open': 'fa-folder-open'
+                        };
+                        
+                        return `
+                        <div class="stat-card" onclick="frappe.sales_intelligence.showOpportunityDrilldown('${status}')">
+                            <div class="stat-card-header">
+                                <div class="stat-card-content">
+                                    <h3 class="stat-card-title">
+                                        <i class="fa ${statusIcons[status] || 'fa-circle'}" style="color: ${statusColors[status] || 'var(--accent-blue)'}; margin-right: 0.5rem;"></i>
+                                        ${status}
+                                    </h3>
+                                    <p class="stat-card-value">${data.count.toLocaleString()}</p>
+                                    <p class="stat-card-amount">Opportunities</p>
+                                </div>
+                                <div class="stat-card-icon" style="background: ${statusColors[status] || 'var(--accent-blue)'};">
+                                    <i class="fa ${statusIcons[status] || 'fa-circle'}"></i>
+                                </div>
+                            </div>
+                            <span class="click-indicator">
+                                <i class="fa fa-mouse-pointer"></i>
+                                Click to view details
+                            </span>
+                        </div>`;
+                    }).join('')}
+
+                    <!-- Quotation Conversion Rate -->
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-percentage" style="color: var(--accent-purple); margin-right: 0.5rem;"></i>
+                                    Quotation Rate
+                                </h3>
+                                <p class="stat-card-value">${opportunityStats.total > 0 ? 
+                                    (opportunityStats.quoted / opportunityStats.total * 100).toFixed(1) : 0}%</p>
+                                <p class="stat-card-amount">Opportunities Quoted</p>
+                            </div>
+                            <div class="stat-card-icon info">
+                                <i class="fa fa-percentage"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Analysis -->
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fa fa-chart-bar"></i>
+                        Detailed Analysis
+                    </h2>
+                </div>
+
+                ${opportunityStats.quoted_opportunities && opportunityStats.quoted_opportunities.length > 0 ? `
+                <!-- Quoted Opportunities Table -->
+                <div class="modal-section">
+                    <h6><i class="fa fa-check-circle"></i>Quoted Opportunities (with Quotation Links)</h6>
+                    ${this.renderTableWithControls('quoted-opportunities', opportunityStats.quoted_opportunities, [
+                        { key: 'name', label: 'Opportunity', sortable: true, type: 'opportunity_link', icon: 'fa-lightbulb' },
+                        { key: 'customer_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                        { key: 'opportunity_amount', label: 'Opp Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                        { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
+                        { key: 'quotations', label: 'Quotations', sortable: false, type: 'quotation_links', icon: 'fa-file-alt' }
+                    ])}
+                </div>
+                ` : ''}
+
+                ${opportunityStats.not_quoted_opportunities && opportunityStats.not_quoted_opportunities.length > 0 ? `
+                <!-- Not Quoted Opportunities Table -->
+                <div class="modal-section">
+                    <h6><i class="fa fa-exclamation-triangle"></i>Opportunities Needing Quotations</h6>
+                    ${this.renderTableWithControls('not-quoted-opportunities', opportunityStats.not_quoted_opportunities, [
+                        { key: 'name', label: 'Opportunity', sortable: true, type: 'opportunity_link', icon: 'fa-lightbulb' },
+                        { key: 'customer_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                        { key: 'opportunity_amount', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                        { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
+                        { key: 'expected_closing', label: 'Expected Closing', sortable: true, type: 'date', icon: 'fa-calendar' }
+                    ])}
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    renderDesignRequestTab() {
+        return `
+            <div class="design-request-tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fa fa-drafting-compass"></i>
+                        Design Request Analysis
+                    </h2>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                        <i class="fa fa-paint-brush"></i>
+                        <span>Design request tracking and completion status</span>
+                    </div>
+                </div>
+                ${this.renderDesignRequestSection()}
+            </div>
+        `;
+    }
+
+    renderSiteVisitTab() {
+        return `
+            <div class="site-visit-tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fa fa-map-marker-alt"></i>
+                        Site Visit Analysis
+                    </h2>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                        <i class="fa fa-eye"></i>
+                        <span>Site visit tracking and status overview</span>
+                    </div>
+                </div>
+                ${this.renderSiteVisitSection()}
+            </div>
+        `;
+    }
+
+    renderPermitTab() {
+        return `
+            <div class="permit-tab-content">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fa fa-file-signature"></i>
+                        Permit Analysis
+                    </h2>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                        <i class="fa fa-stamp"></i>
+                        <span>Permit application tracking and approval status</span>
+                    </div>
+                </div>
+                ${this.renderPermitSection()}
+            </div>
+        `;
+    }
+
+    switchOpportunityTab(tabName) {
+        // Remove active class from all tab buttons
+        const tabButtons = document.querySelectorAll('.tab-button');
+        tabButtons.forEach(button => {
+            button.classList.remove('active');
+            button.style.background = 'rgba(51, 65, 85, 0.3)';
+            button.style.color = 'var(--text-primary)';
+            button.style.fontWeight = '500';
+            button.style.boxShadow = 'none';
+            button.style.transform = 'none';
+        });
+
+        // Hide all tab panels
+        const tabPanels = document.querySelectorAll('.tab-panel');
+        tabPanels.forEach(panel => {
+            panel.style.display = 'none';
+            panel.classList.remove('active');
+        });
+
+        // Show the selected tab
+        const selectedButton = document.querySelector(`[data-tab="${tabName}"]`);
+        const selectedPanel = document.getElementById(`${tabName}-tab`);
+
+        if (selectedButton && selectedPanel) {
+            selectedButton.classList.add('active');
+            selectedButton.style.background = 'var(--accent-blue)';
+            selectedButton.style.color = 'white';
+            selectedButton.style.fontWeight = '600';
+            selectedButton.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0,0,0,0.1)';
+            selectedButton.style.transform = 'translateY(-2px)';
+
+            selectedPanel.style.display = 'block';
+            selectedPanel.classList.add('active');
+        }
+    }
+
+    renderSiteVisitSection() {
+        const siteVisits = this.data.site_visits || [];
+        
+        // Group by status
+        const statusGroups = {};
+        siteVisits.forEach(visit => {
+            const status = visit.status || 'Draft';
+            if (!statusGroups[status]) {
+                statusGroups[status] = [];
+            }
+            statusGroups[status].push(visit);
+        });
+
+        const statusColors = {
+            'Draft': 'var(--accent-blue)',
+            'Scheduled': 'var(--accent-purple)',
+            'Completed': 'var(--accent-green)',
+            'Cancelled': 'var(--accent-red)',
+            'Pending': 'var(--accent-orange)'
+        };
+
+        const statusIcons = {
+            'Draft': 'fa-edit',
+            'Scheduled': 'fa-calendar-check',
+            'Completed': 'fa-check-circle',
+            'Cancelled': 'fa-times-circle',
+            'Pending': 'fa-clock'
+        };
+        
+        return `
+            <div class="data-section">
+                <!-- Status Overview Cards -->
+                <div class="stats-grid">
+                    <!-- Total Site Visits -->
+                    <div class="stat-card" onclick="frappe.sales_intelligence.showSiteVisitDetails('total')">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-map-marker-alt" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
+                                    Total Site Visits
+                                </h3>
+                                <p class="stat-card-value">${siteVisits.length}</p>
+                                <p class="stat-card-amount">All Site Visits</p>
+                            </div>
+                            <div class="stat-card-icon" style="background: var(--accent-blue);">
+                                <i class="fa fa-map-marker-alt"></i>
+                            </div>
+                        </div>
+                        <span class="click-indicator">
+                            <i class="fa fa-mouse-pointer"></i>
+                            Click to view details
+                        </span>
+                    </div>
+
+                    <!-- Status-based Cards -->
+                    ${Object.entries(statusGroups).map(([status, visits]) => `
+                        <div class="stat-card" onclick="frappe.sales_intelligence.showSiteVisitDetails('${status}')">
+                            <div class="stat-card-header">
+                                <div class="stat-card-content">
+                                    <h3 class="stat-card-title">
+                                        <i class="fa ${statusIcons[status] || 'fa-circle'}" style="color: ${statusColors[status] || 'var(--accent-gray)'}; margin-right: 0.5rem;"></i>
+                                        ${status}
+                                    </h3>
+                                    <p class="stat-card-value">${visits.length}</p>
+                                    <p class="stat-card-amount">Site Visits</p>
+                                </div>
+                                <div class="stat-card-icon" style="background: ${statusColors[status] || 'var(--accent-gray)'};">
+                                    <i class="fa ${statusIcons[status] || 'fa-circle'}"></i>
+                                </div>
+                            </div>
+                            <span class="click-indicator">
+                                <i class="fa fa-mouse-pointer"></i>
+                                Click to view details
+                            </span>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- Recent Site Visits Table -->
+                <div class="modal-section" style="margin-top: 2rem;">
+                    <h6><i class="fa fa-clock"></i>Recent Site Visits</h6>
+                    ${this.renderTableWithControls('recent-site-visits', siteVisits.slice(0, 20), [
+                        { key: 'name', label: 'Visit ID', sortable: true, type: 'site_visit_link', icon: 'fa-id-card' },
+                        { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
+                        { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
+                        { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                        { key: 'modified', label: 'Last Modified', sortable: true, type: 'date', icon: 'fa-clock' }
+                    ])}
+                </div>
+            </div>
+        `;
+    }
+
+    renderDesignRequestSection() {
+        const designRequests = this.data.design_requests || [];
+        
+        // Group by status (if available)
+        const statusGroups = {};
+        let hasStatusField = false;
+        
+        designRequests.forEach(request => {
+            const status = request.status || 'Draft';
+            if (request.status) hasStatusField = true;
+            if (!statusGroups[status]) {
+                statusGroups[status] = [];
+            }
+            statusGroups[status].push(request);
+        });
+
+        const statusColors = {
+            'Draft': 'var(--accent-blue)',
+            'Open': 'var(--accent-purple)',
+            'In Progress': 'var(--accent-orange)',
+            'Completed': 'var(--accent-green)',
+            'Cancelled': 'var(--accent-red)',
+            'On Hold': 'var(--accent-gray)'
+        };
+
+        const statusIcons = {
+            'Draft': 'fa-edit',
+            'Open': 'fa-folder-open',
+            'In Progress': 'fa-cogs',
+            'Completed': 'fa-check-circle',
+            'Cancelled': 'fa-times-circle',
+            'On Hold': 'fa-pause-circle'
+        };
+        
+        return `
+            <div class="data-section">
+                <!-- Status Overview Cards -->
+                <div class="stats-grid">
+                    <!-- Total Design Requests -->
+                    <div class="stat-card" onclick="frappe.sales_intelligence.showDesignRequestDetails('total')">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-drafting-compass" style="color: var(--accent-purple); margin-right: 0.5rem;"></i>
+                                    Total Design Requests
+                                </h3>
+                                <p class="stat-card-value">${designRequests.length}</p>
+                                <p class="stat-card-amount">All Design Requests</p>
+                            </div>
+                            <div class="stat-card-icon" style="background: var(--accent-purple);">
+                                <i class="fa fa-paint-brush"></i>
+                            </div>
+                        </div>
+                        <span class="click-indicator">
+                            <i class="fa fa-mouse-pointer"></i>
+                            Click to view details
+                        </span>
+                    </div>
+
+                    ${hasStatusField ? Object.entries(statusGroups).map(([status, requests]) => `
+                        <div class="stat-card" onclick="frappe.sales_intelligence.showDesignRequestDetails('${status}')">
+                            <div class="stat-card-header">
+                                <div class="stat-card-content">
+                                    <h3 class="stat-card-title">
+                                        <i class="fa ${statusIcons[status] || 'fa-circle'}" style="color: ${statusColors[status] || 'var(--accent-gray)'}; margin-right: 0.5rem;"></i>
+                                        ${status}
+                                    </h3>
+                                    <p class="stat-card-value">${requests.length}</p>
+                                    <p class="stat-card-amount">Design Requests</p>
+                                </div>
+                                <div class="stat-card-icon" style="background: ${statusColors[status] || 'var(--accent-gray)'}">
+                                    <i class="fa ${statusIcons[status] || 'fa-circle'}"></i>
+                                </div>
+                            </div>
+                            <span class="click-indicator">
+                                <i class="fa fa-mouse-pointer"></i>
+                                Click to view details
+                            </span>
+                        </div>
+                    `).join('') : ''}
+                </div>
+
+                <!-- Recent Design Requests Table -->
+                <div class="modal-section" style="margin-top: 2rem;">
+                    <h6><i class="fa fa-clock"></i>Recent Design Requests</h6>
+                    ${this.renderTableWithControls('recent-design-requests', designRequests.slice(0, 20), [
+                        { key: 'name', label: 'Request ID', sortable: true, type: 'design_request_link', icon: 'fa-id-card' },
+                        { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
+                        ...(hasStatusField ? [{ key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' }] : []),
+                        { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                        { key: 'modified', label: 'Last Modified', sortable: true, type: 'date', icon: 'fa-clock' }
+                    ])}
+                </div>
+            </div>
+        `;
+    }
+
+    renderPermitSection() {
+        const permits = this.data.permits || [];
+        
+        // Group by workflow_state
+        const workflowGroups = {};
+        let hasWorkflowState = false;
+        
+        permits.forEach(permit => {
+            const workflowState = permit.workflow_state || 'Draft';
+            if (permit.workflow_state) hasWorkflowState = true;
+            if (!workflowGroups[workflowState]) {
+                workflowGroups[workflowState] = [];
+            }
+            workflowGroups[workflowState].push(permit);
+        });
+
+        const workflowColors = {
+            'Draft': 'var(--accent-blue)',
+            'Submitted': 'var(--accent-purple)',
+            'Under Review': 'var(--accent-orange)',
+            'Approved': 'var(--accent-green)',
+            'Rejected': 'var(--accent-red)',
+            'On Hold': 'var(--accent-gray)',
+            'Cancelled': 'var(--accent-red)'
+        };
+
+        const workflowIcons = {
+            'Draft': 'fa-edit',
+            'Submitted': 'fa-paper-plane',
+            'Under Review': 'fa-search',
+            'Approved': 'fa-check-circle',
+            'Rejected': 'fa-times-circle',
+            'On Hold': 'fa-pause-circle',
+            'Cancelled': 'fa-ban'
+        };
+        
+        return `
+            <div class="data-section">
+                <!-- Status Overview Cards -->
+                <div class="stats-grid">
+                    <!-- Total Permits -->
+                    <div class="stat-card" onclick="frappe.sales_intelligence.showPermitDetails('total')">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-file-signature" style="color: var(--accent-green); margin-right: 0.5rem;"></i>
+                                    Total Permits
+                                </h3>
+                                <p class="stat-card-value">${permits.length}</p>
+                                <p class="stat-card-amount">All Permits</p>
+                            </div>
+                            <div class="stat-card-icon" style="background: var(--accent-green);">
+                                <i class="fa fa-stamp"></i>
+                            </div>
+                        </div>
+                        <span class="click-indicator">
+                            <i class="fa fa-mouse-pointer"></i>
+                            Click to view details
+                        </span>
+                    </div>
+
+                    ${hasWorkflowState ? Object.entries(workflowGroups).map(([workflowState, permits]) => `
+                        <div class="stat-card" onclick="frappe.sales_intelligence.showPermitDetails('${workflowState}')">
+                            <div class="stat-card-header">
+                                <div class="stat-card-content">
+                                    <h3 class="stat-card-title">
+                                        <i class="fa ${workflowIcons[workflowState] || 'fa-circle'}" style="color: ${workflowColors[workflowState] || 'var(--accent-gray)'}; margin-right: 0.5rem;"></i>
+                                        ${workflowState}
+                                    </h3>
+                                    <p class="stat-card-value">${permits.length}</p>
+                                    <p class="stat-card-amount">Permits</p>
+                                </div>
+                                <div class="stat-card-icon" style="background: ${workflowColors[workflowState] || 'var(--accent-gray)'}">
+                                    <i class="fa ${workflowIcons[workflowState] || 'fa-circle'}"></i>
+                                </div>
+                            </div>
+                            <span class="click-indicator">
+                                <i class="fa fa-mouse-pointer"></i>
+                                Click to view details
+                            </span>
+                        </div>
+                    `).join('') : ''}
+                </div>
+
+                <!-- Recent Permits Table -->
+                <div class="modal-section" style="margin-top: 2rem;">
+                    <h6><i class="fa fa-clock"></i>Recent Permit Applications</h6>
+                    ${this.renderTableWithControls('recent-permits', permits.slice(0, 20), [
+                        { key: 'name', label: 'Permit ID', sortable: true, type: 'permit_link', icon: 'fa-id-card' },
+                        { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
+                        ...(hasWorkflowState ? [{ key: 'workflow_state', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' }] : []),
+                        { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                        { key: 'modified', label: 'Last Modified', sortable: true, type: 'date', icon: 'fa-clock' }
+                    ])}
+                </div>
+            </div>
+        `;
+    }
+
+    groupByStatus(data, statusField) {
+        return data.reduce((groups, item) => {
+            const status = item[statusField] || 'Undefined';
+            if (!groups[status]) {
+                groups[status] = [];
+            }
+            groups[status].push(item);
+            return groups;
+        }, {});
+    }
+
+    getStatusColor(status) {
+        const colors = {
+            'Draft': '#6b7280',
+            'Open': '#3b82f6', 
+            'Scheduled': '#8b5cf6',
+            'In Progress': '#f59e0b',
+            'Completed': '#10b981',
+            'Cancelled': '#ef4444',
+            'Pending': '#f59e0b',
+            'Approved': '#10b981',
+            'Rejected': '#ef4444',
+            'On Hold': '#f59e0b',
+            'Submitted': '#3b82f6',
+            'Undefined': '#6b7280'
+        };
+        return colors[status] || '#6b7280';
+    }
+
+    showTopQuoteCustomer() {
+        const customers = this.data.stats.customers.segments.topQuoteCustomers;
+        if (!customers || customers.length === 0) {
+            frappe.msgprint('No customer data available');
+            return;
+        }
+        
+        const topCustomer = customers[0];
+        const totalQuotes = customers.reduce((sum, c) => sum + c.total_quotes, 0);
+        const totalValue = customers.reduce((sum, c) => sum + c.total_value, 0);
+        const avgConversion = customers.reduce((sum, c) => sum + parseFloat(c.conversion_rate || 0), 0) / customers.length;
+        
+        const content = `
+            <div class="customer-analysis">
+                <div class="modal-section">
+                    <h6><i class="fa fa-chart-bar"></i>Top 5 Customers by Quotation Count</h6>
+                    
+                    <!-- Summary Cards -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div style="text-align: center; padding: 1.5rem; background: rgba(139, 92, 246, 0.1); border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.3);">
+                                <h3 style="font-size: 2rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${totalQuotes}</h3>
+                                <p style="font-size: 1rem; color: var(--text-secondary); margin: 0;">Combined Quotations</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div style="text-align: center; padding: 1.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                                <h3 style="font-size: 2rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">AED ${this.formatCurrency(totalValue)}</h3>
+                                <p style="font-size: 1rem; color: var(--text-secondary); margin: 0;">Combined Value</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div style="text-align: center; padding: 1.5rem; background: rgba(245, 158, 11, 0.1); border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.3);">
+                                <h3 style="font-size: 2rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${avgConversion.toFixed(1)}%</h3>
+                                <p style="font-size: 1rem; color: var(--text-secondary); margin: 0;">Avg Conversion</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Customer Highlight -->
+                    <div class="customer-info mb-4" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.05)); padding: 2rem; border-radius: 12px; border: 2px solid rgba(139, 92, 246, 0.3);">
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                            <div style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--accent-purple, #8b5cf6), #7c3aed); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                                <i class="fa fa-crown"></i>
+                            </div>
+                            <div>
+                                <h4 style="color: var(--text-primary); margin: 0; font-size: 1.5rem;">🏆 #1 Top Customer</h4>
+                                <h5 style="color: var(--accent-purple, #8b5cf6); margin: 0; font-size: 1.25rem;">${topCustomer.name}</h5>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+                                    <h4 style="color: var(--text-primary); margin: 0; font-size: 1.8rem;">${topCustomer.total_quotes}</h4>
+                                    <p style="color: var(--text-secondary); margin: 0; font-size: 0.875rem;">Quotations</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+                                    <h4 style="color: var(--text-primary); margin: 0; font-size: 1.8rem;">AED ${this.formatCurrency(topCustomer.total_value)}</h4>
+                                    <p style="color: var(--text-secondary); margin: 0; font-size: 0.875rem;">Total Value</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+                                    <h4 style="color: var(--text-primary); margin: 0; font-size: 1.8rem;">${parseFloat(topCustomer.conversion_rate || 0).toFixed(1)}%</h4>
+                                    <p style="color: var(--text-secondary); margin: 0; font-size: 0.875rem;">Conversion</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+                                    <h4 style="color: var(--text-primary); margin: 0; font-size: 1.8rem;">${topCustomer.won_quotes || 0}</h4>
+                                    <p style="color: var(--text-secondary); margin: 0; font-size: 0.875rem;">Won Quotes</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover" style="background: rgba(51, 65, 85, 0.3); border-radius: 12px;">
+                            <thead style="background: rgba(139, 92, 246, 0.1);">
+                                <tr>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-trophy"></i> Rank</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-building"></i> Customer</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none; text-align: center;"><i class="fa fa-list"></i> Quotations</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none; text-align: center;"><i class="fa fa-money-bill-wave"></i> Total Value</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none; text-align: center;"><i class="fa fa-trophy"></i> Won</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none; text-align: center;"><i class="fa fa-percentage"></i> Conversion</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none; text-align: center;"><i class="fa fa-chart-line"></i> Avg Margin</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none; text-align: center;"><i class="fa fa-calculator"></i> Avg Quote Value</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none; text-align: center;"><i class="fa fa-clock"></i> Last Quote</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${customers.map((customer, index) => `
+                                    <tr style="border-bottom: 1px solid rgba(75, 85, 99, 0.3);">
+                                        <td style="padding: 1rem; border: none;">
+                                            <div style="display: flex; align-items: center; justify-content: center;">
+                                                <span style="
+                                                    width: 30px; 
+                                                    height: 30px; 
+                                                    border-radius: 50%; 
+                                                    display: flex; 
+                                                    align-items: center; 
+                                                    justify-content: center; 
+                                                    font-weight: 700;
+                                                    ${index === 0 ? 'background: linear-gradient(135deg, #ffd700, #ffb300); color: white;' : 
+                                                      index === 1 ? 'background: linear-gradient(135deg, #c0c0c0, #a0a0a0); color: white;' : 
+                                                      index === 2 ? 'background: linear-gradient(135deg, #cd7f32, #b8860b); color: white;' : 
+                                                      'background: rgba(107, 114, 128, 0.3); color: var(--text-secondary);'}
+                                                ">
+                                                    ${index + 1}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td style="padding: 1rem; color: var(--text-primary); border: none;">
+                                            <strong style="font-size: ${index === 0 ? '1.1rem' : '1rem'};">${customer.name}</strong>
+                                        </td>
+                                        <td style="padding: 1rem; text-align: center; border: none;">
+                                            <span style="font-weight: ${index === 0 ? '700' : '600'}; color: var(--accent-purple, #8b5cf6); font-size: ${index === 0 ? '1.2rem' : '1rem'};">
+                                                ${customer.total_quotes}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 1rem; text-align: center; color: var(--text-secondary); border: none;">AED ${this.formatCurrency(customer.total_value)}</td>
+                                        <td style="padding: 1rem; text-align: center; color: var(--text-secondary); border: none;">${customer.won_quotes || 0}</td>
+                                        <td style="padding: 1rem; text-align: center; border: none;">
+                                            <span style="color: ${parseFloat(customer.conversion_rate || 0) > 50 ? 'var(--accent-green)' : parseFloat(customer.conversion_rate || 0) > 30 ? 'var(--accent-orange)' : 'var(--accent-red)'}; font-weight: 600;">
+                                                ${parseFloat(customer.conversion_rate || 0).toFixed(1)}%
+                                            </span>
+                                        </td>
+                                        <td style="padding: 1rem; text-align: center; color: var(--text-secondary); border: none;">${parseFloat(customer.avg_margin || 0).toFixed(1)}%</td>
+                                        <td style="padding: 1rem; text-align: center; color: var(--text-secondary); border: none;">AED ${this.formatCurrency(customer.avg_quote_value || 0)}</td>
+                                        <td style="padding: 1rem; text-align: center; color: var(--text-secondary); border: none; font-size: 0.875rem;">
+                                            ${customer.days_since_last_quote || 'N/A'} days ago
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <i class="fa fa-lightbulb" style="color: var(--accent-purple, #8b5cf6); font-size: 1.25rem;"></i>
+                            <div>
+                                <strong>Strategic Insights:</strong> These top customers represent your highest quotation volume. Focus on maintaining relationships, 
+                                understanding their procurement patterns, and exploring opportunities for long-term contracts or volume discounts.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        $('#drilldown-title').html(`<i class="fa fa-chart-bar"></i> Top 5 Customers by Quotation Count`);
+        $('#drilldown-content').html(content);
+        $('#drilldownModal').modal('show');
+    }
+
+    showContinuousQuoteCustomers() {
+        const customers = this.data.stats.customers.segments.continuousQuoteCustomers;
+        if (!customers || customers.length === 0) {
+            frappe.msgprint('No customers with 5+ continuous non-converting quotations found');
+            return;
+        }
+        
+        const content = `
+            <div class="continuous-analysis">
+                <div class="modal-section">
+                    <h6><i class="fa fa-refresh"></i>Customers with 5+ Continuous Non-Converting Quotations</h6>
+                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Customers who have taken multiple quotes without conversion. Counter resets after each successful order.</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover" style="background: rgba(51, 65, 85, 0.3); border-radius: 12px;">
+                            <thead style="background: rgba(59, 130, 246, 0.1);">
+                                <tr>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-building"></i> Customer</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none; text-align: center;"><i class="fa fa-refresh"></i> Continuous Count</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none; text-align: center;"><i class="fa fa-chart-line"></i> Current Streak</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none; text-align: center;"><i class="fa fa-list"></i> Total Quotes</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none; text-align: center;"><i class="fa fa-trophy"></i> Won Quotes</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none; text-align: center;"><i class="fa fa-calendar"></i> Period</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${customers.map(customer => `
+                                    <tr style="border-bottom: 1px solid rgba(75, 85, 99, 0.3);">
+                                        <td style="padding: 1rem; color: var(--text-primary); border: none;">
+                                            <strong>${customer.customer}</strong>
+                                        </td>
+                                        <td style="padding: 1rem; text-align: center; border: none;">
+                                            <span class="badge" style="background: linear-gradient(135deg, var(--accent-yellow, #f59e0b), #d97706); color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600;">
+                                                ${customer.continuous_count}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 1rem; text-align: center; color: var(--text-secondary); border: none;">${customer.current_streak}</td>
+                                        <td style="padding: 1rem; text-align: center; color: var(--text-secondary); border: none;">${customer.total_quotes}</td>
+                                        <td style="padding: 1rem; text-align: center; color: var(--text-secondary); border: none;">${customer.won_quotes}</td>
+                                        <td style="padding: 1rem; text-align: center; color: var(--text-secondary); border: none; font-size: 0.875rem;">
+                                            ${customer.streak_start && customer.streak_end ? 
+                                                `${new Date(customer.streak_start).toLocaleDateString()} - ${new Date(customer.streak_end).toLocaleDateString()}` : 
+                                                'Current ongoing'
+                                            }
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="alert alert-warning mt-3" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <i class="fa fa-lightbulb" style="color: var(--accent-yellow, #f59e0b); font-size: 1.25rem;"></i>
+                            <div>
+                                <strong>Action Needed:</strong> These customers require immediate attention and a different sales approach. 
+                                Consider reviewing pricing, product fit, or sales strategy.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        $('#drilldown-title').html(`<i class="fa fa-refresh"></i> Continuous Non-Converting Customers (${customers.length})`);
+        $('#drilldown-content').html(content);
+        $('#drilldownModal').modal('show');
+    }
+
+    showSiteVisitDetails() {
+        const siteVisits = this.data.site_visits || [];
+        
+        if (siteVisits.length === 0) {
+            frappe.msgprint('No site visits found');
+            return;
+        }
+        
+        const content = `
+            <div class="doctype-analysis">
+                <div class="modal-section">
+                    <h6><i class="fa fa-map-marker-alt"></i>All Site Visits</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div style="text-align: center; padding: 1.5rem; background: rgba(59, 130, 246, 0.1); border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                                <h3 style="font-size: 2rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${siteVisits.length}</h3>
+                                <p style="font-size: 1rem; color: var(--text-secondary); margin: 0;">Total Site Visits</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover" style="background: rgba(51, 65, 85, 0.3); border-radius: 12px;">
+                            <thead style="background: rgba(59, 130, 246, 0.1);">
+                                <tr>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-id-card"></i> Visit ID</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-building"></i> Customer</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-calendar"></i> Created</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-clock"></i> Modified</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${siteVisits.map(visit => `
+                                    <tr style="border-bottom: 1px solid rgba(75, 85, 99, 0.3);">
+                                        <td style="padding: 1rem; color: var(--text-primary); border: none;">
+                                            <strong>${visit.name}</strong>
+                                        </td>
+                                        <td style="padding: 1rem; color: var(--text-secondary); border: none;">${visit.customer || 'Not specified'}</td>
+                                        <td style="padding: 1rem; color: var(--text-secondary); border: none;">${visit.creation ? new Date(visit.creation).toLocaleDateString() : 'N/A'}</td>
+                                        <td style="padding: 1rem; color: var(--text-secondary); border: none;">${visit.modified ? new Date(visit.modified).toLocaleDateString() : 'N/A'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        $('#drilldown-title').html(`<i class="fa fa-map-marker-alt"></i> All Site Visits (${siteVisits.length})`);
+        $('#drilldown-content').html(content);
+        $('#drilldownModal').modal('show');
+    }
+
+    showDesignRequestDetails() {
+        const designRequests = this.data.design_requests || [];
+        
+        if (designRequests.length === 0) {
+            frappe.msgprint('No design requests found');
+            return;
+        }
+        
+        const content = `
+            <div class="doctype-analysis">
+                <div class="modal-section">
+                    <h6><i class="fa fa-drafting-compass"></i>All Design Requests</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div style="text-align: center; padding: 1.5rem; background: rgba(139, 92, 246, 0.1); border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.3);">
+                                <h3 style="font-size: 2rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${designRequests.length}</h3>
+                                <p style="font-size: 1rem; color: var(--text-secondary); margin: 0;">Total Design Requests</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover" style="background: rgba(51, 65, 85, 0.3); border-radius: 12px;">
+                            <thead style="background: rgba(139, 92, 246, 0.1);">
+                                <tr>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-id-card"></i> Request ID</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-building"></i> Customer</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-calendar"></i> Created</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-clock"></i> Modified</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${designRequests.map(request => `
+                                    <tr style="border-bottom: 1px solid rgba(75, 85, 99, 0.3);">
+                                        <td style="padding: 1rem; color: var(--text-primary); border: none;">
+                                            <strong>${request.name}</strong>
+                                        </td>
+                                        <td style="padding: 1rem; color: var(--text-secondary); border: none;">${request.customer || 'Not specified'}</td>
+                                        <td style="padding: 1rem; color: var(--text-secondary); border: none;">${request.creation ? new Date(request.creation).toLocaleDateString() : 'N/A'}</td>
+                                        <td style="padding: 1rem; color: var(--text-secondary); border: none;">${request.modified ? new Date(request.modified).toLocaleDateString() : 'N/A'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        $('#drilldown-title').html(`<i class="fa fa-drafting-compass"></i> All Design Requests (${designRequests.length})`);
+        $('#drilldown-content').html(content);
+        $('#drilldownModal').modal('show');
+    }
+
+    showPermitDetails() {
+        const permits = this.data.permits || [];
+        
+        if (permits.length === 0) {
+            frappe.msgprint('No permits found');
+            return;
+        }
+        
+        const content = `
+            <div class="doctype-analysis">
+                <div class="modal-section">
+                    <h6><i class="fa fa-file-signature"></i>All Permits</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div style="text-align: center; padding: 1.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                                <h3 style="font-size: 2rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${permits.length}</h3>
+                                <p style="font-size: 1rem; color: var(--text-secondary); margin: 0;">Total Permits</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover" style="background: rgba(51, 65, 85, 0.3); border-radius: 12px;">
+                            <thead style="background: rgba(16, 185, 129, 0.1);">
+                                <tr>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-id-card"></i> Permit ID</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-building"></i> Customer</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-calendar"></i> Created</th>
+                                    <th style="color: var(--text-primary); padding: 1rem; border: none;"><i class="fa fa-clock"></i> Modified</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${permits.map(permit => `
+                                    <tr style="border-bottom: 1px solid rgba(75, 85, 99, 0.3);">
+                                        <td style="padding: 1rem; color: var(--text-primary); border: none;">
+                                            <strong>${permit.name}</strong>
+                                        </td>
+                                        <td style="padding: 1rem; color: var(--text-secondary); border: none;">${permit.customer || 'Not specified'}</td>
+                                        <td style="padding: 1rem; color: var(--text-secondary); border: none;">${permit.creation ? new Date(permit.creation).toLocaleDateString() : 'N/A'}</td>
+                                        <td style="padding: 1rem; color: var(--text-secondary); border: none;">${permit.modified ? new Date(permit.modified).toLocaleDateString() : 'N/A'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        $('#drilldown-title').html(`<i class="fa fa-file-signature"></i> All Permits (${permits.length})`);
+        $('#drilldown-content').html(content);
+        $('#drilldownModal').modal('show');
+    }
 }
 
 // Initialize when page loads
 frappe.ready(() => {
     console.log('Enhanced Sales Intelligence Dashboard loaded successfully');
 });
+ 
+        
