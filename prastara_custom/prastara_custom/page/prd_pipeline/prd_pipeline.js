@@ -48,7 +48,7 @@ this.data = {
             from_date: frappe.datetime.add_days(frappe.datetime.get_today(), -30),
             to_date: frappe.datetime.get_today(),
             status: 'all',
-            company: 'LED WORLD LLC',
+            company: 'PRASTARA DECORATION DESIGN L.L.C',
             branch: '',
             account_incharge: '',
             created_by: '',
@@ -4253,26 +4253,8 @@ async loadData() {
                 filters.creation = ['between', [this.filters.from_date, this.filters.to_date]];
             }
             
-            // Try to get status field, fallback to basic fields if not permitted
+            // Site Visit - use only basic fields that exist
             let fields = ['name', 'customer', 'creation', 'modified'];
-            
-            // Try to add status field, but handle gracefully if not permitted
-            try {
-                const testResponse = await frappe.call({
-                    method: 'frappe.client.get_list',
-                    args: {
-                        doctype: 'Site Visit',
-                        fields: ['name', 'customer', 'status', 'creation', 'modified'],
-                        filters: filters,
-                        limit: 1,
-                        order_by: 'creation desc'
-                    }
-                });
-                // If successful, use full field list including status
-                fields = ['name', 'customer', 'status', 'creation', 'modified'];
-            } catch (error) {
-                console.log('Status field not available for Site Visit, using basic fields');
-            }
             
             const response = await frappe.call({
                 method: 'frappe.client.get_list',
@@ -8686,10 +8668,10 @@ initializePipelineTimelineChart() {
 
     // Filter and utility methods
     populateFilterOptions() {
-        // Populate company options for searchable dropdown - restricted to LED WORLD LLC only
+        // Populate company options for searchable dropdown - restricted to PRASTARA DECORATION DESIGN L.L.C only
         const companyOptions = $('#company-options');
         if (companyOptions.find('.searchable-option:not([data-value=""])').length === 0) {
-            companyOptions.append(`<div class="searchable-option" data-value="LED WORLD LLC">LED WORLD LLC</div>`);
+            companyOptions.append(`<div class="searchable-option" data-value="PRASTARA DECORATION DESIGN L.L.C">PRASTARA DECORATION DESIGN L.L.C</div>`);
         }
 
         // Populate branch options for searchable dropdown
@@ -8767,7 +8749,7 @@ initializePipelineTimelineChart() {
             from_date: this.filters.from_date,
             to_date: this.filters.to_date,
             status: 'all',
-            company: 'LED WORLD LLC',
+            company: 'PRASTARA DECORATION DESIGN L.L.C',
             branch: '',
             account_incharge: '',
             created_by: '',
