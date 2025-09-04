@@ -4392,7 +4392,7 @@ async loadData() {
             const response = await frappe.call({
                 method: 'frappe.client.get_list',
                 args: {
-                    doctype: 'Permit',
+                    doctype: 'Permit Form ',
                     fields: ['name', 'customer', 'workflow_state', 'creation', 'modified'],
                     filters: filters,
                     limit: 1000,
