@@ -4321,26 +4321,8 @@ async loadData() {
                 filters.creation = ['between', [this.filters.from_date, this.filters.to_date]];
             }
             
-            // Try to get status field, fallback to basic fields if not permitted
+            // Design Request - use only basic fields that exist
             let fields = ['name', 'customer', 'creation', 'modified'];
-            
-            // Try to add status field, but handle gracefully if not permitted
-            try {
-                const testResponse = await frappe.call({
-                    method: 'frappe.client.get_list',
-                    args: {
-                        doctype: 'Design Request',
-                        fields: ['name', 'customer', 'status', 'creation', 'modified'],
-                        filters: filters,
-                        limit: 1,
-                        order_by: 'creation desc'
-                    }
-                });
-                // If successful, use full field list including status
-                fields = ['name', 'customer', 'status', 'creation', 'modified'];
-            } catch (error) {
-                console.log('Status field not available for Design Request, using basic fields');
-            }
             
             const response = await frappe.call({
                 method: 'frappe.client.get_list',
@@ -4392,8 +4374,8 @@ async loadData() {
             const response = await frappe.call({
                 method: 'frappe.client.get_list',
                 args: {
-                    doctype: 'Permit Form ',
-                    fields: ['name', 'customer', 'workflow_state', 'creation', 'modified'],
+                    doctype: 'Permit Form',
+                    fields: ['name', 'customer', 'creation', 'modified'],
                     filters: filters,
                     limit: 1000,
                     order_by: 'creation desc'
