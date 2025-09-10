@@ -48,7 +48,7 @@ this.data = {
             from_date: frappe.datetime.add_days(frappe.datetime.get_today(), -30),
             to_date: frappe.datetime.get_today(),
             status: 'all',
-            company: 'PRASTARA DECORATION DESIGN L.L.C',
+            company: 'PRASTARA DECORATION DESIGN L.L.C',
             branch: '',
             account_incharge: '',
             created_by: '',
@@ -482,6 +482,172 @@ this.data = {
                     display: flex;
                     align-items: center;
                     gap: 0.75rem;
+                }
+                
+                .pagination-controls {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }
+                
+                .pagination-controls .page-info {
+                    font-size: 0.875rem;
+                    color: var(--text-secondary);
+                    margin: 0 0.5rem;
+                    min-width: 60px;
+                    text-align: center;
+                }
+                
+                .pagination-controls button {
+                    padding: 0.25rem 0.5rem;
+                    font-size: 0.75rem;
+                    border-radius: 4px;
+                }
+                
+                .pagination-controls button:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+                
+                /* Multi-select dropdown styles */
+                .multi-select-dropdown {
+                    position: relative;
+                    width: 100%;
+                }
+                
+                .multi-select-input-container {
+                    position: relative;
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    background: white;
+                    min-height: 38px;
+                    display: flex;
+                    align-items: center;
+                    padding: 0.5rem;
+                    cursor: pointer;
+                    transition: border-color 0.2s ease;
+                }
+                
+                .multi-select-input-container:hover,
+                .multi-select-input-container:focus-within {
+                    border-color: var(--accent-blue);
+                    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+                }
+                
+                .multi-select-input {
+                    border: none;
+                    outline: none;
+                    background: transparent;
+                    flex: 1;
+                    font-size: 0.875rem;
+                    padding: 0;
+                }
+                
+                .multi-select-options {
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    background: white;
+                    border: 1px solid var(--border-color);
+                    border-top: none;
+                    border-radius: 0 0 8px 8px;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    z-index: 1000;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                }
+                
+                .multi-select-option {
+                    padding: 0.75rem;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    transition: background-color 0.2s ease;
+                    border-bottom: 1px solid var(--border-light);
+                }
+                
+                .multi-select-option:hover {
+                    background-color: var(--hover-bg);
+                }
+                
+                .multi-select-option.select-all {
+                    font-weight: 600;
+                    background-color: var(--light-bg);
+                    border-bottom: 2px solid var(--border-color);
+                }
+                
+                .multi-select-option input[type="checkbox"] {
+                    margin: 0;
+                    transform: scale(1.1);
+                }
+                
+                .multi-select-option label {
+                    margin: 0;
+                    cursor: pointer;
+                    flex: 1;
+                    font-size: 0.875rem;
+                }
+                
+                .selected-tags {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.25rem;
+                    margin-top: 0.5rem;
+                    padding: 0.25rem;
+                    background: var(--light-bg);
+                    border-radius: 6px;
+                    min-height: 30px;
+                    align-items: center;
+                }
+                
+                .selected-tag {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.25rem;
+                    background: var(--accent-blue);
+                    color: white;
+                    padding: 0.2rem 0.5rem;
+                    border-radius: 12px;
+                    font-size: 0.75rem;
+                    font-weight: 500;
+                }
+                
+                .selected-tag .remove-tag {
+                    cursor: pointer;
+                    font-weight: bold;
+                    margin-left: 0.25rem;
+                    opacity: 0.8;
+                }
+                
+                .selected-tag .remove-tag:hover {
+                    opacity: 1;
+                }
+                
+                /* Multi-select within existing dropdown */
+                .searchable-option.multi-selected {
+                    background-color: var(--accent-blue);
+                    color: white;
+                    position: relative;
+                }
+                
+                .searchable-option.multi-selected::after {
+                    content: "✓";
+                    position: absolute;
+                    right: 10px;
+                    font-weight: bold;
+                }
+                
+                .selected-managers-display {
+                    margin-top: 0.5rem;
+                    padding: 0.5rem;
+                    background: var(--light-bg);
+                    border-radius: 6px;
+                    font-size: 0.875rem;
+                    line-height: 1.4;
+                    max-height: 60px;
+                    overflow-y: auto;
                 }
 
                 .table-search {
@@ -3507,9 +3673,9 @@ select.form-control option {
                             <div class="modal-section">
                                 <h6><i class="fa fa-users"></i>People Filters</h6>
                                 <div class="row">
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <div class="form-group">
-                                            <label style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem; display: block;">Account Manager</label>
+                                            <label style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem; display: block;">Account Manager <small class="text-muted">(Multiple selection)</small></label>
                                             <div class="searchable-dropdown" id="account-manager-dropdown">
                                                 <div class="searchable-input-container">
                                                     <input type="text" class="form-control searchable-input" id="filter-account-manager-input" placeholder="Search account managers..." autocomplete="off">
@@ -3519,10 +3685,14 @@ select.form-control option {
                                                     <div class="searchable-option" data-value="">All Managers</div>
                                                 </div>
                                                 <input type="hidden" id="filter-account-manager" value="">
+                                                <div class="selected-managers-display" id="selected-managers-display" style="display: none;">
+                                                    <small class="text-muted">Selected: </small>
+                                                    <span id="selected-managers-text"></span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <div class="form-group">
                                             <label style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem; display: block;">Status</label>
                                             <div class="searchable-dropdown" id="status-dropdown">
@@ -3707,6 +3877,8 @@ select.form-control option {
 
         // Global Search
         $('#global-search').on('input', frappe.utils.debounce(async (e) => {
+            console.log('Global search triggered with value:', e.target.value);
+            console.log('Account incharge filter before global search:', this.filters.account_incharge);
             this.filters.search_query = e.target.value;
             this.applyFilters();
             await this.renderCurrentSection();
@@ -3792,7 +3964,7 @@ select.form-control option {
         // Branch searchable dropdown
         this.setupSearchableDropdown('branch', '#filter-branch-input', '#branch-options', '#filter-branch');
         
-        // Account Manager searchable dropdown
+        // Account Manager searchable dropdown (with multi-select capability)
         this.setupSearchableDropdown('account-manager', '#filter-account-manager-input', '#account-manager-options', '#filter-account-manager');
         
         // Status searchable dropdown
@@ -3827,27 +3999,42 @@ select.form-control option {
         });
 
         // Handle option selection
-        options.on('click', '.searchable-option:not(.no-results)', (e) => {
+        options.on('click', '.searchable-option:not(.no-results)', async (e) => {
             e.stopPropagation();
             const selectedOption = $(e.target);
             const value = selectedOption.data('value');
             const text = selectedOption.text();
 
-            // Update input and hidden field
-            if (value === '') {
-                // If "All Branches" or "All Managers" is selected, clear the input
-                input.val('');
+            // Check if this is the account manager dropdown for multi-select
+            if (dropdownName === 'account-manager') {
+                if (value === '') {
+                    // "All Managers" selected - clear all selections
+                    options.find('.searchable-option').removeClass('multi-selected');
+                    hiddenInput.val('');
+                    input.val('');
+                    $('#selected-managers-display').hide();
+                    options.hide();
+                } else {
+                    // Individual manager selection
+                    await this.handleAccountManagerMultiSelect(selectedOption, value, text, hiddenInput);
+                }
             } else {
-                input.val(text);
+                // Handle single selection for other dropdowns
+                if (value === '') {
+                    // If "All Branches", "All Managers", or "All Teams" is selected, clear the input
+                    input.val('');
+                } else {
+                    input.val(text);
+                }
+                hiddenInput.val(value);
+
+                // Update visual selection
+                options.find('.searchable-option').removeClass('selected');
+                selectedOption.addClass('selected');
+
+                // Hide options
+                options.hide();
             }
-            hiddenInput.val(value);
-
-            // Update visual selection
-            options.find('.searchable-option').removeClass('selected');
-            selectedOption.addClass('selected');
-
-            // Hide options
-            options.hide();
         });
 
         // Handle keyboard navigation
@@ -4052,7 +4239,7 @@ select.form-control option {
                 method: 'frappe.client.get_list',
                 args: {
                     doctype: 'Item',
-                    fields: ['item_code', 'custom_category_list', 'is_stock_item'],
+                    fields: ['item_code', 'category_list', 'is_stock_item'],
                     filters: [
                         ['item_code', 'in', itemCodes]
                     ],
@@ -4064,7 +4251,7 @@ select.form-control option {
             if (response.message) {
                 response.message.forEach(item => {
                     itemDetails[item.item_code] = {
-                        category: item.custom_category_list || 'Uncategorized',
+                        category: item.category_list || 'Uncategorized',
                         is_stock_item: item.is_stock_item || 0
                     };
                 });
@@ -4201,6 +4388,9 @@ async loadData() {
             await this.loadDesignRequestData();
             await this.loadPermitData();
             
+            // Load quotation lost reasons
+            await this.loadQuotationLostReasons();
+            
             await this.renderCurrentSection();
         }
     } catch (error) {
@@ -4253,8 +4443,26 @@ async loadData() {
                 filters.creation = ['between', [this.filters.from_date, this.filters.to_date]];
             }
             
-            // Site Visit - use only basic fields that exist
+            // Try to get status field, fallback to basic fields if not permitted
             let fields = ['name', 'customer', 'creation', 'modified'];
+            
+            // Try to add status field, but handle gracefully if not permitted
+            try {
+                const testResponse = await frappe.call({
+                    method: 'frappe.client.get_list',
+                    args: {
+                        doctype: 'Site Visit',
+                        fields: ['name', 'customer', 'status', 'creation', 'modified'],
+                        filters: filters,
+                        limit: 1,
+                        order_by: 'creation desc'
+                    }
+                });
+                // If successful, use full field list including status
+                fields = ['name', 'customer', 'status', 'creation', 'modified'];
+            } catch (error) {
+                console.log('Status field not available for Site Visit, using basic fields');
+            }
             
             const response = await frappe.call({
                 method: 'frappe.client.get_list',
@@ -4269,20 +4477,9 @@ async loadData() {
             
             let siteVisits = response.message || [];
             
-            // Filter by company through relationship with opportunities/quotations if company filter is applied
-            if (this.filters.company && this.data.opportunities && this.data.opportunities.length > 0) {
-                // Get customers from filtered opportunities
-                const companyCustomers = new Set(
-                    this.data.opportunities
-                        .filter(opp => !this.filters.company || opp.company === this.filters.company)
-                        .map(opp => opp.customer_name || opp.party_name)
-                );
-                
-                // Filter site visits to only those customers
-                siteVisits = siteVisits.filter(visit => 
-                    companyCustomers.has(visit.customer)
-                );
-            }
+            // Apply basic filtering only - remove aggressive company-based filtering
+            // This ensures all site visits within the date range are shown
+            // Company filtering can be handled differently if needed
             
             this.data.site_visits = siteVisits;
             console.log(`Loaded ${this.data.site_visits.length} site visits filtered for company: ${this.filters.company || 'All'}`);
@@ -4303,8 +4500,26 @@ async loadData() {
                 filters.creation = ['between', [this.filters.from_date, this.filters.to_date]];
             }
             
-            // Design Request - use only basic fields that exist
+            // Try to get status field, fallback to basic fields if not permitted
             let fields = ['name', 'customer', 'creation', 'modified'];
+            
+            // Try to add status field, but handle gracefully if not permitted
+            try {
+                const testResponse = await frappe.call({
+                    method: 'frappe.client.get_list',
+                    args: {
+                        doctype: 'Design Request',
+                        fields: ['name', 'customer', 'status', 'creation', 'modified'],
+                        filters: filters,
+                        limit: 1,
+                        order_by: 'creation desc'
+                    }
+                });
+                // If successful, use full field list including status
+                fields = ['name', 'customer', 'status', 'creation', 'modified'];
+            } catch (error) {
+                console.log('Status field not available for Design Request, using basic fields');
+            }
             
             const response = await frappe.call({
                 method: 'frappe.client.get_list',
@@ -4319,20 +4534,9 @@ async loadData() {
             
             let designRequests = response.message || [];
             
-            // Filter by company through relationship with opportunities/quotations if company filter is applied
-            if (this.filters.company && this.data.opportunities && this.data.opportunities.length > 0) {
-                // Get customers from filtered opportunities
-                const companyCustomers = new Set(
-                    this.data.opportunities
-                        .filter(opp => !this.filters.company || opp.company === this.filters.company)
-                        .map(opp => opp.customer_name || opp.party_name)
-                );
-                
-                // Filter design requests to only those customers
-                designRequests = designRequests.filter(request => 
-                    companyCustomers.has(request.customer)
-                );
-            }
+            // Apply basic filtering only - remove aggressive company-based filtering
+            // This ensures all design requests within the date range are shown
+            // Company filtering can be handled differently if needed
             
             this.data.design_requests = designRequests;
             console.log(`Loaded ${this.data.design_requests.length} design requests filtered for company: ${this.filters.company || 'All'}`);
@@ -4425,6 +4629,93 @@ async loadData() {
             console.error('Failed to load opportunity data:', error);
             this.data.opportunities = [];
             return { data: [], total_count: 0 };
+        }
+    }
+
+    async loadQuotationLostReasons() {
+        try {
+            // Fetch all lost quotations with their reasons
+            const lostQuotationsResponse = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Quotation',
+                    filters: {
+                        status: 'Lost',
+                        creation: ['between', [this.filters.from_date, this.filters.to_date]]
+                    },
+                    fields: ['name', 'custom_lost_reason', 'grand_total'],
+                    limit_page_length: 0
+                }
+            });
+
+            // Fetch standardized reasons from Quotation Lost Reason doctype (only active ones)
+            const reasonsResponse = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Quotation Lost Reason',
+                    fields: ['name', 'order_lost_reason'],
+                    filters: {
+                        custom_disabled: 0
+                    },
+                    limit_page_length: 0
+                }
+            });
+
+            const lostQuotations = lostQuotationsResponse.message || [];
+            const standardReasons = reasonsResponse.message || [];
+            
+            // Create a map of reason names to standardized reasons
+            const reasonMap = {};
+            standardReasons.forEach(reason => {
+                reasonMap[reason.name] = reason.order_lost_reason;
+            });
+
+            // Group lost quotations by standardized reasons
+            const reasonCounts = {};
+            const reasonValues = {};
+            
+            // Initialize with all standard reasons
+            standardReasons.forEach(reason => {
+                reasonCounts[reason.order_lost_reason] = 0;
+                reasonValues[reason.order_lost_reason] = 0;
+            });
+            
+            // Count quotations by reason
+            lostQuotations.forEach(quotation => {
+                const standardReason = reasonMap[quotation.custom_lost_reason] || 'Other';
+                if (reasonCounts.hasOwnProperty(standardReason)) {
+                    reasonCounts[standardReason]++;
+                    reasonValues[standardReason] += (quotation.grand_total || 0);
+                } else {
+                    // Handle unmapped reasons
+                    if (!reasonCounts['Other']) {
+                        reasonCounts['Other'] = 0;
+                        reasonValues['Other'] = 0;
+                    }
+                    reasonCounts['Other']++;
+                    reasonValues['Other'] += (quotation.grand_total || 0);
+                }
+            });
+
+            this.data.lost_quotation_reasons = {
+                reasons: standardReasons,
+                counts: reasonCounts,
+                values: reasonValues,
+                total_lost: lostQuotations.length
+            };
+
+            console.log('Loaded lost quotation reasons:', this.data.lost_quotation_reasons);
+            return this.data.lost_quotation_reasons;
+            
+        } catch (error) {
+            console.error('Failed to load quotation lost reasons:', error);
+            this.data.lost_quotation_reasons = {
+                reasons: [],
+                counts: {},
+                values: {},
+                total_lost: 0
+            };
+            return this.data.lost_quotation_reasons;
         }
     }
 
@@ -4536,6 +4827,9 @@ calculatePipeline(quote) {
 }
 
     applyFilters() {
+        console.log('applyFilters called - account_incharge filter:', this.filters.account_incharge);
+        console.log('applyFilters called - total quotations:', this.data.quotations ? this.data.quotations.length : 'undefined');
+        
         this.data.filtered = this.data.quotations.filter(quote => {
             // Search filter
             if (this.filters.search_query && this.filters.search_query.trim()) {
@@ -4548,10 +4842,26 @@ calculatePipeline(quote) {
                     quote.account_incharge_full_name,
                     quote.project_description,
                     quote.status,
-                    quote.workflow_state
+                    quote.workflow_state,
+                    quote.custom_team
                 ].filter(Boolean).join(' ').toLowerCase();
                 
                 if (!searchableText.includes(searchTerm)) {
+                    return false;
+                }
+            }
+            
+            // Account Manager filter (multiple selection using "in" logic)
+            if (this.filters.account_incharge && this.filters.account_incharge !== '') {
+                const selectedManagers = this.filters.account_incharge.split(',').map(m => m.trim()).filter(Boolean);
+                
+                // Debug logging
+                console.log('Filter Debug - Selected managers:', selectedManagers);
+                console.log('Filter Debug - Quote account_incharge:', quote.account_incharge);
+                console.log('Filter Debug - Is match?', selectedManagers.includes(quote.account_incharge));
+                
+                // Show quotations where account_incharge is IN the selected managers list
+                if (selectedManagers.length > 0 && !selectedManagers.includes(quote.account_incharge)) {
                     return false;
                 }
             }
@@ -4561,6 +4871,7 @@ calculatePipeline(quote) {
     }
 
     async calculateStats() {
+        console.log('calculateStats called - this.data.filtered length:', this.data.filtered ? this.data.filtered.length : 'undefined');
         const data = this.data.filtered;
         
         // Overview Stats
@@ -4619,6 +4930,8 @@ calculatePipeline(quote) {
     const lostQuotes = data.filter(q => q.status === 'Lost');
     const draftQuotes = data.filter(q => q.status === 'Draft');
     const pendingQuotes = data.filter(q => ['Open', 'Expired'].includes(q.status));
+    const openQuotes = data.filter(q => q.status === 'Open');
+    const expiredQuotes = data.filter(q => q.status === 'Expired');
     
     // Use cached cancelled quotations data if available, otherwise try to filter from main data
     let cancelledNotAmendedQuotes = [];
@@ -4726,6 +5039,14 @@ calculatePipeline(quote) {
             count: pendingQuotes.length,
             amount: pendingQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
         },
+        open: {
+            count: openQuotes.length,
+            amount: openQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
+        },
+        expired: {
+            count: expiredQuotes.length,
+            amount: expiredQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
+        },
         lost: {
             count: lostQuotes.length,
             amount: lostQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
@@ -4771,25 +5092,61 @@ calculatePipelineStats(data) {
     
     console.log('Calculating pipeline stats for', data.length, 'quotations');
     
-    // Consider quotations that have pipeline workflow states but exclude Ordered/Partially Ordered
-    const quotationsWithPipeline = data.filter(quote => {
+    // Exclude specific statuses from pipeline calculations
+    const excludedStatuses = ['Partially Ordered', 'Ordered', 'Lost', 'Cancelled', 'Expired', 'Not Approved'];
+    const pipelineEligibleData = data.filter(quote => {
+        return !excludedStatuses.includes(quote.status);
+    });
+    
+    console.log('Status exclusion check:');
+    console.log('Total input data:', data.length);
+    console.log('After excluding statuses:', pipelineEligibleData.length);
+    console.log('Excluded statuses:', excludedStatuses);
+    
+    // Sample the first few quotations to debug
+    console.log('Sample of first 5 quotations:');
+    data.slice(0, 5).forEach(q => {
+        console.log(`- ${q.quotation}: status="${q.status}", workflow_state="${q.workflow_state}"`);
+    });
+    
+    // Show quotations that have 'Pipeline A' workflow state specifically
+    const pipelineAWorkflowQuotes = data.filter(q => q.workflow_state === 'Pipeline A');
+    console.log('Quotations with "Pipeline A" workflow state:', pipelineAWorkflowQuotes.length);
+    pipelineAWorkflowQuotes.forEach(q => {
+        console.log(`- ${q.quotation}: status="${q.status}", workflow_state="${q.workflow_state}"`);
+    });
+    
+    console.log('After excluding statuses:', pipelineEligibleData.length, 'quotations eligible for pipeline');
+    
+    // Consider quotations that have pipeline workflow states from the eligible data
+    const quotationsWithPipeline = pipelineEligibleData.filter(quote => {
         const pipeline = this.calculatePipeline(quote);
-        const isOrderedStatus = ['Ordered', 'Partially Ordered'].includes(quote.status);
-        return pipeline !== 'None' && !isOrderedStatus;
+        return pipeline !== 'None';
     });
     
     console.log('Found', quotationsWithPipeline.length, 'quotations with pipeline workflow states');
     
-    // Include ALL quotations that don't have pipeline states (regardless of status)
-    const quotesWithoutPipeline = data.filter(quote => {
+    // Include quotations that don't have pipeline states from eligible data
+    const quotesWithoutPipeline = pipelineEligibleData.filter(quote => {
         return this.calculatePipeline(quote) === 'None';
     });
     
     console.log('Found', quotesWithoutPipeline.length, 'quotations without pipeline states');
     
     // Process all quotations with pipeline states
+    let pipelineACandidates = [];
     quotationsWithPipeline.forEach(quote => {
         const pipeline = this.calculatePipeline(quote);
+        
+        if (pipeline === 'A') {
+            pipelineACandidates.push({
+                quotation: quote.quotation,
+                status: quote.status,
+                workflow_state: quote.workflow_state,
+                pipeline: pipeline
+            });
+        }
+        
         console.log(`Quote ${quote.quotation}: status=${quote.status}, pipeline=${pipeline}, workflow_state="${quote.workflow_state}"`);
         
         if (this.data.pipelines[pipeline]) {
@@ -4803,6 +5160,12 @@ calculatePipelineStats(data) {
         this.data.pipelines['None'].quotes.push(quote);
         this.data.pipelines['None'].value += quote.base_grand_total || 0;
     });
+    
+    console.log('=== PIPELINE A DEBUG ===');
+    console.log('Pipeline A candidates found:', pipelineACandidates.length);
+    console.log('Pipeline A details:', pipelineACandidates);
+    console.log('Final Pipeline A count:', this.data.pipelines['A'].quotes.length);
+    console.log('========================');
     
     // Log final pipeline stats
     Object.keys(this.data.pipelines).forEach(key => {
@@ -5545,18 +5908,18 @@ debugWorkflowStates() {
                     </span>
                 </div>
                 
-                <!-- 6. Pending Quotations -->
-                <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('pending_quotations')">
+                <!-- 6. Open Quotations -->
+                <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('open_quotations')">
                     <div class="stat-card-header">
                         <div class="stat-card-content">
                             <h3 class="stat-card-title">
-                                <i class="fa fa-clock" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
-                                Pending Quotations
+                                <i class="fa fa-clock" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
+                                Open Quotations
                             </h3>
-                            <p class="stat-card-value">${stats.pending.count.toLocaleString()}</p>
-                            <p class="stat-card-amount">AED ${this.formatCurrency(stats.pending.amount)}</p>
+                            <p class="stat-card-value">${stats.open.count.toLocaleString()}</p>
+                            <p class="stat-card-amount">AED ${this.formatCurrency(stats.open.amount)}</p>
                         </div>
-                        <div class="stat-card-icon warning">
+                        <div class="stat-card-icon info">
                             <i class="fa fa-clock"></i>
                         </div>
                     </div>
@@ -5566,7 +5929,28 @@ debugWorkflowStates() {
                     </span>
                 </div>
                 
-                <!-- 7. Lost Quotations -->
+                <!-- 7. Expired Quotations -->
+                <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('expired_quotations')">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-exclamation-triangle" style="color: var(--accent-red); margin-right: 0.5rem;"></i>
+                                Expired Quotations
+                            </h3>
+                            <p class="stat-card-value">${stats.expired.count.toLocaleString()}</p>
+                            <p class="stat-card-amount">AED ${this.formatCurrency(stats.expired.amount)}</p>
+                        </div>
+                        <div class="stat-card-icon danger">
+                            <i class="fa fa-exclamation-triangle"></i>
+                        </div>
+                    </div>
+                    <span class="click-indicator">
+                        <i class="fa fa-mouse-pointer"></i>
+                        Click to view details
+                    </span>
+                </div>
+                
+                <!-- 8. Lost Quotations -->
                 <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('lost_quotations')">
                     <div class="stat-card-header">
                         <div class="stat-card-content">
@@ -5587,7 +5971,7 @@ debugWorkflowStates() {
                     </span>
                 </div>
                 
-                <!-- 8. Cancelled but not amended Quotations -->
+                <!-- 9. Cancelled but not amended Quotations -->
                 <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('cancelled_not_amended_quotations')">
                     <div class="stat-card-header">
                         <div class="stat-card-content">
@@ -6088,6 +6472,56 @@ getPipelineStatusBreakdown() {
         
         return `
             <div class="conversion-container">
+                <!-- Tab Navigation -->
+                <div class="tab-navigation" style="margin-bottom: 2rem; width: 100%;">
+                    <div class="tab-buttons" style="display: flex; width: 100%; border-bottom: 3px solid var(--border-color); background: rgba(51, 65, 85, 0.15); border-radius: 12px 12px 0 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <button class="tab-button active" data-tab="overview" onclick="frappe.sales_intelligence.switchConversionTab('overview')" style="flex: 1; min-width: 160px; padding: 1rem 1.25rem; background: var(--accent-blue); color: white; border: none; border-radius: 12px 0 0 0; font-weight: 600; font-size: 0.9rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <i class="fa fa-chart-line" style="font-size: 1rem;"></i>
+                            <span>Overview</span>
+                        </button>
+                        <button class="tab-button" data-tab="performance" onclick="frappe.sales_intelligence.switchConversionTab('performance')" style="flex: 1; min-width: 160px; padding: 1rem 1.25rem; background: rgba(51, 65, 85, 0.3); color: var(--text-primary); border: none; font-weight: 500; font-size: 0.9rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; border-left: 1px solid rgba(255,255,255,0.1);">
+                            <i class="fa fa-chart-bar" style="font-size: 1rem;"></i>
+                            <span>Count</span>
+                        </button>
+                        <button class="tab-button" data-tab="value-performance" onclick="frappe.sales_intelligence.switchConversionTab('value-performance')" style="flex: 1; min-width: 160px; padding: 1rem 1.25rem; background: rgba(51, 65, 85, 0.3); color: var(--text-primary); border: none; font-weight: 500; font-size: 0.9rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; border-left: 1px solid rgba(255,255,255,0.1);">
+                            <i class="fa fa-dollar-sign" style="font-size: 1rem;"></i>
+                            <span>Value</span>
+                        </button>
+                        <button class="tab-button" data-tab="conversion-performance" onclick="frappe.sales_intelligence.switchConversionTab('conversion-performance')" style="flex: 1; min-width: 160px; padding: 1rem 1.25rem; background: rgba(51, 65, 85, 0.3); color: var(--text-primary); border: none; border-radius: 0 12px 0 0; font-weight: 500; font-size: 0.9rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; border-left: 1px solid rgba(255,255,255,0.1);">
+                            <i class="fa fa-trophy" style="font-size: 1rem;"></i>
+                            <span>Conversion</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tab Contents -->
+                <div class="tab-content">
+                    <!-- Conversion Overview Tab -->
+                    <div class="tab-panel active" id="overview-tab">
+                        ${this.renderConversionOverviewTab()}
+                    </div>
+                    <!-- Quotation Performance Tab -->
+                    <div class="tab-panel" id="performance-tab" style="display: none;">
+                        ${this.renderQuotationPerformanceTab()}
+                    </div>
+                    <!-- Value Performance Tab -->
+                    <div class="tab-panel" id="value-performance-tab" style="display: none;">
+                        ${this.renderValuePerformanceTab()}
+                    </div>
+                    <!-- Conversion Performance Tab -->
+                    <div class="tab-panel" id="conversion-performance-tab" style="display: none;">
+                        ${this.renderConversionPerformanceTab()}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    renderConversionOverviewTab() {
+        const stats = this.data.stats.conversion;
+        
+        return `
+            <div class="conversion-overview-container">
                 <!-- Conversion Overview -->
                 <div class="stats-grid mb-4">
                     <div class="stat-card">
@@ -6274,6 +6708,826 @@ getPipelineStatusBreakdown() {
                 </div>
             </div>
         `;
+    }
+    
+    renderQuotationPerformanceTab() {
+        // Calculate quotation performance by account manager (excluding Cancelled, Lost, Expired)
+        const quotationsByManager = this.calculateQuotationPerformance();
+        
+        return `
+            <div class="quotation-performance-container">
+                <!-- Performance Header -->
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fa fa-chart-bar"></i>
+                        Quotation Creation Performance
+                    </h2>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                        <i class="fa fa-info-circle"></i>
+                        <span>Account managers ranked by quotation creation count (excluding Cancelled, Lost, Expired)</span>
+                    </div>
+                </div>
+                
+                <!-- Performance Chart -->
+                <div class="performance-chart-container" style="background: rgba(51, 65, 85, 0.4); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
+                    <canvas id="quotationPerformanceChart" width="800" height="400"></canvas>
+                </div>
+                
+                <!-- Performance Cards -->
+                <div class="performance-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                    ${quotationsByManager.slice(0, 10).map((manager, index) => {
+                        const colors = [
+                            'var(--accent-blue)', 'var(--accent-green)', 'var(--accent-orange)', 
+                            'var(--accent-purple)', 'var(--accent-cyan)', 'var(--accent-red)',
+                            'var(--accent-pink)', 'var(--accent-teal)', 'var(--accent-yellow)', 'var(--accent-gray)'
+                        ];
+                        const color = colors[index % colors.length];
+                        
+                        return `
+                            <div class="performance-card" style="background: rgba(51, 65, 85, 0.4); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; position: relative; overflow: hidden;">
+                                <!-- Rank Badge -->
+                                <div style="position: absolute; top: -8px; right: -8px; width: 40px; height: 40px; background: ${color}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 0.875rem; z-index: 2;">
+                                    #${index + 1}
+                                </div>
+                                
+                                <!-- Employee Image and Info -->
+                                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                                    <div id="employee-image-${manager.account_incharge?.replace('@', '-').replace('.', '-')}" style="width: 60px; height: 60px; border-radius: 50%; background: ${color}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.25rem; position: relative;">
+                                        ${manager.name?.split(' ').map(n => n[0]).join('').substring(0, 2) || '??'}
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.25rem 0;">${manager.name || 'Unknown'}</h4>
+                                        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">${manager.account_incharge || ''}</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Performance Metrics -->
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-top: 1rem;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1.5rem; font-weight: 700; color: ${color};">${manager.count}</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Quotations</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1.125rem; font-weight: 600; color: var(--accent-green);">${manager.total_value ? this.formatCurrency(manager.total_value) : 'N/A'}</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Total Value</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Progress Bar -->
+                                <div style="margin-top: 1rem;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary);">Performance</span>
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary);">${manager.percentage?.toFixed(1)}%</span>
+                                    </div>
+                                    <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                                        <div style="height: 100%; background: ${color}; width: ${manager.percentage}%; transition: width 0.3s ease;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    renderValuePerformanceTab() {
+        // Calculate value performance by account manager (excluding Cancelled, Lost, Expired)
+        const valuesByManager = this.calculateValuePerformance();
+        
+        return `
+            <div class="value-performance-container">
+                <!-- Performance Header -->
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fa fa-dollar-sign"></i>
+                        Quotation Value Performance
+                    </h2>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                        <i class="fa fa-info-circle"></i>
+                        <span>Account managers ranked by total quotation value (excluding Cancelled, Lost, Expired)</span>
+                    </div>
+                </div>
+                
+                <!-- Performance Chart -->
+                <div class="value-chart-container" style="background: rgba(51, 65, 85, 0.4); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
+                    <canvas id="valuePerformanceChart" width="800" height="400"></canvas>
+                </div>
+                
+                <!-- Performance Cards -->
+                <div class="value-performance-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+                    ${valuesByManager.slice(0, 10).map((manager, index) => {
+                        const colors = [
+                            'var(--accent-green)', 'var(--accent-blue)', 'var(--accent-purple)', 
+                            'var(--accent-orange)', 'var(--accent-cyan)', 'var(--accent-red)',
+                            'var(--accent-pink)', 'var(--accent-teal)', 'var(--accent-yellow)', 'var(--accent-gray)'
+                        ];
+                        const color = colors[index % colors.length];
+                        
+                        return `
+                            <div class="value-performance-card" style="background: rgba(51, 65, 85, 0.4); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; position: relative; overflow: hidden;">
+                                <!-- Rank Badge -->
+                                <div style="position: absolute; top: -8px; right: -8px; width: 40px; height: 40px; background: ${color}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 0.875rem; z-index: 2;">
+                                    #${index + 1}
+                                </div>
+                                
+                                <!-- Employee Image and Info -->
+                                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                                    <div id="employee-value-image-${manager.account_incharge?.replace('@', '-').replace('.', '-')}" style="width: 60px; height: 60px; border-radius: 50%; background: ${color}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.25rem; position: relative;">
+                                        ${manager.name?.split(' ').map(n => n[0]).join('').substring(0, 2) || '??'}
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.25rem 0;">${manager.name || 'Unknown'}</h4>
+                                        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">${manager.account_incharge || ''}</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Performance Metrics -->
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-top: 1rem;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1.25rem; font-weight: 700; color: ${color};">${this.formatCurrency(manager.total_value)}</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Total Value</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1.125rem; font-weight: 600; color: var(--accent-blue);">${manager.count}</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Quotations</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1rem; font-weight: 600; color: var(--accent-orange);">${manager.avg_value ? this.formatCurrency(manager.avg_value) : 'N/A'}</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Avg Value</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Progress Bar -->
+                                <div style="margin-top: 1rem;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary);">Value Performance</span>
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary);">${manager.percentage?.toFixed(1)}%</span>
+                                    </div>
+                                    <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                                        <div style="height: 100%; background: ${color}; width: ${manager.percentage}%; transition: width 0.3s ease;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    renderConversionPerformanceTab() {
+        // Calculate conversion performance by account manager (Ordered/Partially Ordered)
+        const conversionsByManager = this.calculateConversionPerformance();
+        
+        return `
+            <div class="conversion-performance-container">
+                <!-- Performance Header -->
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fa fa-trophy"></i>
+                        Quotation Conversion Performance
+                    </h2>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                        <i class="fa fa-info-circle"></i>
+                        <span>Account managers ranked by successful conversions (Ordered & Partially Ordered quotations)</span>
+                    </div>
+                </div>
+                
+                <!-- Performance Chart -->
+                <div class="conversion-chart-container" style="background: rgba(51, 65, 85, 0.4); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
+                    <canvas id="conversionPerformanceChart" width="800" height="400"></canvas>
+                </div>
+                
+                <!-- Performance Cards -->
+                <div class="conversion-performance-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem;">
+                    ${conversionsByManager.slice(0, 10).map((manager, index) => {
+                        const colors = [
+                            'var(--accent-orange)', 'var(--accent-purple)', 'var(--accent-green)', 
+                            'var(--accent-blue)', 'var(--accent-cyan)', 'var(--accent-red)',
+                            'var(--accent-pink)', 'var(--accent-teal)', 'var(--accent-yellow)', 'var(--accent-gray)'
+                        ];
+                        const color = colors[index % colors.length];
+                        
+                        return `
+                            <div class="conversion-performance-card" style="background: rgba(51, 65, 85, 0.4); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; position: relative; overflow: hidden;">
+                                <!-- Rank Badge -->
+                                <div style="position: absolute; top: -8px; right: -8px; width: 40px; height: 40px; background: ${color}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 0.875rem; z-index: 2;">
+                                    #${index + 1}
+                                </div>
+                                
+                                <!-- Employee Image and Info -->
+                                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                                    <div id="employee-conversion-image-${manager.account_incharge?.replace('@', '-').replace('.', '-')}" style="width: 60px; height: 60px; border-radius: 50%; background: ${color}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.25rem; position: relative;">
+                                        ${manager.name?.split(' ').map(n => n[0]).join('').substring(0, 2) || '??'}
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <h4 style="font-size: 1.125rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.25rem 0;">${manager.name || 'Unknown'}</h4>
+                                        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">${manager.account_incharge || ''}</p>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1.25rem; font-weight: 700; color: ${color};">${manager.conversion_rate}%</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Success Rate</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Performance Metrics -->
+                                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-top: 1rem;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1.25rem; font-weight: 700; color: ${color};">${manager.converted_count}</div>
+                                        <div style="font-size: 0.7rem; color: var(--text-secondary);">Converted</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1rem; font-weight: 600; color: var(--accent-blue);">${manager.total_quotations}</div>
+                                        <div style="font-size: 0.7rem; color: var(--text-secondary);">Total</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1rem; font-weight: 600; color: var(--accent-green);">${manager.converted_value ? this.formatCurrencyShort(manager.converted_value) : '0'}</div>
+                                        <div style="font-size: 0.7rem; color: var(--text-secondary);">Conv. Value</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1rem; font-weight: 600; color: var(--accent-purple);">${manager.avg_conversion_value ? this.formatCurrencyShort(manager.avg_conversion_value) : '0'}</div>
+                                        <div style="font-size: 0.7rem; color: var(--text-secondary);">Avg Conv.</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Conversion Progress Bar -->
+                                <div style="margin-top: 1rem;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary);">Conversion Performance</span>
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary);">${manager.performance_percentage?.toFixed(1)}%</span>
+                                    </div>
+                                    <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                                        <div style="height: 100%; background: ${color}; width: ${manager.performance_percentage}%; transition: width 0.3s ease;"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Success Badge -->
+                                ${manager.conversion_rate >= 50 ? `
+                                    <div style="position: absolute; top: 1rem; left: 1rem; background: var(--accent-green); color: white; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.7rem; font-weight: 600;">
+                                        <i class="fa fa-star"></i> Top Converter
+                                    </div>
+                                ` : manager.conversion_rate >= 25 ? `
+                                    <div style="position: absolute; top: 1rem; left: 1rem; background: var(--accent-orange); color: white; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.7rem; font-weight: 600;">
+                                        <i class="fa fa-thumbs-up"></i> Good Converter
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    calculateQuotationPerformance() {
+        // Get all quotations excluding Cancelled, Lost, Expired
+        const excludedStatuses = ['Cancelled', 'Lost', 'Expired'];
+        const eligibleQuotations = this.data.filtered.filter(quote => 
+            !excludedStatuses.includes(quote.status)
+        );
+        
+        console.log('Quotation Performance - Total eligible quotations:', eligibleQuotations.length);
+        console.log('Excluded statuses:', excludedStatuses);
+        
+        // Group by account_incharge
+        const managerGroups = {};
+        eligibleQuotations.forEach(quote => {
+            const key = quote.account_incharge || 'Unknown';
+            if (!managerGroups[key]) {
+                managerGroups[key] = {
+                    account_incharge: key,
+                    name: quote.account_incharge_full_name || key,
+                    quotations: [],
+                    count: 0,
+                    total_value: 0
+                };
+            }
+            managerGroups[key].quotations.push(quote);
+            managerGroups[key].count++;
+            managerGroups[key].total_value += quote.base_grand_total || 0;
+        });
+        
+        // Convert to array and calculate percentages
+        const managers = Object.values(managerGroups);
+        const maxCount = Math.max(...managers.map(m => m.count));
+        
+        managers.forEach(manager => {
+            manager.percentage = maxCount > 0 ? (manager.count / maxCount) * 100 : 0;
+        });
+        
+        // Sort by count descending
+        managers.sort((a, b) => b.count - a.count);
+        
+        console.log('Manager performance data:', managers);
+        
+        // Load employee images asynchronously
+        this.loadEmployeeImages(managers);
+        
+        return managers;
+    }
+    
+    calculateValuePerformance() {
+        // Get all quotations excluding Cancelled, Lost, Expired
+        const excludedStatuses = ['Cancelled', 'Lost', 'Expired'];
+        const eligibleQuotations = this.data.filtered.filter(quote => 
+            !excludedStatuses.includes(quote.status)
+        );
+        
+        console.log('Value Performance - Total eligible quotations:', eligibleQuotations.length);
+        console.log('Excluded statuses:', excludedStatuses);
+        
+        // Group by account_incharge
+        const managerGroups = {};
+        eligibleQuotations.forEach(quote => {
+            const key = quote.account_incharge || 'Unknown';
+            const value = quote.base_grand_total || 0;
+            
+            if (!managerGroups[key]) {
+                managerGroups[key] = {
+                    account_incharge: key,
+                    name: quote.account_incharge_full_name || key,
+                    quotations: [],
+                    count: 0,
+                    total_value: 0
+                };
+            }
+            managerGroups[key].quotations.push(quote);
+            managerGroups[key].count++;
+            managerGroups[key].total_value += value;
+        });
+        
+        // Convert to array and calculate percentages and averages
+        const managers = Object.values(managerGroups);
+        const maxValue = Math.max(...managers.map(m => m.total_value));
+        
+        managers.forEach(manager => {
+            manager.percentage = maxValue > 0 ? (manager.total_value / maxValue) * 100 : 0;
+            manager.avg_value = manager.count > 0 ? manager.total_value / manager.count : 0;
+        });
+        
+        // Sort by total value descending
+        managers.sort((a, b) => b.total_value - a.total_value);
+        
+        console.log('Manager value performance data:', managers);
+        
+        // Load employee images asynchronously
+        this.loadEmployeeImagesForValue(managers);
+        
+        return managers;
+    }
+    
+    calculateConversionPerformance() {
+        // Get all quotations in the filtered data
+        const allQuotations = this.data.filtered;
+        
+        // Define successful conversion statuses
+        const successfulStatuses = ['Ordered', 'Partially Ordered'];
+        
+        console.log('Conversion Performance - Total quotations:', allQuotations.length);
+        console.log('Successful statuses:', successfulStatuses);
+        
+        // Group by account_incharge
+        const managerGroups = {};
+        allQuotations.forEach(quote => {
+            const key = quote.account_incharge || 'Unknown';
+            const value = quote.base_grand_total || 0;
+            const isConverted = successfulStatuses.includes(quote.status);
+            
+            if (!managerGroups[key]) {
+                managerGroups[key] = {
+                    account_incharge: key,
+                    name: quote.account_incharge_full_name || key,
+                    total_quotations: 0,
+                    converted_count: 0,
+                    total_value: 0,
+                    converted_value: 0,
+                    conversion_rate: 0
+                };
+            }
+            
+            managerGroups[key].total_quotations++;
+            managerGroups[key].total_value += value;
+            
+            if (isConverted) {
+                managerGroups[key].converted_count++;
+                managerGroups[key].converted_value += value;
+            }
+        });
+        
+        // Convert to array and calculate percentages and rates
+        const managers = Object.values(managerGroups);
+        const maxConversions = Math.max(...managers.map(m => m.converted_count));
+        
+        managers.forEach(manager => {
+            // Calculate conversion rate percentage
+            manager.conversion_rate = manager.total_quotations > 0 ? 
+                ((manager.converted_count / manager.total_quotations) * 100).toFixed(1) : 0;
+            
+            // Calculate performance percentage for progress bar (based on converted count)
+            manager.performance_percentage = maxConversions > 0 ? 
+                (manager.converted_count / maxConversions) * 100 : 0;
+                
+            // Calculate average conversion value
+            manager.avg_conversion_value = manager.converted_count > 0 ? 
+                manager.converted_value / manager.converted_count : 0;
+        });
+        
+        // Sort by converted count descending (who converted the most)
+        managers.sort((a, b) => b.converted_count - a.converted_count);
+        
+        console.log('Manager conversion performance data:', managers);
+        
+        // Load employee images asynchronously
+        this.loadEmployeeImagesForConversion(managers);
+        
+        return managers;
+    }
+    
+    async loadEmployeeImagesForConversion(managers) {
+        try {
+            // Get all unique account incharges (email addresses)
+            const userIds = managers.map(m => m.account_incharge).filter(Boolean);
+            
+            if (userIds.length === 0) return;
+            
+            // Fetch employee data
+            const response = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Employee',
+                    fields: ['name', 'user_id', 'image', 'employee_name'],
+                    filters: [['user_id', 'in', userIds]],
+                    limit: 500
+                }
+            });
+            
+            const employees = response.message || [];
+            console.log('Employee data loaded for conversion performance:', employees);
+            
+            // Update images for each manager
+            employees.forEach(employee => {
+                if (employee.image && employee.user_id) {
+                    const imageId = employee.user_id.replace('@', '-').replace(/\./g, '-');
+                    const imageElement = document.getElementById(`employee-conversion-image-${imageId}`);
+                    
+                    if (imageElement) {
+                        imageElement.innerHTML = `
+                            <img src="${employee.image}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="${employee.employee_name || employee.user_id}">
+                        `;
+                    }
+                }
+            });
+            
+            // Draw the conversion performance chart
+            this.drawConversionPerformanceChart(managers, employees);
+            
+        } catch (error) {
+            console.error('Failed to load employee images for conversion performance:', error);
+        }
+    }
+    
+    drawConversionPerformanceChart(managers, employees = []) {
+        const canvas = document.getElementById('conversionPerformanceChart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const chartData = managers.slice(0, 10); // Top 10 converters
+        
+        // Chart dimensions
+        const padding = 60;
+        const chartWidth = canvas.width - (padding * 2);
+        const chartHeight = canvas.height - (padding * 2);
+        const barWidth = chartWidth / chartData.length * 0.7;
+        const maxValue = Math.max(...chartData.map(m => m.converted_count));
+        
+        // Colors (orange-based for conversion)
+        const colors = [
+            '#F59E0B', '#8B5CF6', '#10B981', '#3B82F6', '#06B6D4',
+            '#EF4444', '#EC4899', '#14B8A6', '#F59E0B', '#6B7280'
+        ];
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Set background
+        ctx.fillStyle = 'rgba(51, 65, 85, 0.1)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw bars
+        chartData.forEach((manager, index) => {
+            const x = padding + (index * (chartWidth / chartData.length)) + ((chartWidth / chartData.length - barWidth) / 2);
+            const barHeight = (manager.converted_count / maxValue) * chartHeight * 0.8;
+            const y = padding + chartHeight - barHeight;
+            
+            // Draw bar
+            ctx.fillStyle = colors[index % colors.length];
+            ctx.fillRect(x, y, barWidth, barHeight);
+            
+            // Draw conversion count on top of bar
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(manager.converted_count, x + barWidth/2, y - 10);
+            
+            // Draw conversion rate below count
+            ctx.font = 'bold 12px Arial';
+            ctx.fillStyle = '#10B981';
+            ctx.fillText(`${manager.conversion_rate}%`, x + barWidth/2, y - 30);
+            
+            // Draw manager name at bottom (rotated)
+            ctx.save();
+            ctx.translate(x + barWidth/2, padding + chartHeight + 20);
+            ctx.rotate(-Math.PI/4);
+            ctx.fillStyle = '#9CA3AF';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText(manager.name?.substring(0, 15) || 'Unknown', 0, 0);
+            ctx.restore();
+        });
+        
+        // Draw chart title
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Top 10 Conversion Champions', canvas.width/2, 30);
+    }
+    
+    async loadEmployeeImagesForValue(managers) {
+        try {
+            // Get all unique account incharges (email addresses)
+            const userIds = managers.map(m => m.account_incharge).filter(Boolean);
+            
+            if (userIds.length === 0) return;
+            
+            // Fetch employee data
+            const response = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Employee',
+                    fields: ['name', 'user_id', 'image', 'employee_name'],
+                    filters: [['user_id', 'in', userIds]],
+                    limit: 500
+                }
+            });
+            
+            const employees = response.message || [];
+            console.log('Employee data loaded for value performance:', employees);
+            
+            // Update images for each manager
+            employees.forEach(employee => {
+                if (employee.image && employee.user_id) {
+                    const imageId = employee.user_id.replace('@', '-').replace(/\./g, '-');
+                    const imageElement = document.getElementById(`employee-value-image-${imageId}`);
+                    
+                    if (imageElement) {
+                        imageElement.innerHTML = `
+                            <img src="${employee.image}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="${employee.employee_name || employee.user_id}">
+                        `;
+                    }
+                }
+            });
+            
+            // Draw the value performance chart
+            this.drawValuePerformanceChart(managers, employees);
+            
+        } catch (error) {
+            console.error('Failed to load employee images for value performance:', error);
+        }
+    }
+    
+    drawValuePerformanceChart(managers, employees = []) {
+        const canvas = document.getElementById('valuePerformanceChart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const chartData = managers.slice(0, 10); // Top 10 performers by value
+        
+        // Chart dimensions
+        const padding = 60;
+        const chartWidth = canvas.width - (padding * 2);
+        const chartHeight = canvas.height - (padding * 2);
+        const barWidth = chartWidth / chartData.length * 0.7;
+        const maxValue = Math.max(...chartData.map(m => m.total_value));
+        
+        // Colors (different from count chart)
+        const colors = [
+            '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#06B6D4',
+            '#EF4444', '#EC4899', '#14B8A6', '#F59E0B', '#6B7280'
+        ];
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Set background
+        ctx.fillStyle = 'rgba(51, 65, 85, 0.1)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw bars
+        chartData.forEach((manager, index) => {
+            const x = padding + (index * (chartWidth / chartData.length)) + ((chartWidth / chartData.length - barWidth) / 2);
+            const barHeight = (manager.total_value / maxValue) * chartHeight * 0.8;
+            const y = padding + chartHeight - barHeight;
+            
+            // Draw bar
+            ctx.fillStyle = colors[index % colors.length];
+            ctx.fillRect(x, y, barWidth, barHeight);
+            
+            // Draw value on top of bar (formatted)
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            const formattedValue = this.formatCurrencyShort(manager.total_value);
+            ctx.fillText(formattedValue, x + barWidth/2, y - 10);
+            
+            // Draw manager name at bottom (rotated)
+            ctx.save();
+            ctx.translate(x + barWidth/2, padding + chartHeight + 20);
+            ctx.rotate(-Math.PI/4);
+            ctx.fillStyle = '#9CA3AF';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText(manager.name?.substring(0, 15) || 'Unknown', 0, 0);
+            ctx.restore();
+        });
+        
+        // Draw chart title
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Top 10 Value Performers', canvas.width/2, 30);
+    }
+    
+    formatCurrencyShort(amount) {
+        if (amount >= 1000000) {
+            return `${(amount / 1000000).toFixed(1)}M`;
+        } else if (amount >= 1000) {
+            return `${(amount / 1000).toFixed(1)}K`;
+        } else {
+            return amount.toFixed(0);
+        }
+    }
+    
+    async loadEmployeeImages(managers) {
+        try {
+            // Get all unique account incharges (email addresses)
+            const userIds = managers.map(m => m.account_incharge).filter(Boolean);
+            
+            if (userIds.length === 0) return;
+            
+            // Fetch employee data
+            const response = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Employee',
+                    fields: ['name', 'user_id', 'image', 'employee_name'],
+                    filters: [['user_id', 'in', userIds]],
+                    limit: 500
+                }
+            });
+            
+            const employees = response.message || [];
+            console.log('Employee data loaded:', employees);
+            
+            // Update images for each manager
+            employees.forEach(employee => {
+                if (employee.image && employee.user_id) {
+                    const imageId = employee.user_id.replace('@', '-').replace(/\./g, '-');
+                    const imageElement = document.getElementById(`employee-image-${imageId}`);
+                    
+                    if (imageElement) {
+                        imageElement.innerHTML = `
+                            <img src="${employee.image}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="${employee.employee_name || employee.user_id}">
+                        `;
+                    }
+                }
+            });
+            
+            // Draw the performance chart
+            this.drawQuotationPerformanceChart(managers, employees);
+            
+        } catch (error) {
+            console.error('Failed to load employee images:', error);
+        }
+    }
+    
+    drawQuotationPerformanceChart(managers, employees = []) {
+        const canvas = document.getElementById('quotationPerformanceChart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const chartData = managers.slice(0, 10); // Top 10 performers
+        
+        // Chart dimensions
+        const padding = 60;
+        const chartWidth = canvas.width - (padding * 2);
+        const chartHeight = canvas.height - (padding * 2);
+        const barWidth = chartWidth / chartData.length * 0.7;
+        const maxValue = Math.max(...chartData.map(m => m.count));
+        
+        // Colors
+        const colors = [
+            '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4',
+            '#EF4444', '#EC4899', '#14B8A6', '#F59E0B', '#6B7280'
+        ];
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Set background
+        ctx.fillStyle = 'rgba(51, 65, 85, 0.1)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw bars
+        chartData.forEach((manager, index) => {
+            const x = padding + (index * (chartWidth / chartData.length)) + ((chartWidth / chartData.length - barWidth) / 2);
+            const barHeight = (manager.count / maxValue) * chartHeight * 0.8;
+            const y = padding + chartHeight - barHeight;
+            
+            // Draw bar
+            ctx.fillStyle = colors[index % colors.length];
+            ctx.fillRect(x, y, barWidth, barHeight);
+            
+            // Draw count on top of bar
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(manager.count, x + barWidth/2, y - 10);
+            
+            // Draw manager name at bottom (rotated)
+            ctx.save();
+            ctx.translate(x + barWidth/2, padding + chartHeight + 20);
+            ctx.rotate(-Math.PI/4);
+            ctx.fillStyle = '#9CA3AF';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText(manager.name?.substring(0, 15) || 'Unknown', 0, 0);
+            ctx.restore();
+        });
+        
+        // Draw chart title
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Top 10 Quotation Creators', canvas.width/2, 30);
+    }
+    
+    switchConversionTab(tabName) {
+        // Remove active class from all tab buttons
+        const tabButtons = document.querySelectorAll('.tab-button');
+        tabButtons.forEach(button => {
+            button.classList.remove('active');
+            button.style.background = 'rgba(51, 65, 85, 0.3)';
+            button.style.color = 'var(--text-primary)';
+            button.style.fontWeight = '500';
+            button.style.boxShadow = 'none';
+        });
+
+        // Hide all tab panels
+        const tabPanels = document.querySelectorAll('.tab-panel');
+        tabPanels.forEach(panel => {
+            panel.classList.remove('active');
+            panel.style.display = 'none';
+        });
+
+        // Show selected tab
+        const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
+        const activePanel = document.getElementById(`${tabName}-tab`);
+        
+        if (activeButton && activePanel) {
+            activeButton.classList.add('active');
+            activeButton.style.background = 'var(--accent-blue)';
+            activeButton.style.color = 'white';
+            activeButton.style.fontWeight = '600';
+            activeButton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+            
+            activePanel.classList.add('active');
+            activePanel.style.display = 'block';
+            
+            // If switching to performance tab, redraw chart
+            if (tabName === 'performance') {
+                setTimeout(() => {
+                    const managers = this.calculateQuotationPerformance();
+                    this.drawQuotationPerformanceChart(managers);
+                }, 100);
+            }
+            
+            // If switching to value performance tab, redraw chart
+            if (tabName === 'value-performance') {
+                setTimeout(() => {
+                    const managers = this.calculateValuePerformance();
+                    this.drawValuePerformanceChart(managers);
+                }, 100);
+            }
+            
+            // If switching to conversion performance tab, redraw chart
+            if (tabName === 'conversion-performance') {
+                setTimeout(() => {
+                    const managers = this.calculateConversionPerformance();
+                    this.drawConversionPerformanceChart(managers);
+                }, 100);
+            }
+        }
     }
 
     renderMarginSection() {
@@ -7158,7 +8412,24 @@ getPipelineStatusBreakdown() {
     // Enhanced table rendering with comprehensive search and sort
     renderTableWithControls(tableId, data, columns) {
         const searchId = `${tableId}-search`;
-        const currentData = data.slice(0, 100); // Limit to 100 rows for performance
+        const pageSize = 50; // Records per page
+        
+        // Initialize table state if not exists
+        if (!this.tableStates) this.tableStates = {};
+        if (!this.tableStates[tableId]) {
+            this.tableStates[tableId] = { currentPage: 1, filteredData: data };
+        } else {
+            // Update filtered data if it's different (for dynamic data like drilldowns)
+            this.tableStates[tableId].filteredData = data;
+            // Reset to page 1 for new data
+            this.tableStates[tableId].currentPage = 1;
+        }
+        
+        const currentPage = this.tableStates[tableId].currentPage;
+        const totalPages = Math.ceil(data.length / pageSize);
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, data.length);
+        const currentData = data.slice(startIndex, endIndex);
         
         return `
             <div class="table-controls">
@@ -7169,7 +8440,7 @@ getPipelineStatusBreakdown() {
                     </div>
                     <div class="table-info">
                         <i class="fa fa-info-circle"></i>
-                        <span id="${tableId}-info">Showing ${currentData.length} of ${data.length} records</span>
+                        <span id="${tableId}-info">Showing ${startIndex + 1}-${endIndex} of ${data.length} records</span>
                     </div>
                 </div>
                 <div class="table-controls-right">
@@ -7195,6 +8466,20 @@ getPipelineStatusBreakdown() {
                         </select>
                     </div>
                     ` : ''}
+                    ${data.length > pageSize ? `
+                    <div class="pagination-controls">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="frappe.sales_intelligence.changeTablePage('${tableId}', ${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>
+                            <i class="fa fa-chevron-left"></i>
+                        </button>
+                        <span class="page-info">${currentPage} / ${totalPages}</span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="frappe.sales_intelligence.changeTablePage('${tableId}', ${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>
+                            <i class="fa fa-chevron-right"></i>
+                        </button>
+                        <button class="btn btn-sm btn-primary ml-2" onclick="frappe.sales_intelligence.showAllRecords('${tableId}')" title="Show all records in new modal">
+                            <i class="fa fa-list"></i> All (${data.length})
+                        </button>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
             
@@ -7216,7 +8501,6 @@ getPipelineStatusBreakdown() {
                     </tbody>
                 </table>
             </div>
-            ${data.length > 100 ? `<p class="text-muted mt-2" style="font-size: 0.875rem; color: var(--text-secondary);">Showing first 100 of ${data.length} records. Use search to find specific items.</p>` : ''}
         `;
     }
 
@@ -7803,11 +9087,10 @@ getPipelineStatusBreakdown() {
 calculateBranchPipelineData() {
     const branchData = new Map();
     
-    // Consider quotations with pipeline workflow states but exclude Ordered/Partially Ordered
+    // Exclude specific statuses and consider quotations with pipeline workflow states
+    const excludedStatuses = ['Partially Ordered', 'Ordered', 'Lost', 'Cancelled', 'Expired', 'Not Approved'];
     this.data.quotations.filter(q => {
-        const pipeline = this.calculatePipeline(q);
-        const isOrderedStatus = ['Ordered', 'Partially Ordered'].includes(q.status);
-        return (pipeline !== 'None' && !isOrderedStatus) || (q.status === 'Open');
+        return !excludedStatuses.includes(q.status) && (this.calculatePipeline(q) !== 'None' || q.status === 'Open');
     }).forEach(quote => {
         const branch = quote.branch || 'Unknown';
         
@@ -7858,11 +9141,10 @@ calculateBranchPipelineData() {
 calculateManagerPipelineData() {
     const managerData = new Map();
     
-    // Consider quotations with pipeline workflow states but exclude Ordered/Partially Ordered
+    // Exclude specific statuses and consider quotations with pipeline workflow states
+    const excludedStatuses = ['Partially Ordered', 'Ordered', 'Lost', 'Cancelled', 'Expired', 'Not Approved'];
     this.data.quotations.filter(q => {
-        const pipeline = this.calculatePipeline(q);
-        const isOrderedStatus = ['Ordered', 'Partially Ordered'].includes(q.status);
-        return (pipeline !== 'None' && !isOrderedStatus) || (q.status === 'Open');
+        return !excludedStatuses.includes(q.status) && (this.calculatePipeline(q) !== 'None' || q.status === 'Open');
     }).forEach(quote => {
         const manager = quote.account_incharge_full_name || quote.account_incharge || 'Unknown';
         
@@ -7920,35 +9202,42 @@ calculateManagerPipelineData() {
     return Array.from(managerData.values()).sort((a, b) => b.pipeline_score - a.pipeline_score);
 }
 calculateAverageDaysInPipeline() {
-    const openQuotes = this.data.quotations.filter(q => q.status === 'Open' && q.pipeline !== 'None');
-    if (openQuotes.length === 0) return 0;
+    // Exclude specific statuses from pipeline calculations
+    const excludedStatuses = ['Partially Ordered', 'Ordered', 'Lost', 'Cancelled', 'Expired', 'Not Approved'];
+    const eligibleQuotes = this.data.quotations.filter(q => {
+        return !excludedStatuses.includes(q.status) && this.calculatePipeline(q) !== 'None';
+    });
+    if (eligibleQuotes.length === 0) return 0;
     
-    const totalDays = openQuotes.reduce((sum, quote) => {
+    const totalDays = eligibleQuotes.reduce((sum, quote) => {
         return sum + Math.ceil((new Date() - new Date(quote.transaction_date)) / (1000 * 60 * 60 * 24));
     }, 0);
     
-    return Math.round(totalDays / openQuotes.length);
+    return Math.round(totalDays / eligibleQuotes.length);
 }
 
 calculateQuotesNearExpiry() {
+    const excludedStatuses = ['Partially Ordered', 'Ordered', 'Lost', 'Cancelled', 'Expired', 'Not Approved'];
     return this.data.quotations.filter(q => {
-        if (q.status !== 'Open') return false;
+        if (excludedStatuses.includes(q.status)) return false;
         const daysToExpiry = Math.ceil((new Date(q.valid_till) - new Date()) / (1000 * 60 * 60 * 24));
         return daysToExpiry <= 7 && daysToExpiry >= 0;
     }).length;
 }
 
 calculateStagnatPipelines() {
+    const excludedStatuses = ['Partially Ordered', 'Ordered', 'Lost', 'Cancelled', 'Expired', 'Not Approved'];
     return this.data.quotations.filter(q => {
-        if (q.status !== 'Open' || q.pipeline === 'None') return false;
+        if (excludedStatuses.includes(q.status) || this.calculatePipeline(q) === 'None') return false;
         const daysInPipeline = Math.ceil((new Date() - new Date(q.transaction_date)) / (1000 * 60 * 60 * 24));
         return daysInPipeline > 30;
     }).length;
 }
 
 renderUrgentPipelineActions() {
+    const excludedStatuses = ['Partially Ordered', 'Ordered', 'Lost', 'Cancelled', 'Expired', 'Not Approved'];
     const urgentQuotes = this.data.quotations.filter(q => {
-        if (q.status !== 'Open') return false;
+        if (excludedStatuses.includes(q.status)) return false;
         const daysToExpiry = Math.ceil((new Date(q.valid_till) - new Date()) / (1000 * 60 * 60 * 24));
         const daysInPipeline = Math.ceil((new Date() - new Date(q.transaction_date)) / (1000 * 60 * 60 * 24));
         return daysToExpiry <= 7 || (q.pipeline === 'None' && daysInPipeline > 7) || daysInPipeline > 30;
@@ -8083,6 +9372,14 @@ initializePipelineTimelineChart() {
                 data = this.data.filtered.filter(q => ['Open', 'Expired'].includes(q.status));
                 title = 'Pending Quotations';
                 break;
+            case 'open_quotations':
+                data = this.data.filtered.filter(q => q.status === 'Open');
+                title = 'Open Quotations';
+                break;
+            case 'expired_quotations':
+                data = this.data.filtered.filter(q => q.status === 'Expired');
+                title = 'Expired Quotations';
+                break;
             case 'lost_quotations':
                 data = this.data.filtered.filter(q => q.status === 'Lost');
                 title = 'Lost Quotations';
@@ -8107,18 +9404,22 @@ initializePipelineTimelineChart() {
                 data = this.data.filtered.filter(q => q.status === 'Draft');
                 title = 'Draft Quotations';
                 break;
+            case 'pending_dept_approval_quotations':
+                data = this.data.filtered.filter(q => q.workflow_state === 'Pending Dept Approval');
+                title = 'Pending Dept Approval Quotations';
+                break;
             default:
                 data = this.data.filtered;
                 title = 'Quotation Details';
         }
 
-        const content = this.generateDrilldownContent(data);
+        const content = this.generateDrilldownContent(data, title, type);
         $('#drilldown-title').html(`<i class="fa fa-chart-line"></i> ${title}`);
         $('#drilldown-content').html(content);
         $('#drilldownModal').modal('show');
     }
 
-    generateDrilldownContent(data) {
+    generateDrilldownContent(data, title = '', type = '') {
         if (!data || data.length === 0) {
             return '<div class="text-center" style="padding: 2rem;"><p style="color: var(--text-secondary);"><i class="fa fa-database" style="margin-right: 0.5rem; font-size: 1.2rem;"></i>No data available for the selected criteria.</p></div>';
         }
@@ -8161,8 +9462,20 @@ initializePipelineTimelineChart() {
                 </div>
                 
                 <div class="modal-section" style="margin-top: 1.5rem;">
-                    <h6><i class="fa fa-table"></i>Detailed Data</h6>
-                    ${this.renderTableWithControls('drilldown-table', data.slice(0, 100), [
+                    <div class="section-header" style="display: flex; justify-content: between; align-items: center; margin-bottom: 1rem;">
+                        <h6 style="margin: 0;"><i class="fa fa-table"></i>Detailed Data</h6>
+                        <div class="drilldown-actions" style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-sm btn-primary" onclick="frappe.sales_intelligence.exportQuotationData('${title.replace(/'/g, '\\\'')}')" title="Export to Excel">
+                                <i class="fa fa-download"></i> Export
+                            </button>
+                            ${data.length > 100 ? `
+                            <button class="btn btn-sm btn-success" onclick="frappe.sales_intelligence.showFullDataModal('${title.replace(/'/g, '\\\'')}')" title="Show all ${data.length} records">
+                                <i class="fa fa-expand"></i> All (${data.length})
+                            </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                    ${this.renderTableWithControls('drilldown-table', data, [
                         { key: 'quotation', label: 'Quotation', sortable: true },
                         { key: 'customer_name', label: 'Customer', sortable: true },
                         { key: 'transaction_date', label: 'Date', sortable: true, type: 'date' },
@@ -8170,7 +9483,6 @@ initializePipelineTimelineChart() {
                         { key: 'status', label: 'Status', sortable: true, type: 'badge' },
                         { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true }
                     ])}
-                    ${data.length > 100 ? `<p style="color: var(--text-muted); margin-top: 1rem;">Showing first 100 of ${data.length} records.</p>` : ''}
                 </div>
             </div>
         `;
@@ -8668,10 +9980,10 @@ initializePipelineTimelineChart() {
 
     // Filter and utility methods
     populateFilterOptions() {
-        // Populate company options for searchable dropdown - restricted to PRASTARA DECORATION DESIGN L.L.C only
+        // Populate company options for searchable dropdown - restricted to PRASTARA DECORATION DESIGN L.L.C only
         const companyOptions = $('#company-options');
         if (companyOptions.find('.searchable-option:not([data-value=""])').length === 0) {
-            companyOptions.append(`<div class="searchable-option" data-value="PRASTARA DECORATION DESIGN L.L.C">PRASTARA DECORATION DESIGN L.L.C</div>`);
+            companyOptions.append(`<div class="searchable-option" data-value="PRASTARA DECORATION DESIGN L.L.C">PRASTARA DECORATION DESIGN L.L.C</div>`);
         }
 
         // Populate branch options for searchable dropdown
@@ -8688,8 +10000,9 @@ initializePipelineTimelineChart() {
         managerOptions.find('.searchable-option:not([data-value=""])').remove(); // Keep "All Managers" option
         managers.forEach(manager => {
             const displayName = this.data.quotations.find(q => q.account_incharge === manager)?.account_incharge_full_name || manager;
-            managerOptions.append(`<div class="searchable-option" data-value="${manager}">${displayName}</div>`);
+            managerOptions.append(`<div class="searchable-option multi-selectable" data-value="${manager}">${displayName}</div>`);
         });
+
 
         // Set current values for searchable dropdowns
         // Set company searchable dropdown value
@@ -8710,14 +10023,24 @@ initializePipelineTimelineChart() {
             $('#filter-branch-input').val('');
         }
         
-        // Set account manager searchable dropdown value
-        if (this.filters.account_incharge) {
+        // Set account manager multi-select dropdown values (restored UI)
+        if (this.filters.account_incharge && this.filters.account_incharge !== '') {
+            const selectedManagers = this.filters.account_incharge.split(',').filter(Boolean);
+            const options = $('#account-manager-options');
+            
             $('#filter-account-manager').val(this.filters.account_incharge);
-            const managerDisplayName = this.data.quotations.find(q => q.account_incharge === this.filters.account_incharge)?.account_incharge_full_name || this.filters.account_incharge;
-            $('#filter-account-manager-input').val(managerDisplayName);
+            
+            // Mark selected options with multi-selected class
+            selectedManagers.forEach(manager => {
+                options.find(`.searchable-option[data-value="${manager}"]`).addClass('multi-selected');
+            });
+            
+            this.updateAccountManagerDisplay();
         } else {
             $('#filter-account-manager').val('');
             $('#filter-account-manager-input').val('');
+            $('#selected-managers-display').hide();
+            $('#account-manager-options .searchable-option').removeClass('multi-selected');
         }
         
         // Set status searchable dropdown value
@@ -8741,7 +10064,15 @@ initializePipelineTimelineChart() {
         this.filters.amount_min = parseFloat($('#filter-amount-min').val()) || null;
         this.filters.amount_max = parseFloat($('#filter-amount-max').val()) || null;
         
-        this.loadData();
+        console.log('Applied filters - account_incharge:', this.filters.account_incharge);
+        if (this.filters.account_incharge && this.filters.account_incharge.includes(',')) {
+            console.log('Multiple managers selected:', this.filters.account_incharge.split(','));
+        }
+        
+        // Apply filters to existing data instead of reloading
+        this.applyFilters();
+        this.calculateStats();
+        this.renderCurrentSection();
     }
 
     clearAllFilters() {
@@ -8749,7 +10080,7 @@ initializePipelineTimelineChart() {
             from_date: this.filters.from_date,
             to_date: this.filters.to_date,
             status: 'all',
-            company: 'PRASTARA DECORATION DESIGN L.L.C',
+            company: 'PRASTARA DECORATION DESIGN L.L.C',
             branch: '',
             account_incharge: '',
             created_by: '',
@@ -8772,7 +10103,22 @@ initializePipelineTimelineChart() {
         $('#filter-account-manager-input').val('');
         $('#filter-status-input').val('');
         
-        this.loadData();
+        // Reset hidden input fields (these are what applyAdvancedFilters reads from)
+        $('#filter-company').val('');
+        $('#filter-branch').val('');
+        $('#filter-account-manager').val('');
+        $('#filter-status').val('all');
+        $('#filter-amount-min').val('');
+        $('#filter-amount-max').val('');
+        
+        // Reset account manager multi-select
+        $('#selected-managers-display').hide();
+        $('#account-manager-options .searchable-option').removeClass('multi-selected');
+        
+        // Apply cleared filters to existing data instead of reloading
+        this.applyFilters();
+        this.calculateStats();
+        this.renderCurrentSection();
     }
 
     updateDateRangeText() {
@@ -9448,22 +10794,16 @@ initializePipelineTimelineChart() {
                     </div>
                 </div>
                 
-                <!-- Loss Reasons Analysis -->
+                <!-- Standardized Loss Reasons Analysis -->
                 <div class="data-section">
                     <div class="section-header">
                         <h2 class="section-title">
                             <i class="fa fa-exclamation-triangle"></i>
-                            Loss Reasons Analysis
+                            Standardized Loss Reasons Analysis
                         </h2>
                     </div>
                     
-                    <div class="table-container">
-                        ${this.renderTableWithControls('loss-reasons-table', reasons, [
-                            { key: 'reason', label: 'Lost Reason', sortable: true, icon: 'fa-exclamation-triangle' },
-                            { key: 'count', label: 'Count', sortable: true, icon: 'fa-list' },
-                            { key: 'amount', label: 'Lost Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' }
-                        ])}
-                    </div>
+                    ${this.renderStandardizedLossReasons()}
                 </div>
                 
                 <!-- Branch-wise Loss Analysis -->
@@ -9524,6 +10864,197 @@ initializePipelineTimelineChart() {
                     </div>
                 </div>
             </div>
+        `;
+    }
+
+    renderStandardizedLossReasons() {
+        if (!this.data.lost_quotation_reasons || !this.data.lost_quotation_reasons.reasons) {
+            return `<div class="no-data-message">
+                <i class="fa fa-info-circle"></i>
+                <p>No standardized loss reason data available</p>
+            </div>`;
+        }
+
+        const { reasons, counts, values, total_lost } = this.data.lost_quotation_reasons;
+
+        // Create array of reason data for table
+        const reasonsTableData = reasons.map(reason => ({
+            reason: reason.order_lost_reason,
+            count: counts[reason.order_lost_reason] || 0,
+            amount: values[reason.order_lost_reason] || 0,
+            percentage: total_lost > 0 ? ((counts[reason.order_lost_reason] || 0) / total_lost * 100).toFixed(1) : 0
+        })).filter(r => r.count > 0).sort((a, b) => b.count - a.count);
+
+        // Create visual representation
+        const maxCount = Math.max(...reasonsTableData.map(r => r.count));
+        const reasonBars = reasonsTableData.slice(0, 10).map(reason => `
+            <div class="reason-bar-item">
+                <div class="reason-info">
+                    <span class="reason-name">${reason.reason}</span>
+                    <div class="reason-stats">
+                        <span class="count">${reason.count}</span>
+                        <span class="percentage">(${reason.percentage}%)</span>
+                        <span class="amount">AED ${this.formatCurrency(reason.amount)}</span>
+                    </div>
+                </div>
+                <div class="reason-bar">
+                    <div class="reason-bar-fill" style="width: ${(reason.count / maxCount * 100)}%; background: linear-gradient(135deg, var(--accent-red), var(--accent-orange));"></div>
+                </div>
+            </div>
+        `).join('');
+
+        return `
+            <!-- Summary Cards -->
+            <div class="stats-grid" style="margin-bottom: 2rem;">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-list" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
+                                Standard Reasons
+                            </h3>
+                            <p class="stat-card-value">${reasons.length}</p>
+                            <p class="stat-card-amount">Total Categories</p>
+                        </div>
+                        <div class="stat-card-icon primary">
+                            <i class="fa fa-list"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-chart-bar" style="color: var(--accent-green); margin-right: 0.5rem;"></i>
+                                Active Reasons
+                            </h3>
+                            <p class="stat-card-value">${reasonsTableData.length}</p>
+                            <p class="stat-card-amount">With Losses</p>
+                        </div>
+                        <div class="stat-card-icon success">
+                            <i class="fa fa-chart-bar"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-trophy" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
+                                Top Reason
+                            </h3>
+                            <p class="stat-card-value">${reasonsTableData.length > 0 ? reasonsTableData[0].percentage + '%' : '0%'}</p>
+                            <p class="stat-card-amount">${reasonsTableData.length > 0 ? reasonsTableData[0].reason : 'None'}</p>
+                        </div>
+                        <div class="stat-card-icon warning">
+                            <i class="fa fa-trophy"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visual Representation -->
+            <div class="reason-analysis-container" style="margin-bottom: 2rem;">
+                <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600;">
+                    <i class="fa fa-chart-bar" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
+                    Top Loss Reasons (Visual)
+                </h3>
+                <div class="reason-bars">
+                    ${reasonBars}
+                </div>
+            </div>
+
+            <!-- Detailed Table -->
+            <div class="table-container">
+                ${this.renderTableWithControls('standardized-loss-reasons-table', reasonsTableData, [
+                    { key: 'reason', label: 'Standardized Reason', sortable: true, icon: 'fa-exclamation-triangle' },
+                    { key: 'count', label: 'Count', sortable: true, icon: 'fa-list' },
+                    { key: 'percentage', label: 'Percentage', sortable: true, icon: 'fa-percentage', formatter: (value) => value + '%' },
+                    { key: 'amount', label: 'Lost Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' }
+                ])}
+            </div>
+
+            <style>
+                .reason-analysis-container {
+                    background: var(--card-bg);
+                    border: 1px solid var(--border-color);
+                    border-radius: var(--border-radius);
+                    padding: 1.5rem;
+                }
+
+                .reason-bars {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1rem;
+                }
+
+                .reason-bar-item {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.5rem;
+                }
+
+                .reason-info {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-size: 0.875rem;
+                }
+
+                .reason-name {
+                    font-weight: 600;
+                    color: var(--text-primary);
+                    flex: 1;
+                }
+
+                .reason-stats {
+                    display: flex;
+                    gap: 0.75rem;
+                    align-items: center;
+                    font-size: 0.8rem;
+                }
+
+                .reason-stats .count {
+                    font-weight: 600;
+                    color: var(--accent-red);
+                }
+
+                .reason-stats .percentage {
+                    color: var(--text-muted);
+                }
+
+                .reason-stats .amount {
+                    color: var(--accent-blue);
+                    font-weight: 500;
+                }
+
+                .reason-bar {
+                    height: 8px;
+                    background: rgba(148, 163, 184, 0.1);
+                    border-radius: 4px;
+                    overflow: hidden;
+                }
+
+                .reason-bar-fill {
+                    height: 100%;
+                    border-radius: 4px;
+                    transition: width 0.3s ease;
+                }
+
+                .no-data-message {
+                    text-align: center;
+                    padding: 2rem;
+                    color: var(--text-muted);
+                }
+
+                .no-data-message i {
+                    font-size: 2rem;
+                    margin-bottom: 1rem;
+                    color: var(--accent-blue);
+                }
+            </style>
         `;
     }
 
@@ -10038,21 +11569,29 @@ initializePipelineTimelineChart() {
             }
             statusGroups[status].push(visit);
         });
+        
+        console.log('Site Visit Status Groups:', statusGroups);
+        console.log('Total Site Visits:', siteVisits.length);
+        console.log('Sample Site Visit:', siteVisits[0]);
 
         const statusColors = {
+            'Visited': 'var(--accent-green)',
+            'Pending': 'var(--accent-orange)',
+            'Cancelled': 'var(--accent-red)',
+            'Scheduled Visit': 'var(--accent-purple)',
             'Draft': 'var(--accent-blue)',
             'Scheduled': 'var(--accent-purple)',
-            'Completed': 'var(--accent-green)',
-            'Cancelled': 'var(--accent-red)',
-            'Pending': 'var(--accent-orange)'
+            'Completed': 'var(--accent-green)'
         };
 
         const statusIcons = {
+            'Visited': 'fa-check-circle',
+            'Pending': 'fa-clock',
+            'Cancelled': 'fa-times-circle',
+            'Scheduled Visit': 'fa-calendar-check',
             'Draft': 'fa-edit',
             'Scheduled': 'fa-calendar-check',
-            'Completed': 'fa-check-circle',
-            'Cancelled': 'fa-times-circle',
-            'Pending': 'fa-clock'
+            'Completed': 'fa-check-circle'
         };
         
         return `
@@ -10134,22 +11673,34 @@ initializePipelineTimelineChart() {
             }
             statusGroups[status].push(request);
         });
+        
+        console.log('Design Request Status Groups:', statusGroups);
+        console.log('Total Design Requests:', designRequests.length);
+        console.log('Sample Design Request:', designRequests[0]);
 
         const statusColors = {
-            'Draft': 'var(--accent-blue)',
-            'Open': 'var(--accent-purple)',
-            'In Progress': 'var(--accent-orange)',
-            'Completed': 'var(--accent-green)',
             'Cancelled': 'var(--accent-red)',
+            'Hold': 'var(--accent-gray)', 
+            'Open': 'var(--accent-purple)',
+            'Rejected': 'var(--accent-red)',
+            'Under Rework': 'var(--accent-orange)',
+            'Working': 'var(--accent-green)',
+            'Draft': 'var(--accent-blue)',
+            'Completed': 'var(--accent-green)',
+            'In Progress': 'var(--accent-orange)',
             'On Hold': 'var(--accent-gray)'
         };
 
         const statusIcons = {
-            'Draft': 'fa-edit',
-            'Open': 'fa-folder-open',
-            'In Progress': 'fa-cogs',
-            'Completed': 'fa-check-circle',
             'Cancelled': 'fa-times-circle',
+            'Hold': 'fa-pause-circle',
+            'Open': 'fa-folder-open',
+            'Rejected': 'fa-ban',
+            'Under Rework': 'fa-wrench',
+            'Working': 'fa-cogs',
+            'Draft': 'fa-edit',
+            'Completed': 'fa-check-circle',
+            'In Progress': 'fa-cogs',
             'On Hold': 'fa-pause-circle'
         };
         
@@ -10219,37 +11770,36 @@ initializePipelineTimelineChart() {
     renderPermitSection() {
         const permits = this.data.permits || [];
         
-        // Group by workflow_state
-        const workflowGroups = {};
+        // Group by status (since workflow_state is not available)
+        const workflowGroups = {
+            'All': permits
+        };
         let hasWorkflowState = false;
         
-        permits.forEach(permit => {
-            const workflowState = permit.workflow_state || 'Draft';
-            if (permit.workflow_state) hasWorkflowState = true;
-            if (!workflowGroups[workflowState]) {
-                workflowGroups[workflowState] = [];
-            }
-            workflowGroups[workflowState].push(permit);
-        });
+        console.log('Permit Workflow Groups:', workflowGroups);
+        console.log('Total Permits:', permits.length);
+        console.log('Sample Permit:', permits[0]);
 
         const workflowColors = {
+            'Approved': 'var(--accent-green)',
+            'Cancelled': 'var(--accent-red)',
+            'Pending CD Approval': 'var(--accent-orange)',
             'Draft': 'var(--accent-blue)',
             'Submitted': 'var(--accent-purple)',
             'Under Review': 'var(--accent-orange)',
-            'Approved': 'var(--accent-green)',
             'Rejected': 'var(--accent-red)',
-            'On Hold': 'var(--accent-gray)',
-            'Cancelled': 'var(--accent-red)'
+            'On Hold': 'var(--accent-gray)'
         };
 
         const workflowIcons = {
+            'Approved': 'fa-check-circle',
+            'Cancelled': 'fa-ban',
+            'Pending CD Approval': 'fa-hourglass-half',
             'Draft': 'fa-edit',
             'Submitted': 'fa-paper-plane',
             'Under Review': 'fa-search',
-            'Approved': 'fa-check-circle',
             'Rejected': 'fa-times-circle',
-            'On Hold': 'fa-pause-circle',
-            'Cancelled': 'fa-ban'
+            'On Hold': 'fa-pause-circle'
         };
         
         return `
@@ -10306,7 +11856,6 @@ initializePipelineTimelineChart() {
                     ${this.renderTableWithControls('recent-permits', permits.slice(0, 20), [
                         { key: 'name', label: 'Permit ID', sortable: true, type: 'permit_link', icon: 'fa-id-card' },
                         { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
-                        ...(hasWorkflowState ? [{ key: 'workflow_state', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' }] : []),
                         { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' },
                         { key: 'modified', label: 'Last Modified', sortable: true, type: 'date', icon: 'fa-clock' }
                     ])}
@@ -10734,11 +12283,305 @@ initializePipelineTimelineChart() {
         $('#drilldown-content').html(content);
         $('#drilldownModal').modal('show');
     }
+    
+    // Table pagination methods
+    changeTablePage(tableId, newPage) {
+        if (!this.tableStates[tableId]) return;
+        
+        const data = this.tableStates[tableId].filteredData || this.data.filtered;
+        const pageSize = 50;
+        const totalPages = Math.ceil(data.length / pageSize);
+        
+        if (newPage < 1 || newPage > totalPages) return;
+        
+        this.tableStates[tableId].currentPage = newPage;
+        this.refreshTableDisplay(tableId, data);
+    }
+    
+    refreshTableDisplay(tableId, data = null) {
+        const tableState = this.tableStates[tableId];
+        if (!tableState) return;
+        
+        const tableData = data || tableState.filteredData || this.data.filtered;
+        const pageSize = 50;
+        const currentPage = tableState.currentPage;
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, tableData.length);
+        const currentData = tableData.slice(startIndex, endIndex);
+        
+        // Update table body
+        const table = document.getElementById(tableId);
+        if (table && table.querySelector('tbody')) {
+            const columns = this.getTableColumns(tableId);
+            table.querySelector('tbody').innerHTML = this.renderTableRows(currentData, columns);
+        }
+        
+        // Update pagination controls
+        const totalPages = Math.ceil(tableData.length / pageSize);
+        const tableContainer = table?.closest('.table-controls');
+        if (tableContainer) {
+            const pageInfo = tableContainer.querySelector('.page-info');
+            if (pageInfo) pageInfo.textContent = `${currentPage} / ${totalPages}`;
+            
+            // Update button states
+            const prevButtons = tableContainer.querySelectorAll(`[onclick*="changeTablePage('${tableId}', ${currentPage - 1})"]`);
+            const nextButtons = tableContainer.querySelectorAll(`[onclick*="changeTablePage('${tableId}', ${currentPage + 1})"]`);
+            
+            prevButtons.forEach(btn => btn.disabled = currentPage <= 1);
+            nextButtons.forEach(btn => btn.disabled = currentPage >= totalPages);
+        }
+        
+        // Update info display
+        const infoSpan = document.getElementById(`${tableId}-info`);
+        if (infoSpan) {
+            infoSpan.textContent = `Showing ${startIndex + 1}-${endIndex} of ${tableData.length} records`;
+        }
+    }
+    
+    showAllRecords(tableId) {
+        const tableState = this.tableStates[tableId];
+        if (!tableState) return;
+        
+        const data = tableState.filteredData || this.data.filtered;
+        const columns = this.getTableColumns(tableId);
+        
+        // Create a modal to show all records
+        const content = `
+            <div class="modal-section">
+                <h6><i class="fa fa-list"></i>All Records (${data.length})</h6>
+                <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                ${columns.map(col => `
+                                    <th>
+                                        ${col.icon ? `<i class="fa ${col.icon}" style="margin-right: 0.5rem; color: var(--accent-blue);"></i>` : ''}
+                                        ${col.label}
+                                    </th>
+                                `).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${this.renderTableRows(data, columns)}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+        $('#drilldown-title').html(`<i class="fa fa-list"></i> All Records for ${tableId} (${data.length})`);
+        $('#drilldown-content').html(content);
+        $('#drilldownModal').modal('show');
+    }
+    
+    getTableColumns(tableId) {
+        // Return appropriate column definitions based on table ID
+        const defaultColumns = [
+            { key: 'quotation', label: 'Quotation', sortable: true },
+            { key: 'customer_name', label: 'Customer', sortable: true },
+            { key: 'transaction_date', label: 'Date', sortable: true, type: 'date' },
+            { key: 'base_grand_total', label: 'Amount', sortable: true, type: 'currency' },
+            { key: 'status', label: 'Status', sortable: true, type: 'badge' },
+            { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true }
+        ];
+        return defaultColumns;
+    }
+    
+    // Alternative solutions for viewing all quotations
+    exportQuotationData(title) {
+        const tableState = this.tableStates['drilldown-table'];
+        if (!tableState || !tableState.filteredData) return;
+        
+        const data = tableState.filteredData;
+        const columns = ['quotation', 'customer_name', 'transaction_date', 'base_grand_total', 'status', 'account_incharge_full_name'];
+        
+        let csvContent = "data:text/csv;charset=utf-8,";
+        
+        // Add headers
+        csvContent += columns.map(col => {
+            const colMap = {
+                'quotation': 'Quotation',
+                'customer_name': 'Customer',
+                'transaction_date': 'Date',
+                'base_grand_total': 'Amount (AED)',
+                'status': 'Status',
+                'account_incharge_full_name': 'Account Manager'
+            };
+            return colMap[col];
+        }).join(',') + '\n';
+        
+        // Add data rows
+        data.forEach(row => {
+            const csvRow = columns.map(col => {
+                let value = row[col] || '';
+                if (col === 'transaction_date' && value) {
+                    value = frappe.datetime.str_to_user(value);
+                } else if (col === 'base_grand_total') {
+                    value = (value || 0).toFixed(2);
+                }
+                return `"${value.toString().replace(/"/g, '""')}"`;
+            }).join(',');
+            csvContent += csvRow + '\n';
+        });
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `${title.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        frappe.show_alert({
+            message: `${title} data exported successfully!`,
+            indicator: 'green'
+        });
+    }
+    
+    // Handle multi-selection for Account Manager dropdown
+    async handleAccountManagerMultiSelect(selectedOption, value, text, hiddenInput) {
+        const currentValues = hiddenInput.val() ? hiddenInput.val().split(',').map(v => v.trim()).filter(Boolean) : [];
+        
+        
+        if (selectedOption.hasClass('multi-selected')) {
+            // Unselect: remove from current values
+            const newValues = currentValues.filter(v => v !== value);
+            selectedOption.removeClass('multi-selected');
+            hiddenInput.val(newValues.join(','));
+        } else {
+            // Select: add to current values
+            if (!currentValues.includes(value)) {
+                currentValues.push(value);
+            }
+            selectedOption.addClass('multi-selected');
+            hiddenInput.val(currentValues.join(','));
+        }
+        
+        this.updateAccountManagerDisplay();
+        
+        // Apply filters immediately after selection change
+        console.log('Before applying filters - Hidden input value:', hiddenInput.val());
+        
+        // Update filter values without reloading data
+        this.filters.account_incharge = hiddenInput.val() || '';
+        console.log('Updated this.filters.account_incharge:', this.filters.account_incharge);
+        
+        // Apply filters to existing data
+        this.applyFilters();
+        console.log('After applyFilters - Filtered data count:', this.data.filtered ? this.data.filtered.length : 'No filtered data');
+        
+        await this.calculateStats();
+        console.log('After calculateStats - Stats calculated');
+        
+        await this.renderCurrentSection();
+        console.log('After renderCurrentSection - Rendering complete');
+        
+        // Add a delay check to see if data gets reset
+        setTimeout(() => {
+            console.log('After 2 seconds - Filtered data count:', this.data.filtered ? this.data.filtered.length : 'undefined');
+            console.log('After 2 seconds - account_incharge filter:', this.filters.account_incharge);
+        }, 2000);
+        
+        // Don't hide options to allow multiple selections
+    }
+    
+    updateAccountManagerDisplay() {
+        const hiddenInput = $('#filter-account-manager');
+        const displayDiv = $('#selected-managers-display');
+        const displayText = $('#selected-managers-text');
+        const input = $('#filter-account-manager-input');
+        
+        const selectedValues = hiddenInput.val() ? hiddenInput.val().split(',').filter(Boolean) : [];
+        
+        if (selectedValues.length === 0) {
+            displayDiv.hide();
+            input.val('');
+        } else {
+            // Get display names for selected managers
+            const displayNames = selectedValues.map(manager => {
+                return this.data.quotations.find(q => q.account_incharge === manager)?.account_incharge_full_name || manager;
+            });
+            
+            displayText.text(displayNames.join(', '));
+            displayDiv.show();
+            input.val(`${selectedValues.length} manager(s) selected`);
+        }
+    }
+
+
+
+    showFullDataModal(title) {
+        const tableState = this.tableStates['drilldown-table'];
+        if (!tableState || !tableState.filteredData) return;
+        
+        const data = tableState.filteredData;
+        const columns = this.getTableColumns('drilldown-table');
+        
+        // Create a full data modal
+        const content = `
+            <div class="modal-section">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0"><i class="fa fa-list"></i>All ${title} (${data.length} records)</h6>
+                    <div class="full-data-actions" style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-sm btn-primary" onclick="frappe.sales_intelligence.exportQuotationData('${title.replace(/'/g, '\\\'')}_Complete')" title="Export all data">
+                            <i class="fa fa-download"></i> Export All
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="$('#fullDataModal').modal('hide')" title="Close">
+                            <i class="fa fa-times"></i> Close
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+                    <table class="data-table table table-striped table-hover">
+                        <thead class="thead-dark" style="position: sticky; top: 0; z-index: 10;">
+                            <tr>
+                                ${columns.map(col => `
+                                    <th style="background: var(--dark-bg); color: white; padding: 0.75rem; border: 1px solid var(--border-color);">
+                                        ${col.icon ? `<i class="fa ${col.icon}" style="margin-right: 0.5rem;"></i>` : ''}
+                                        ${col.label}
+                                    </th>
+                                `).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${this.renderTableRows(data, columns)}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3 text-center">
+                    <small class="text-muted">Showing all ${data.length} records</small>
+                </div>
+            </div>
+        `;
+        
+        // Check if fullDataModal exists, if not create it
+        if (!document.getElementById('fullDataModal')) {
+            const modalHtml = `
+                <div class="modal fade" id="fullDataModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-xl">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="full-data-title">Complete Data View</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body" id="full-data-content">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+        
+        $('#full-data-title').html(`Complete ${title} Data`);
+        $('#full-data-content').html(content);
+        $('#fullDataModal').modal('show');
+    }
 }
 
 // Initialize when page loads
 frappe.ready(() => {
     console.log('Enhanced Sales Intelligence Dashboard loaded successfully');
 });
- 
-        

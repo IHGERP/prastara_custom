@@ -7152,7 +7152,7 @@ def get_period_wise_quotation_report(from_date, to_date, company=None, branch=No
                 "q.name LIKE %(search_term)s",
                 "q.party_name LIKE %(search_term)s", 
                 "q.customer_name LIKE %(search_term)s",
-                "q.custom_project_description LIKE %(search_term)s",
+                "q.project_description LIKE %(search_term)s",
                 "q.account_incharge LIKE %(search_term)s"
             ]
             where_conditions.append("({})".format(" OR ".join(search_conditions)))
@@ -7176,10 +7176,10 @@ def get_period_wise_quotation_report(from_date, to_date, company=None, branch=No
                 q.name as quotation,
                 q.party_name,
                 q.customer_name,
-                q.custom_project_description,
+                q.project_description,
                 q.transaction_date,
                 q.valid_till,
-                q.custom_account_incharge,
+                q.account_incharge,
                 q.owner,
                 q.company,
                 q.branch,
@@ -7193,14 +7193,14 @@ def get_period_wise_quotation_report(from_date, to_date, company=None, branch=No
                 q.opportunity,
                 q.workflow_state,
                 q.quotation_to,
-                COALESCE(u1.full_name, q.custom_account_incharge) as account_incharge_full_name,
+                COALESCE(u1.full_name, q.account_incharge) as account_incharge_full_name,
                 u1.user_image as account_incharge_image,
                 COALESCE(u2.full_name, q.owner) as owner_full_name,
                 u2.user_image as owner_image,
                 q.creation,
                 q.modified
             FROM `tabQuotation` q
-            LEFT JOIN `tabUser` u1 ON q.custom_account_incharge = u1.name
+            LEFT JOIN `tabUser` u1 ON q.account_incharge = u1.name
             LEFT JOIN `tabUser` u2 ON q.owner = u2.name
             WHERE {where_clause}
             ORDER BY q.transaction_date DESC, q.creation DESC
@@ -7385,6 +7385,304 @@ def calculate_profit_fast(items, grand_total):
 
 
 @frappe.whitelist()
+def get_cancelled_quotations(from_date, to_date, company=None, branch=None, account_incharge=None, customer=None):
+    """
+    Get cancelled quotations with custom_cancel_status = 'Cancelled but not amended'
+    """
+    try:
+        # Parse JSON strings if they are passed as strings
+        def safe_parse_json(value):
+            if isinstance(value, str) and value.strip():
+                try:
+                    return json.loads(value)
+                except (json.JSONDecodeError, ValueError):
+                    return value
+            return value
+
+        # Parse array parameters
+        company = safe_parse_json(company) if company else None
+        branch = safe_parse_json(branch) if branch else None
+        account_incharge = safe_parse_json(account_incharge) if account_incharge else None
+
+        # Validate dates
+        if not from_date or not to_date:
+            frappe.throw(_("From Date and To Date are required"))
+
+        # Build WHERE conditions specifically for cancelled quotations
+        where_conditions = [
+            "q.docstatus = 2",  # Only cancelled quotations
+            "q.custom_cancel_status = 'Cancelled but not amended'",
+            "q.transaction_date >= %(from_date)s",
+            "q.transaction_date <= %(to_date)s"
+        ]
+
+        query_params = {
+            'from_date': from_date,
+            'to_date': to_date
+        }
+
+        # Add company filter
+        if company and company != "" and company != []:
+            if isinstance(company, list) and len(company) > 0:
+                # Filter out empty strings
+                company = [c for c in company if c and str(c).strip()]
+                if company:
+                    placeholders = ', '.join(['%(company_{})s'.format(i) for i in range(len(company))])
+                    where_conditions.append("q.company IN ({})".format(placeholders))
+                    for i, comp in enumerate(company):
+                        query_params['company_{}'.format(i)] = comp
+
+        # Add branch filter
+        if branch and branch != "" and branch != []:
+            if isinstance(branch, list) and len(branch) > 0:
+                # Filter out empty strings
+                branch = [b for b in branch if b and str(b).strip()]
+                if branch:
+                    placeholders = ', '.join(['%(branch_{})s'.format(i) for i in range(len(branch))])
+                    where_conditions.append("q.branch IN ({})".format(placeholders))
+                    for i, br in enumerate(branch):
+                        query_params['branch_{}'.format(i)] = br
+
+        # Add account_incharge filter
+        if account_incharge and account_incharge != "" and account_incharge != []:
+            if isinstance(account_incharge, list) and len(account_incharge) > 0:
+                # Filter out empty strings
+                account_incharge = [ai for ai in account_incharge if ai and str(ai).strip()]
+                if account_incharge:
+                    placeholders = ', '.join(['%(account_incharge_{})s'.format(i) for i in range(len(account_incharge))])
+                    where_conditions.append("q.account_incharge IN ({})".format(placeholders))
+                    for i, ai in enumerate(account_incharge):
+                        query_params['account_incharge_{}'.format(i)] = ai
+
+        # Add customer filter
+        if customer and customer.strip():
+            where_conditions.append("(q.party_name LIKE %(customer)s OR q.customer_name LIKE %(customer)s)")
+            query_params['customer'] = '%{}%'.format(customer)
+
+        # Count query
+        count_query = """
+            SELECT COUNT(*) as total_count
+            FROM `tabQuotation` q
+            WHERE {where_clause}
+        """.format(where_clause=" AND ".join(where_conditions))
+
+        count_result = frappe.db.sql(count_query, query_params, as_dict=True)
+        total_count = count_result[0].total_count if count_result else 0
+
+        # Main query for cancelled quotations
+        query = """
+            SELECT 
+                q.name as quotation,
+                q.party_name,
+                q.customer_name,
+                q.project_description,
+                q.transaction_date,
+                q.valid_till,
+                q.account_incharge,
+                q.owner,
+                q.company,
+                q.branch,
+                q.total_qty,
+                q.base_net_total,
+                q.base_total_taxes_and_charges,
+                q.base_grand_total,
+                q.order_lost_reason,
+                q.status,
+                q.source,
+                q.opportunity,
+                q.workflow_state,
+                q.quotation_to,
+                q.custom_cancel_status,
+                q.docstatus,
+                COALESCE(u1.full_name, q.account_incharge) as account_incharge_full_name,
+                u1.user_image as account_incharge_image,
+                COALESCE(u2.full_name, q.owner) as owner_full_name,
+                u2.user_image as owner_image,
+                q.creation,
+                q.modified
+            FROM `tabQuotation` q
+            LEFT JOIN `tabUser` u1 ON q.account_incharge = u1.name
+            LEFT JOIN `tabUser` u2 ON q.owner = u2.name
+            WHERE {where_clause}
+            ORDER BY q.transaction_date DESC, q.creation DESC
+        """.format(where_clause=" AND ".join(where_conditions))
+
+        quotations = frappe.db.sql(query, query_params, as_dict=True)
+
+        return {
+            'data': quotations,
+            'total_count': total_count,
+            'retrieved_count': len(quotations),
+            'is_limited': False
+        }
+
+    except Exception as e:
+        frappe.logger().error(f"Error in get_cancelled_quotations: {str(e)}")
+        return {
+            'data': [],
+            'total_count': 0,
+            'retrieved_count': 0,
+            'is_limited': False,
+            'error': str(e)
+        }
+
+
+
+
+import json
+import frappe
+
+@frappe.whitelist()
+def get_opportunity_report(from_date, to_date, company=None, branch=None, account_incharge=None, customer=None, status="all"):
+    """
+    Get opportunity report data for the sales intelligence dashboard
+    """
+    try:
+        # Parse JSON strings if they are passed as strings
+        def safe_parse_json(value):
+            if isinstance(value, str) and value.strip():
+                try:
+                    return json.loads(value)
+                except (json.JSONDecodeError, ValueError):
+                    return value
+            return value
+
+        # Parse array parameters
+        company = safe_parse_json(company) if company else None
+        branch = safe_parse_json(branch) if branch else None
+        account_incharge = safe_parse_json(account_incharge) if account_incharge else None
+
+        # Validate dates
+        if not from_date or not to_date:
+            frappe.throw(_("From Date and To Date are required"))
+
+        # Build WHERE conditions for opportunities
+        where_conditions = [
+            "o.docstatus IN (0, 1)",  # Include both draft and submitted opportunities
+            "DATE(o.creation) BETWEEN %(from_date)s AND %(to_date)s"
+        ]
+
+        query_params = {
+            'from_date': from_date,
+            'to_date': to_date
+        }
+
+        # Add company filter
+        if company and company != "" and company != []:
+            if isinstance(company, list) and len(company) > 0:
+                company = [c for c in company if c and str(c).strip()]
+                if company:
+                    placeholders = ', '.join(['%(company_{})s'.format(i) for i in range(len(company))])
+                    where_conditions.append(f"o.company IN ({placeholders})")
+                    for i, comp in enumerate(company):
+                        query_params['company_{}'.format(i)] = comp
+
+        # Add branch filter
+        if branch and branch != "" and branch != []:
+            if isinstance(branch, list) and len(branch) > 0:
+                branch = [b for b in branch if b and str(b).strip()]
+                if branch:
+                    placeholders = ', '.join(['%(branch_{})s'.format(i) for i in range(len(branch))])
+                    where_conditions.append(f"o.assigned_branch IN ({placeholders})")
+                    for i, b in enumerate(branch):
+                        query_params['branch_{}'.format(i)] = b
+
+        # Add customer filter
+        if customer and customer.strip():
+            where_conditions.append("o.customer_name LIKE %(customer)s")
+            query_params['customer'] = f"%{customer}%"
+
+        # Add status filter
+        if status and status != "all" and status.strip():
+            where_conditions.append("o.status = %(status)s")
+            query_params['status'] = status
+
+        # Add account incharge filter
+        if account_incharge and account_incharge != "" and account_incharge != []:
+            if isinstance(account_incharge, list) and len(account_incharge) > 0:
+                account_incharge = [ai for ai in account_incharge if ai and str(ai).strip()]
+                if account_incharge:
+                    placeholders = ', '.join(['%(account_incharge_{})s'.format(i) for i in range(len(account_incharge))])
+                    where_conditions.append(f"o.opportunity_owner IN ({placeholders})")
+                    for i, ai in enumerate(account_incharge):
+                        query_params['account_incharge_{}'.format(i)] = ai
+
+        # Get count first
+        count_query = """
+            SELECT COUNT(*) as total
+            FROM `tabOpportunity` o
+            WHERE {where_clause}
+        """.format(where_clause=" AND ".join(where_conditions))
+
+        total_count = frappe.db.sql(count_query, query_params, as_dict=True)[0].total
+
+        # Debug: Log if no opportunities are found
+        if total_count == 0:
+            debug_count_query = "SELECT COUNT(*) as total FROM `tabOpportunity` WHERE docstatus IN (0, 1)"
+            debug_total = frappe.db.sql(debug_count_query, as_dict=True)[0].total
+            frappe.logger().debug(f"No opportunities found for filters. Total opportunities in database: {debug_total}")
+
+        # Main query to get opportunity data
+        query = """
+            SELECT 
+                o.name,
+                o.customer_name,
+                o.status,
+                o.opportunity_type,
+                o.opportunity_owner,
+                o.company,
+                o.assigned_branch,
+                o.creation,
+                o.owner,
+                COALESCE(u1.full_name, o.opportunity_owner) as opportunity_owner_full_name,
+                COALESCE(u2.full_name, o.owner) as owner_full_name
+            FROM `tabOpportunity` o
+            LEFT JOIN `tabUser` u1 ON o.opportunity_owner = u1.name
+            LEFT JOIN `tabUser` u2 ON o.owner = u2.name
+            WHERE {where_clause}
+            ORDER BY o.creation DESC
+        """.format(where_clause=" AND ".join(where_conditions))
+
+        frappe.logger().debug(f"Executing opportunity query: {query}")
+        frappe.logger().debug(f"Query parameters: {query_params}")
+
+        opportunities = frappe.db.sql(query, query_params, as_dict=True)
+
+        frappe.logger().debug(f"Retrieved {len(opportunities)} opportunities out of {total_count} total")
+
+        # Log sample opportunity for debugging
+        if opportunities:
+            sample_opp = opportunities[0]
+            frappe.logger().debug(f"Sample opportunity: {sample_opp.get('name')} - {sample_opp.get('customer_name')} - Status: {sample_opp.get('status')}")
+
+        return {
+            'data': opportunities,
+            'total_count': total_count,
+            'retrieved_count': len(opportunities),
+            'is_limited': False
+        }
+
+    except Exception as e:
+        frappe.logger().error(f"Error in get_opportunity_report: {str(e)}")
+        frappe.log_error(message=str(e), title="Opportunity Report Error")
+        return {
+            'data': [],
+            'total_count': 0,
+            'retrieved_count': 0,
+            'is_limited': False,
+            'error': "An error occurred while generating the report. Please contact the administrator."
+        }
+
+
+
+
+import frappe
+from frappe import _
+from frappe.utils import flt, getdate
+import json
+import traceback
+
+@frappe.whitelist()
 def get_ldw_quotation_report(from_date, to_date, company=None, branch=None, account_incharge=None, created_by=None, customer=None, status="all", quotation_to=None, amount_min=None, amount_max=None, margin_min=None, margin_max=None, search_query=None):
     """
     Get quotation report data for the sales intelligence dashboard
@@ -7427,9 +7725,6 @@ def get_ldw_quotation_report(from_date, to_date, company=None, branch=None, acco
         # Clean search query
         search_query = search_query.strip() if search_query else None
         
-        # Apply user permission restrictions
-        current_user = frappe.session.user
-        
         # Validate dates
         if not from_date or not to_date:
             frappe.throw(_("From Date and To Date are required"))
@@ -7452,9 +7747,6 @@ def get_ldw_quotation_report(from_date, to_date, company=None, branch=None, acco
             'from_date': from_date,
             'to_date': to_date
         }
-        
-        # Apply user permission filters (role-based restrictions)
-        where_conditions, query_params = apply_user_permission_filter(where_conditions, query_params, current_user)
         
         # Add company filter
         if company and company != "" and company != []:
@@ -7748,335 +8040,3 @@ def get_ldw_quotation_report(from_date, to_date, company=None, branch=None, acco
             'is_limited': False,
             'error': str(e)
         }
-
-@frappe.whitelist()
-def calculate_profit_fast(items, grand_total):
-    """
-    Fast profit calculation for quotation items
-    """
-    try:
-        if not items or not grand_total:
-            return 0, 0
-            
-        total_cost = 0
-        total_amount = 0
-        
-        for item in items:
-            qty = flt(item.get('qty', 0))
-            rate = flt(item.get('rate', 0))
-            buying_cost = flt(item.get('standard_buying', 0))
-            
-            item_amount = qty * rate
-            item_cost = qty * buying_cost
-            
-            total_amount += item_amount
-            total_cost += item_cost
-        
-        if total_amount == 0:
-            return 0, 0
-            
-        profit_amount = total_amount - total_cost
-        profit_percentage = (profit_amount / total_amount) * 100 if total_amount > 0 else 0
-        
-        return profit_amount, round(profit_percentage, 2)
-        
-    except Exception as e:
-        frappe.logger().error(f"Error calculating profit: {str(e)}")
-        return 0, 0
-
-
-@frappe.whitelist()
-def get_cancelled_quotations(from_date, to_date, company=None, branch=None, account_incharge=None, customer=None):
-    """
-    Get cancelled quotations with custom_cancel_status = 'Cancelled but not amended'
-    """
-    try:
-        # Parse JSON strings if they are passed as strings
-        def safe_parse_json(value):
-            if isinstance(value, str) and value.strip():
-                try:
-                    return json.loads(value)
-                except (json.JSONDecodeError, ValueError):
-                    return value
-            return value
-
-        # Parse array parameters
-        company = safe_parse_json(company) if company else None
-        branch = safe_parse_json(branch) if branch else None
-        account_incharge = safe_parse_json(account_incharge) if account_incharge else None
-        
-        # Apply user permission restrictions
-        current_user = frappe.session.user
-
-        # Validate dates
-        if not from_date or not to_date:
-            frappe.throw(_("From Date and To Date are required"))
-
-        # Build WHERE conditions specifically for cancelled quotations
-        where_conditions = [
-            "q.docstatus = 2",  # Only cancelled quotations
-            "q.custom_cancel_status = 'Cancelled but not amended'",
-            "q.transaction_date >= %(from_date)s",
-            "q.transaction_date <= %(to_date)s"
-        ]
-
-        query_params = {
-            'from_date': from_date,
-            'to_date': to_date
-        }
-        
-        # Apply user permission filters (role-based restrictions)
-        where_conditions, query_params = apply_user_permission_filter(where_conditions, query_params, current_user)
-
-        # Add company filter
-        if company and company != "" and company != []:
-            if isinstance(company, list) and len(company) > 0:
-                # Filter out empty strings
-                company = [c for c in company if c and str(c).strip()]
-                if company:
-                    placeholders = ', '.join(['%(company_{})s'.format(i) for i in range(len(company))])
-                    where_conditions.append("q.company IN ({})".format(placeholders))
-                    for i, comp in enumerate(company):
-                        query_params['company_{}'.format(i)] = comp
-
-        # Add branch filter
-        if branch and branch != "" and branch != []:
-            if isinstance(branch, list) and len(branch) > 0:
-                # Filter out empty strings
-                branch = [b for b in branch if b and str(b).strip()]
-                if branch:
-                    placeholders = ', '.join(['%(branch_{})s'.format(i) for i in range(len(branch))])
-                    where_conditions.append("q.branch IN ({})".format(placeholders))
-                    for i, br in enumerate(branch):
-                        query_params['branch_{}'.format(i)] = br
-
-        # Add account_incharge filter
-        if account_incharge and account_incharge != "" and account_incharge != []:
-            if isinstance(account_incharge, list) and len(account_incharge) > 0:
-                # Filter out empty strings
-                account_incharge = [ai for ai in account_incharge if ai and str(ai).strip()]
-                if account_incharge:
-                    placeholders = ', '.join(['%(account_incharge_{})s'.format(i) for i in range(len(account_incharge))])
-                    where_conditions.append("q.account_incharge IN ({})".format(placeholders))
-                    for i, ai in enumerate(account_incharge):
-                        query_params['account_incharge_{}'.format(i)] = ai
-
-        # Add customer filter
-        if customer and customer.strip():
-            where_conditions.append("(q.party_name LIKE %(customer)s OR q.customer_name LIKE %(customer)s)")
-            query_params['customer'] = '%{}%'.format(customer)
-
-        # Count query
-        count_query = """
-            SELECT COUNT(*) as total_count
-            FROM `tabQuotation` q
-            WHERE {where_clause}
-        """.format(where_clause=" AND ".join(where_conditions))
-
-        count_result = frappe.db.sql(count_query, query_params, as_dict=True)
-        total_count = count_result[0].total_count if count_result else 0
-
-        # Main query for cancelled quotations
-        query = """
-            SELECT 
-                q.name as quotation,
-                q.party_name,
-                q.customer_name,
-                q.project_description,
-                q.transaction_date,
-                q.valid_till,
-                q.account_incharge,
-                q.owner,
-                q.company,
-                q.branch,
-                q.total_qty,
-                q.base_net_total,
-                q.base_total_taxes_and_charges,
-                q.base_grand_total,
-                q.order_lost_reason,
-                q.status,
-                q.source,
-                q.opportunity,
-                q.workflow_state,
-                q.quotation_to,
-                q.custom_cancel_status,
-                q.docstatus,
-                COALESCE(u1.full_name, q.account_incharge) as account_incharge_full_name,
-                u1.user_image as account_incharge_image,
-                COALESCE(u2.full_name, q.owner) as owner_full_name,
-                u2.user_image as owner_image,
-                q.creation,
-                q.modified
-            FROM `tabQuotation` q
-            LEFT JOIN `tabUser` u1 ON q.account_incharge = u1.name
-            LEFT JOIN `tabUser` u2 ON q.owner = u2.name
-            WHERE {where_clause}
-            ORDER BY q.transaction_date DESC, q.creation DESC
-        """.format(where_clause=" AND ".join(where_conditions))
-
-        quotations = frappe.db.sql(query, query_params, as_dict=True)
-
-        return {
-            'data': quotations,
-            'total_count': total_count,
-            'retrieved_count': len(quotations),
-            'is_limited': False
-        }
-
-    except Exception as e:
-        frappe.logger().error(f"Error in get_cancelled_quotations: {str(e)}")
-        return {
-            'data': [],
-            'total_count': 0,
-            'retrieved_count': 0,
-            'is_limited': False,
-            'error': str(e)
-        }
-
-
-
-import json
-import frappe
-
-@frappe.whitelist()
-def get_opportunity_report(from_date, to_date, company=None, branch=None, account_incharge=None, customer=None, status="all"):
-    """
-    Get opportunity report data for the sales intelligence dashboard
-    """
-    try:
-        # Parse JSON strings if they are passed as strings
-        def safe_parse_json(value):
-            if isinstance(value, str) and value.strip():
-                try:
-                    return json.loads(value)
-                except (json.JSONDecodeError, ValueError):
-                    return value
-            return value
-
-        # Parse array parameters
-        company = safe_parse_json(company) if company else None
-        branch = safe_parse_json(branch) if branch else None
-        account_incharge = safe_parse_json(account_incharge) if account_incharge else None
-
-        # Validate dates
-        if not from_date or not to_date:
-            frappe.throw(_("From Date and To Date are required"))
-
-        # Build WHERE conditions for opportunities
-        where_conditions = [
-            "o.docstatus IN (0, 1)",  # Include both draft and submitted opportunities
-            "DATE(o.creation) BETWEEN %(from_date)s AND %(to_date)s"
-        ]
-
-        query_params = {
-            'from_date': from_date,
-            'to_date': to_date
-        }
-
-        # Add company filter
-        if company and company != "" and company != []:
-            if isinstance(company, list) and len(company) > 0:
-                company = [c for c in company if c and str(c).strip()]
-                if company:
-                    placeholders = ', '.join(['%(company_{})s'.format(i) for i in range(len(company))])
-                    where_conditions.append(f"o.company IN ({placeholders})")
-                    for i, comp in enumerate(company):
-                        query_params['company_{}'.format(i)] = comp
-
-        # Add branch filter
-        if branch and branch != "" and branch != []:
-            if isinstance(branch, list) and len(branch) > 0:
-                branch = [b for b in branch if b and str(b).strip()]
-                if branch:
-                    placeholders = ', '.join(['%(branch_{})s'.format(i) for i in range(len(branch))])
-                    where_conditions.append(f"o.assigned_branch IN ({placeholders})")
-                    for i, b in enumerate(branch):
-                        query_params['branch_{}'.format(i)] = b
-
-        # Add customer filter
-        if customer and customer.strip():
-            where_conditions.append("o.customer_name LIKE %(customer)s")
-            query_params['customer'] = f"%{customer}%"
-
-        # Add status filter
-        if status and status != "all" and status.strip():
-            where_conditions.append("o.status = %(status)s")
-            query_params['status'] = status
-
-        # Add account incharge filter
-        if account_incharge and account_incharge != "" and account_incharge != []:
-            if isinstance(account_incharge, list) and len(account_incharge) > 0:
-                account_incharge = [ai for ai in account_incharge if ai and str(ai).strip()]
-                if account_incharge:
-                    placeholders = ', '.join(['%(account_incharge_{})s'.format(i) for i in range(len(account_incharge))])
-                    where_conditions.append(f"o.opportunity_owner IN ({placeholders})")
-                    for i, ai in enumerate(account_incharge):
-                        query_params['account_incharge_{}'.format(i)] = ai
-
-        # Get count first
-        count_query = """
-            SELECT COUNT(*) as total
-            FROM `tabOpportunity` o
-            WHERE {where_clause}
-        """.format(where_clause=" AND ".join(where_conditions))
-
-        total_count = frappe.db.sql(count_query, query_params, as_dict=True)[0].total
-
-        # Debug: Log if no opportunities are found
-        if total_count == 0:
-            debug_count_query = "SELECT COUNT(*) as total FROM `tabOpportunity` WHERE docstatus IN (0, 1)"
-            debug_total = frappe.db.sql(debug_count_query, as_dict=True)[0].total
-            frappe.logger().debug(f"No opportunities found for filters. Total opportunities in database: {debug_total}")
-
-        # Main query to get opportunity data
-        query = """
-            SELECT 
-                o.name,
-                o.customer_name,
-                o.status,
-                o.opportunity_type,
-                o.opportunity_owner,
-                o.company,
-                o.assigned_branch,
-                o.creation,
-                o.owner,
-                COALESCE(u1.full_name, o.opportunity_owner) as opportunity_owner_full_name,
-                COALESCE(u2.full_name, o.owner) as owner_full_name
-            FROM `tabOpportunity` o
-            LEFT JOIN `tabUser` u1 ON o.opportunity_owner = u1.name
-            LEFT JOIN `tabUser` u2 ON o.owner = u2.name
-            WHERE {where_clause}
-            ORDER BY o.creation DESC
-        """.format(where_clause=" AND ".join(where_conditions))
-
-        frappe.logger().debug(f"Executing opportunity query: {query}")
-        frappe.logger().debug(f"Query parameters: {query_params}")
-
-        opportunities = frappe.db.sql(query, query_params, as_dict=True)
-
-        frappe.logger().debug(f"Retrieved {len(opportunities)} opportunities out of {total_count} total")
-
-        # Log sample opportunity for debugging
-        if opportunities:
-            sample_opp = opportunities[0]
-            frappe.logger().debug(f"Sample opportunity: {sample_opp.get('name')} - {sample_opp.get('customer_name')} - Status: {sample_opp.get('status')}")
-
-        return {
-            'data': opportunities,
-            'total_count': total_count,
-            'retrieved_count': len(opportunities),
-            'is_limited': False
-        }
-
-    except Exception as e:
-        frappe.logger().error(f"Error in get_opportunity_report: {str(e)}")
-        frappe.log_error(message=str(e), title="Opportunity Report Error")
-        return {
-            'data': [],
-            'total_count': 0,
-            'retrieved_count': 0,
-            'is_limited': False,
-            'error': "An error occurred while generating the report. Please contact the administrator."
-        }
-
-
