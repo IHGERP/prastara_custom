@@ -4317,7 +4317,7 @@ select.form-control option {
                 method: 'frappe.client.get_list',
                 args: {
                     doctype: 'Item',
-                    fields: ['item_code', 'category_list', 'is_stock_item'],
+                    fields: ['item_code', 'custom_category_list', 'is_stock_item'],
                     filters: [
                         ['item_code', 'in', itemCodes]
                     ],
@@ -4329,7 +4329,7 @@ select.form-control option {
             if (response.message) {
                 response.message.forEach(item => {
                     itemDetails[item.item_code] = {
-                        category: item.category_list || 'Uncategorized',
+                        category: item.custom_category_list || 'Uncategorized',
                         is_stock_item: item.is_stock_item || 0
                     };
                 });
