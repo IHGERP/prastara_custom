@@ -1,4 +1,5 @@
 frappe.pages['prd-pipeline'].on_page_load = function(wrapper) {
+
     var page = frappe.ui.make_app_page({
         parent: wrapper,
         title: 'Sales Intelligence Hub',
@@ -48,9 +49,10 @@ this.data = {
             from_date: frappe.datetime.add_days(frappe.datetime.get_today(), -30),
             to_date: frappe.datetime.get_today(),
             status: 'all',
-            company: 'PRASTARA DECORATION DESIGN L.L.C',
+            company: 'PRASTARA DECORATION DESIGN L.L.C',
             branch: '',
             account_incharge: '',
+            sales_team: '',
             created_by: '',
             customer: null,
             amount_min: null,
@@ -3596,6 +3598,22 @@ select.form-control option {
                                                 <i class="fa fa-history"></i> Last Year
                                             </button>
                                         </div>
+                                        
+                                        <!-- Yearly Based Section -->
+                                        <div style="margin-top: 1.5rem;">
+                                            <h6 style="color: var(--text-primary); font-weight: 600; margin-bottom: 1rem;">
+                                                <i class="fa fa-calendar-alt" style="margin-right: 0.5rem;"></i>Yearly Based
+                                            </h6>
+                                            <div class="year-select-container">
+                                                <select class="form-control" id="yearly-select" onchange="frappe.sales_intelligence.selectYearlyRange()">
+                                                    <option value="">Select Year</option>
+                                                    <option value="2022">2022</option>
+                                                    <option value="2023">2023</option>
+                                                    <option value="2024">2024</option>
+                                                    <option value="2025">2025</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="col-md-6">
                                         <h6 style="color: var(--text-primary); font-weight: 600; margin-bottom: 1rem;">
@@ -3689,6 +3707,21 @@ select.form-control option {
                                                     <small class="text-muted">Selected: </small>
                                                     <span id="selected-managers-text"></span>
                                                 </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label style="color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem; display: block;">IHG Team</label>
+                                            <div class="searchable-dropdown" id="sales-team-dropdown">
+                                                <div class="searchable-input-container">
+                                                    <input type="text" class="form-control searchable-input" id="filter-sales-team-input" placeholder="Search teams..." autocomplete="off">
+                                                    <div class="dropdown-arrow"><i class="fa fa-chevron-down"></i></div>
+                                                </div>
+                                                <div class="searchable-options" id="sales-team-options" style="display: none;">
+                                                    <div class="searchable-option" data-value="">All Teams</div>
+                                                </div>
+                                                <input type="hidden" id="filter-sales-team" value="">
                                             </div>
                                         </div>
                                     </div>
@@ -3926,8 +3959,8 @@ select.form-control option {
         });
 
         // Advanced filters
-        $('#advanced-filters-btn').on('click', () => {
-            this.populateFilterOptions();
+        $('#advanced-filters-btn').on('click', async () => {
+            await this.populateFilterOptions();
             $('#advancedFiltersModal').modal('show');
         });
 
@@ -3967,6 +4000,9 @@ select.form-control option {
         // Account Manager searchable dropdown (with multi-select capability)
         this.setupSearchableDropdown('account-manager', '#filter-account-manager-input', '#account-manager-options', '#filter-account-manager');
         
+        // Sales Team searchable dropdown
+        this.setupSearchableDropdown('sales-team', '#filter-sales-team-input', '#sales-team-options', '#filter-sales-team');
+        
         // Status searchable dropdown
         this.setupSearchableDropdown('status', '#filter-status-input', '#status-options', '#filter-status');
     }
@@ -3976,12 +4012,22 @@ select.form-control option {
         const options = $(optionsSelector);
         const hiddenInput = $(hiddenInputSelector);
 
+        // Remove existing event handlers to prevent duplication
+        input.off('focus.searchable click.searchable input.searchable keydown.searchable');
+        options.off('click.searchable');
+
         // Show options when input is focused or clicked
-        input.on('focus click', (e) => {
+        input.on('focus.searchable click.searchable', (e) => {
             e.stopPropagation();
             $('.searchable-options').not(options).hide(); // Hide other dropdowns
             this.positionDropdown(input, options); // Position dropdown correctly
             options.show();
+            
+            // For multi-select dropdowns, clear the input field and reset search
+            if (dropdownName === 'account-manager') {
+                input.val(''); // Clear any previous search or placeholder text
+            }
+            
             // Show all options initially, regardless of current input value
             this.showAllSearchableOptions(dropdownName);
             // Clear any existing 'no results' messages
@@ -3989,7 +4035,7 @@ select.form-control option {
         });
 
         // Filter options as user types
-        input.on('input', () => {
+        input.on('input.searchable', () => {
             const searchTerm = input.val();
             this.filterSearchableOptions(dropdownName, searchTerm);
             if (!options.is(':visible')) {
@@ -3999,7 +4045,7 @@ select.form-control option {
         });
 
         // Handle option selection
-        options.on('click', '.searchable-option:not(.no-results)', async (e) => {
+        options.on('click.searchable', '.searchable-option:not(.no-results)', async (e) => {
             e.stopPropagation();
             const selectedOption = $(e.target);
             const value = selectedOption.data('value');
@@ -4013,6 +4059,16 @@ select.form-control option {
                     hiddenInput.val('');
                     input.val('');
                     $('#selected-managers-display').hide();
+                    
+                    // Update display and reset placeholder
+                    this.updateAccountManagerDisplay();
+                    
+                    // Apply filters to update the data after clearing selections
+                    this.filters.account_incharge = '';
+                    this.applyFilters();
+                    await this.calculateStats();
+                    await this.renderCurrentSection();
+                    
                     options.hide();
                 } else {
                     // Individual manager selection
@@ -4021,10 +4077,19 @@ select.form-control option {
             } else {
                 // Handle single selection for other dropdowns
                 if (value === '') {
-                    // If "All Branches", "All Managers", or "All Teams" is selected, clear the input
+                    // If "All Branches", "All Managers", or "All Teams" is selected, clear the input and filter
                     input.val('');
+                    
+                    // Clear team filter if "All Teams" selected
+                    if (dropdownName === 'sales-team') {
+                        this.filters.sales_team = '';
+                        this.applyAdvancedFilters();
+                    }
+                    
                 } else {
-                    input.val(text);
+                    // Get clean text without HTML highlighting
+                    const cleanText = selectedOption.data('original-text') || selectedOption.get(0).textContent || text;
+                    input.val(cleanText);
                 }
                 hiddenInput.val(value);
 
@@ -4032,13 +4097,19 @@ select.form-control option {
                 options.find('.searchable-option').removeClass('selected');
                 selectedOption.addClass('selected');
 
+                // Apply filters immediately for team selection
+                if (dropdownName === 'sales-team') {
+                    this.filters.sales_team = value;
+                    this.applyAdvancedFilters();
+                }
+
                 // Hide options
                 options.hide();
             }
         });
 
         // Handle keyboard navigation
-        input.on('keydown', (e) => {
+        input.on('keydown.searchable', (e) => {
             const allOptions = options.find('.searchable-option:not(.no-results)');
             const currentSelected = allOptions.filter('.selected');
             let newSelected;
@@ -4129,9 +4200,11 @@ select.form-control option {
             .show()
             .removeClass('search-match search-no-match')
             .each(function() {
-                // Remove any highlighted text
-                const originalText = $(this).data('original-text') || $(this).text();
-                $(this).html(originalText);
+                // Remove any highlighted text and restore original text
+                const originalText = $(this).data('original-text');
+                if (originalText) {
+                    $(this).html(originalText);
+                }
             });
         options.find('.no-results').remove();
     }
@@ -4148,15 +4221,20 @@ select.form-control option {
         const searchTermLower = searchTerm.toLowerCase();
         let hasMatches = false;
 
+        // First pass: store original text for all options if not already stored
         options.find('.searchable-option:not(.no-results)').each(function() {
             const $option = $(this);
-            const originalText = $option.data('original-text') || $option.text();
-            
-            // Store original text if not already stored
             if (!$option.data('original-text')) {
-                $option.data('original-text', originalText);
+                // Store the clean text content, removing any existing HTML
+                const cleanText = $option.get(0).textContent || $option.text();
+                $option.data('original-text', cleanText);
             }
-            
+        });
+
+        // Second pass: filter and highlight
+        options.find('.searchable-option:not(.no-results)').each((index, element) => {
+            const $option = $(element);
+            const originalText = $option.data('original-text');
             const optionTextLower = originalText.toLowerCase();
             
             // Always show the option, but style it differently
@@ -4303,7 +4381,7 @@ async loadData() {
             from_date: this.filters.from_date,
             to_date: this.filters.to_date,
             company: this.filters.company,
-            branch: this.filters.branch,
+            custom_branch: this.filters.branch,
             status: this.filters.status
         });
 
@@ -4313,8 +4391,9 @@ async loadData() {
                 from_date: this.filters.from_date,
                 to_date: this.filters.to_date,
                 company: this.filters.company ? [this.filters.company] : [],
-                branch: this.filters.branch ? [this.filters.branch] : [],
+                custom_branch: this.filters.branch ? [this.filters.branch] : [],
                 account_incharge: this.filters.account_incharge ? [this.filters.account_incharge] : [],
+                sales_team: this.filters.sales_team ? [this.filters.sales_team] : [],
                 created_by: this.filters.created_by ? [this.filters.created_by] : [],
                 customer: this.filters.customer,
                 status: this.filters.status === 'all' ? null : this.filters.status,
@@ -4349,11 +4428,13 @@ async loadData() {
             });
             console.log('API Status Breakdown:', apiStatusBreakdown);
             
+            
             // Fix metadata handling
             // Check if filters are applied (excluding default date range)
             const hasFilters = this.filters.company && this.filters.company !== '' || 
                               this.filters.branch && this.filters.branch !== '' || 
                               this.filters.account_incharge && this.filters.account_incharge !== '' || 
+                              this.filters.sales_team && this.filters.sales_team !== '' ||
                               this.filters.created_by && this.filters.created_by !== '' || 
                               this.filters.customer || 
                               this.filters.status !== 'all' || 
@@ -4377,6 +4458,10 @@ async loadData() {
             
             await this.processData();
             
+            // Populate team options after data is processed
+            console.log('About to populate team options from loadData...');
+            this.populateTeamOptionsFromQuotations();
+            
             // Add debugging
             this.debugWorkflowStates(); // Add this line
             
@@ -4390,6 +4475,9 @@ async loadData() {
             
             // Load quotation lost reasons
             await this.loadQuotationLostReasons();
+            
+            // Populate filter options after data is loaded (for initial load)
+            await this.populateFilterOptions();
             
             await this.renderCurrentSection();
         }
@@ -4411,7 +4499,7 @@ async loadData() {
                     from_date: this.filters.from_date,
                     to_date: this.filters.to_date,
                     company: this.filters.company ? [this.filters.company] : [],
-                    branch: this.filters.branch ? [this.filters.branch] : [],
+                    custom_branch: this.filters.branch ? [this.filters.branch] : [],
                     account_incharge: this.filters.account_incharge ? [this.filters.account_incharge] : [],
                     customer: this.filters.customer
                 }
@@ -4435,166 +4523,201 @@ async loadData() {
     }
 
     async loadSiteVisitData() {
+    try {
+        // Build filters - date range and branch filter for Site Visit
+        let filters = {};
+        
+        if (this.filters.from_date && this.filters.to_date) {
+            filters.creation = ['between', [this.filters.from_date, this.filters.to_date]];
+        }
+        
+        // Add branch filter for Metroplus
+        filters.custom_branch = ['like', '%prastara%'];
+        
+        // Try to get status field, fallback to basic fields if not permitted
+        let fields = ['name', 'customer', 'custom_branch', 'creation', 'modified'];
+        
+        // Try to add status field, but handle gracefully if not permitted
         try {
-            // Build filters - only date range since these doctypes don't have company field
-            let filters = {};
-            
-            if (this.filters.from_date && this.filters.to_date) {
-                filters.creation = ['between', [this.filters.from_date, this.filters.to_date]];
-            }
-            
-            // Try to get status field, fallback to basic fields if not permitted
-            let fields = ['name', 'customer', 'creation', 'modified'];
-            
-            // Try to add status field, but handle gracefully if not permitted
-            try {
-                const testResponse = await frappe.call({
-                    method: 'frappe.client.get_list',
-                    args: {
-                        doctype: 'Site Visit',
-                        fields: ['name', 'customer', 'status', 'creation', 'modified'],
-                        filters: filters,
-                        limit: 1,
-                        order_by: 'creation desc'
-                    }
-                });
-                // If successful, use full field list including status
-                fields = ['name', 'customer', 'status', 'creation', 'modified'];
-            } catch (error) {
-                console.log('Status field not available for Site Visit, using basic fields');
-            }
-            
-            const response = await frappe.call({
+            const testResponse = await frappe.call({
                 method: 'frappe.client.get_list',
                 args: {
                     doctype: 'Site Visit',
-                    fields: fields,
+                    fields: ['name', 'customer', 'custom_branch', 'status', 'creation', 'modified'],
                     filters: filters,
-                    limit: 1000,
+                    limit_page_length: 1,  // Changed from limit
                     order_by: 'creation desc'
                 }
             });
-            
-            let siteVisits = response.message || [];
-            
-            // Apply basic filtering only - remove aggressive company-based filtering
-            // This ensures all site visits within the date range are shown
-            // Company filtering can be handled differently if needed
-            
-            this.data.site_visits = siteVisits;
-            console.log(`Loaded ${this.data.site_visits.length} site visits filtered for company: ${this.filters.company || 'All'}`);
-            return { data: this.data.site_visits, total_count: this.data.site_visits.length };
+            // If successful, use full field list including status
+            fields = ['name', 'customer', 'custom_branch', 'status', 'creation', 'modified'];
         } catch (error) {
-            console.error('Failed to load site visit data:', error);
-            this.data.site_visits = [];
-            return { data: [], total_count: 0 };
+            console.log('Status field not available for Site Visit, using basic fields');
         }
+        
+        const response = await frappe.call({
+            method: 'frappe.client.get_list',
+            args: {
+                doctype: 'Site Visit',
+                fields: fields,
+                filters: filters,
+                limit_page_length: 1000,  // Changed from limit
+                order_by: 'creation desc'
+            }
+        });
+        
+        let siteVisits = response.message || [];
+        
+        // Apply basic filtering only - remove aggressive company-based filtering
+        // This ensures all site visits within the date range are shown
+        // Company filtering can be handled differently if needed
+        
+        this.data.site_visits = siteVisits;
+        console.log(`Loaded ${this.data.site_visits.length} site visits filtered for branch: ${this.filters.branch || 'All'}`);
+        
+        // Optional: Log grouping by status (similar to your Design Request code)
+        console.log('Site visits by status:', 
+            this.data.site_visits.reduce((acc, visit) => {
+                const state = visit.status || 'No Status';
+                acc[state] = (acc[state] || 0) + 1;
+                return acc;
+            }, {})
+        );
+        
+        return { data: this.data.site_visits, total_count: this.data.site_visits.length };
+    } catch (error) {
+        console.error('Failed to load site visit data:', error);
+        this.data.site_visits = [];
+        return { data: [], total_count: 0 };
     }
+}
 
     async loadDesignRequestData() {
+    try {
+        // Build filters - date range and branch filter for Design Request
+        let filters = {};
+        
+        if (this.filters.from_date && this.filters.to_date) {
+            filters.creation = ['between', [this.filters.from_date, this.filters.to_date]];
+        }
+        
+        // Add branch filter for Metro
+        filters.custom_branch = ['like', '%metro%'];
+        
+        // Try to get workflow_state field, fallback to basic fields if not permitted
+        let fields = ['name', 'customer', 'custom_branch', 'creation', 'modified'];
+        
+        // Try to add workflow_state field, but handle gracefully if not permitted
         try {
-            // Build filters - only date range since these doctypes don't have company field
-            let filters = {};
-            
-            if (this.filters.from_date && this.filters.to_date) {
-                filters.creation = ['between', [this.filters.from_date, this.filters.to_date]];
-            }
-            
-            // Try to get status field, fallback to basic fields if not permitted
-            let fields = ['name', 'customer', 'creation', 'modified'];
-            
-            // Try to add status field, but handle gracefully if not permitted
-            try {
-                const testResponse = await frappe.call({
-                    method: 'frappe.client.get_list',
-                    args: {
-                        doctype: 'Design Request',
-                        fields: ['name', 'customer', 'status', 'creation', 'modified'],
-                        filters: filters,
-                        limit: 1,
-                        order_by: 'creation desc'
-                    }
-                });
-                // If successful, use full field list including status
-                fields = ['name', 'customer', 'status', 'creation', 'modified'];
-            } catch (error) {
-                console.log('Status field not available for Design Request, using basic fields');
-            }
-            
-            const response = await frappe.call({
+            const testResponse = await frappe.call({
                 method: 'frappe.client.get_list',
                 args: {
                     doctype: 'Design Request',
-                    fields: fields,
+                    fields: ['name', 'customer', 'custom_branch', 'workflow_state', 'creation', 'owner'],
                     filters: filters,
-                    limit: 1000,
+                    limit_page_length: 1,  // Changed from limit
                     order_by: 'creation desc'
                 }
             });
-            
-            let designRequests = response.message || [];
-            
-            // Apply basic filtering only - remove aggressive company-based filtering
-            // This ensures all design requests within the date range are shown
-            // Company filtering can be handled differently if needed
-            
-            this.data.design_requests = designRequests;
-            console.log(`Loaded ${this.data.design_requests.length} design requests filtered for company: ${this.filters.company || 'All'}`);
-            return { data: this.data.design_requests, total_count: this.data.design_requests.length };
+            // If successful, use full field list including workflow_state
+            fields = ['name', 'customer', 'custom_branch', 'workflow_state', 'creation', 'owner'];
         } catch (error) {
-            console.error('Failed to load design request data:', error);
-            this.data.design_requests = [];
-            return { data: [], total_count: 0 };
+            console.log('Workflow state field not available for Design Request, using basic fields');
         }
+        
+        const response = await frappe.call({
+            method: 'frappe.client.get_list',
+            args: {
+                doctype: 'Design Request',
+                fields: fields,
+                filters: filters,
+                limit_page_length: 5000,  // Changed from limit
+                order_by: 'creation desc'
+            }
+        });
+        
+        let designRequests = response.message || [];
+        
+        // Apply basic filtering only - remove aggressive company-based filtering
+        // This ensures all design requests within the date range are shown
+        // Company filtering can be handled differently if needed
+        
+        this.data.design_requests = designRequests;
+        console.log(`Loaded ${this.data.design_requests.length} design requests with filters:`, filters);
+        console.log('Sample design request:', this.data.design_requests[0]);
+        console.log('Design requests by workflow state:', 
+            this.data.design_requests.reduce((acc, req) => {
+                const state = req.workflow_state || 'No State';
+                acc[state] = (acc[state] || 0) + 1;
+                return acc;
+            }, {})
+        );
+        return { data: this.data.design_requests, total_count: this.data.design_requests.length };
+    } catch (error) {
+        console.error('Failed to load design request data:', error);
+        this.data.design_requests = [];
+        return { data: [], total_count: 0 };
     }
-
+}
     async loadPermitData() {
-        try {
-            // Build filters - only date range since these doctypes don't have company field
-            let filters = {};
-            
-            if (this.filters.from_date && this.filters.to_date) {
-                filters.creation = ['between', [this.filters.from_date, this.filters.to_date]];
-            }
-            
-            const response = await frappe.call({
-                method: 'frappe.client.get_list',
-                args: {
-                    doctype: 'Permit Form',
-                    fields: ['name', 'customer', 'creation', 'modified'],
-                    filters: filters,
-                    limit: 1000,
-                    order_by: 'creation desc'
-                }
-            });
-            
-            let permits = response.message || [];
-            
-            // Filter by company through relationship with opportunities/quotations if company filter is applied
-            if (this.filters.company && this.data.opportunities && this.data.opportunities.length > 0) {
-                // Get customers from filtered opportunities
-                const companyCustomers = new Set(
-                    this.data.opportunities
-                        .filter(opp => !this.filters.company || opp.company === this.filters.company)
-                        .map(opp => opp.customer_name || opp.party_name)
-                );
-                
-                // Filter permits to only those customers
-                permits = permits.filter(permit => 
-                    companyCustomers.has(permit.customer)
-                );
-            }
-            
-            this.data.permits = permits;
-            console.log(`Loaded ${this.data.permits.length} permits filtered for company: ${this.filters.company || 'All'}`);
-            return { data: this.data.permits, total_count: this.data.permits.length };
-        } catch (error) {
-            console.error('Failed to load permit data:', error);
-            this.data.permits = [];
-            return { data: [], total_count: 0 };
+    try {
+        // Build filters - posting date and company filter for Permit
+        let filters = {};
+        
+        if (this.filters.from_date && this.filters.to_date) {
+            filters.posting_date = ['between', [this.filters.from_date, this.filters.to_date]];
         }
+        
+        // Add company filter for METROPLUS ADVERTISING LLC
+        filters.company = ['like', '%PRASTARA DECORATION DESIGN L.L.C%'];
+        
+        const response = await frappe.call({
+            method: 'frappe.client.get_list',
+            args: {
+                doctype: 'Permit Form',
+                fields: ['name', 'customer', 'company', 'workflow_state', 'posting_date', 'creation', 'modified'],
+                filters: filters,
+                limit_page_length: 1000,  // Changed from limit
+                order_by: 'posting_date desc'
+            }
+        });
+        
+        let permits = response.message || [];
+        
+        // Filter by company through relationship with opportunities/quotations if company filter is applied
+        if (this.filters.company && this.data.opportunities && this.data.opportunities.length > 0) {
+            // Get customers from filtered opportunities
+            const companyCustomers = new Set(
+                this.data.opportunities
+                    .filter(opp => !this.filters.company || opp.company === this.filters.company)
+                    .map(opp => opp.customer_name || opp.party_name)
+            );
+            
+            // Filter permits to only those customers
+            permits = permits.filter(permit => 
+                companyCustomers.has(permit.customer)
+            );
+        }
+        
+        this.data.permits = permits;
+        console.log(`Loaded ${this.data.permits.length} permits filtered for company: ${this.filters.company || 'All'}`);
+        
+        // Optional: Log grouping by workflow_state (similar to your Design Request code)
+        console.log('Permits by workflow state:', 
+            this.data.permits.reduce((acc, permit) => {
+                const state = permit.workflow_state || 'No State';
+                acc[state] = (acc[state] || 0) + 1;
+                return acc;
+            }, {})
+        );
+        
+        return { data: this.data.permits, total_count: this.data.permits.length };
+    } catch (error) {
+        console.error('Failed to load permit data:', error);
+        this.data.permits = [];
+        return { data: [], total_count: 0 };
     }
-
+}
     async loadOpportunityData() {
         try {
             const response = await frappe.call({
@@ -4603,7 +4726,7 @@ async loadData() {
                     from_date: this.filters.from_date,
                     to_date: this.filters.to_date,
                     company: this.filters.company ? [this.filters.company] : [],
-                    branch: this.filters.branch ? [this.filters.branch] : [],
+                    custom_branch: this.filters.branch ? [this.filters.branch] : [],
                     account_incharge: this.filters.account_incharge ? [this.filters.account_incharge] : [],
                     customer: this.filters.customer,
                     status: this.filters.status === 'all' ? null : this.filters.status
@@ -4843,7 +4966,7 @@ calculatePipeline(quote) {
                     quote.project_description,
                     quote.status,
                     quote.workflow_state,
-                    quote.custom_team
+                    quote.custom_sales_team
                 ].filter(Boolean).join(' ').toLowerCase();
                 
                 if (!searchableText.includes(searchTerm)) {
@@ -4862,6 +4985,14 @@ calculatePipeline(quote) {
                 
                 // Show quotations where account_incharge is IN the selected managers list
                 if (selectedManagers.length > 0 && !selectedManagers.includes(quote.account_incharge)) {
+                    return false;
+                }
+            }
+            
+            // Sales Team filter - check if quotation's team field matches selected team
+            if (this.filters.sales_team && this.filters.sales_team !== '') {
+                const teamFieldName = this.teamFieldName || 'custom_sales_team';
+                if (quote[teamFieldName] !== this.filters.sales_team) {
                     return false;
                 }
             }
@@ -5011,7 +5142,10 @@ calculatePipeline(quote) {
     });
     
     // Additional workflow-based filter (NOT included in total)
-    const pendingDeptApprovalQuotes = data.filter(q => q.workflow_state === 'Pending Dept Approval');
+    const pendingDeptApprovalQuotes = data.filter(q =>
+        q.workflow_state === 'Pending Dept Approval' &&
+        !['Partially Ordered', 'Lost', 'Cancelled', 'Expired'].includes(q.status)
+    );
     
     // Calculate total: Won + Lost + Draft + Pending + Cancelled (NOT including Pending Dept Approval)
     const newTotalCount = wonQuotes.length + lostQuotes.length + draftQuotes.length + pendingQuotes.length + cancelledNotAmendedQuotes.length;
@@ -5180,7 +5314,7 @@ calculatePipelineStats(data) {
         
         return {
             companyWise: this.calculateConversionByField(data, 'company', wonStatuses),
-            branchWise: this.calculateConversionByField(data, 'branch', wonStatuses),
+            branchWise: this.calculateConversionByField(data, 'custom_branch', wonStatuses),
             accountInchargeWise: this.calculateConversionByField(data, 'account_incharge', wonStatuses, 'account_incharge_full_name'),
             ownerWise: this.calculateConversionByField(data, 'owner', wonStatuses, 'owner_full_name')
         };
@@ -5230,7 +5364,7 @@ calculatePipelineStats(data) {
         const lowMarginQuotes = marginData.filter(q => parseFloat(q.margin_percentage) < 15);
         
         // Branch-wise margin analysis
-        const branchMargins = this.calculateMarginByField(marginData, 'branch');
+        const branchMargins = this.calculateMarginByField(marginData, 'custom_branch');
         
         // Account manager-wise margin analysis
         const accountManagerMargins = this.calculateMarginByField(marginData, 'account_incharge', 'account_incharge_full_name');
@@ -6522,6 +6656,17 @@ getPipelineStatusBreakdown() {
         
         return `
             <div class="conversion-overview-container">
+                <!-- Tab Info Banner -->
+                <div class="tab-info-banner" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.05)); border-left: 4px solid var(--accent-blue); padding: 0.75rem 1.5rem; margin-bottom: 1.5rem; border-radius: 0 8px 8px 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <i class="fa fa-chart-line" style="color: var(--accent-blue); font-size: 1.1rem;"></i>
+                            <span style="font-weight: 600; color: var(--text-primary);">Overview</span>
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">•</span>
+                            <span style="font-size: 0.875rem; color: var(--text-secondary);">Comprehensive conversion performance across all dimensions</span>
+                        </div>
+                    </div>
+                </div>
                 <!-- Conversion Overview -->
                 <div class="stats-grid mb-4">
                     <div class="stat-card">
@@ -6716,6 +6861,17 @@ getPipelineStatusBreakdown() {
         
         return `
             <div class="quotation-performance-container">
+                <!-- Tab Info Banner -->
+                <div class="tab-info-banner" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); border-left: 4px solid var(--accent-green); padding: 0.75rem 1.5rem; margin-bottom: 1.5rem; border-radius: 0 8px 8px 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <i class="fa fa-chart-bar" style="color: var(--accent-green); font-size: 1.1rem;"></i>
+                            <span style="font-weight: 600; color: var(--text-primary);">Count Performance</span>
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">•</span>
+                            <span style="font-size: 0.875rem; color: var(--text-secondary);">All salespeople ranked by total quotations created</span>
+                        </div>
+                    </div>
+                </div>
                 <!-- Performance Header -->
                 <div class="section-header">
                     <h2 class="section-title">
@@ -6729,17 +6885,21 @@ getPipelineStatusBreakdown() {
                 </div>
                 
                 <!-- Performance Chart -->
-                <div class="performance-chart-container" style="background: rgba(51, 65, 85, 0.4); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
-                    <canvas id="quotationPerformanceChart" width="800" height="400"></canvas>
+                <div class="performance-chart-container" style="background: rgba(51, 65, 85, 0.4); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; width: 100%;">
+                    <canvas id="quotationPerformanceChart" width="1200" height="500" style="width: 100%; height: auto;"></canvas>
                 </div>
                 
                 <!-- Performance Cards -->
                 <div class="performance-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
-                    ${quotationsByManager.slice(0, 10).map((manager, index) => {
+                    ${quotationsByManager.map((manager, index) => {
                         const colors = [
                             'var(--accent-blue)', 'var(--accent-green)', 'var(--accent-orange)', 
                             'var(--accent-purple)', 'var(--accent-cyan)', 'var(--accent-red)',
-                            'var(--accent-pink)', 'var(--accent-teal)', 'var(--accent-yellow)', 'var(--accent-gray)'
+                            'var(--accent-pink)', 'var(--accent-teal)', 'var(--accent-yellow)', 'var(--accent-gray)',
+                            '#4F46E5', '#7C3AED', '#DC2626', '#EA580C', '#CA8A04', '#059669',
+                            '#0891B2', '#C2410C', '#9333EA', '#DC2626', '#16A34A', '#2563EB',
+                            '#7C2D12', '#92400E', '#166534', '#1E40AF', '#581C87', '#991B1B',
+                            '#BE123C', '#A21CAF', '#5B21B6', '#1E3A8A', '#0F766E', '#15803D'
                         ];
                         const color = colors[index % colors.length];
                         
@@ -6797,6 +6957,17 @@ getPipelineStatusBreakdown() {
         
         return `
             <div class="value-performance-container">
+                <!-- Tab Info Banner -->
+                <div class="tab-info-banner" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05)); border-left: 4px solid var(--accent-orange); padding: 0.75rem 1.5rem; margin-bottom: 1.5rem; border-radius: 0 8px 8px 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <i class="fa fa-dollar-sign" style="color: var(--accent-orange); font-size: 1.1rem;"></i>
+                            <span style="font-weight: 600; color: var(--text-primary);">Value Performance</span>
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">•</span>
+                            <span style="font-size: 0.875rem; color: var(--text-secondary);">All salespeople ranked by total quotation value generated</span>
+                        </div>
+                    </div>
+                </div>
                 <!-- Performance Header -->
                 <div class="section-header">
                     <h2 class="section-title">
@@ -6810,17 +6981,21 @@ getPipelineStatusBreakdown() {
                 </div>
                 
                 <!-- Performance Chart -->
-                <div class="value-chart-container" style="background: rgba(51, 65, 85, 0.4); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
-                    <canvas id="valuePerformanceChart" width="800" height="400"></canvas>
+                <div class="value-chart-container" style="background: rgba(51, 65, 85, 0.4); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; width: 100%;">
+                    <canvas id="valuePerformanceChart" width="1200" height="500" style="width: 100%; height: auto;"></canvas>
                 </div>
                 
                 <!-- Performance Cards -->
                 <div class="value-performance-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
-                    ${valuesByManager.slice(0, 10).map((manager, index) => {
+                    ${valuesByManager.map((manager, index) => {
                         const colors = [
                             'var(--accent-green)', 'var(--accent-blue)', 'var(--accent-purple)', 
                             'var(--accent-orange)', 'var(--accent-cyan)', 'var(--accent-red)',
-                            'var(--accent-pink)', 'var(--accent-teal)', 'var(--accent-yellow)', 'var(--accent-gray)'
+                            'var(--accent-pink)', 'var(--accent-teal)', 'var(--accent-yellow)', 'var(--accent-gray)',
+                            '#059669', '#4F46E5', '#7C3AED', '#DC2626', '#EA580C', '#CA8A04',
+                            '#0891B2', '#C2410C', '#9333EA', '#DC2626', '#16A34A', '#2563EB',
+                            '#7C2D12', '#92400E', '#166534', '#1E40AF', '#581C87', '#991B1B',
+                            '#BE123C', '#A21CAF', '#5B21B6', '#1E3A8A', '#0F766E', '#15803D'
                         ];
                         const color = colors[index % colors.length];
                         
@@ -6882,6 +7057,17 @@ getPipelineStatusBreakdown() {
         
         return `
             <div class="conversion-performance-container">
+                <!-- Tab Info Banner -->
+                <div class="tab-info-banner" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.05)); border-left: 4px solid var(--accent-purple); padding: 0.75rem 1.5rem; margin-bottom: 1.5rem; border-radius: 0 8px 8px 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <i class="fa fa-trophy" style="color: var(--accent-purple); font-size: 1.1rem;"></i>
+                            <span style="font-weight: 600; color: var(--text-primary);">Conversion Performance</span>
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">•</span>
+                            <span style="font-size: 0.875rem; color: var(--text-secondary);">All salespeople ranked by quotation-to-order conversion rate</span>
+                        </div>
+                    </div>
+                </div>
                 <!-- Performance Header -->
                 <div class="section-header">
                     <h2 class="section-title">
@@ -6895,17 +7081,21 @@ getPipelineStatusBreakdown() {
                 </div>
                 
                 <!-- Performance Chart -->
-                <div class="conversion-chart-container" style="background: rgba(51, 65, 85, 0.4); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
-                    <canvas id="conversionPerformanceChart" width="800" height="400"></canvas>
+                <div class="conversion-chart-container" style="background: rgba(51, 65, 85, 0.4); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; width: 100%;">
+                    <canvas id="conversionPerformanceChart" width="1200" height="500" style="width: 100%; height: auto;"></canvas>
                 </div>
                 
                 <!-- Performance Cards -->
                 <div class="conversion-performance-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem;">
-                    ${conversionsByManager.slice(0, 10).map((manager, index) => {
+                    ${conversionsByManager.map((manager, index) => {
                         const colors = [
                             'var(--accent-orange)', 'var(--accent-purple)', 'var(--accent-green)', 
                             'var(--accent-blue)', 'var(--accent-cyan)', 'var(--accent-red)',
-                            'var(--accent-pink)', 'var(--accent-teal)', 'var(--accent-yellow)', 'var(--accent-gray)'
+                            'var(--accent-pink)', 'var(--accent-teal)', 'var(--accent-yellow)', 'var(--accent-gray)',
+                            '#EA580C', '#7C3AED', '#059669', '#4F46E5', '#0891B2', '#DC2626',
+                            '#C2410C', '#9333EA', '#CA8A04', '#16A34A', '#2563EB', '#7C2D12',
+                            '#92400E', '#166534', '#1E40AF', '#581C87', '#991B1B', '#BE123C',
+                            '#A21CAF', '#5B21B6', '#1E3A8A', '#0F766E', '#15803D', '#6366F1'
                         ];
                         const color = colors[index % colors.length];
                         
@@ -7192,19 +7382,24 @@ getPipelineStatusBreakdown() {
         if (!canvas) return;
         
         const ctx = canvas.getContext('2d');
-        const chartData = managers.slice(0, 10); // Top 10 converters
+        const chartData = managers; // All salespeople
         
-        // Chart dimensions
-        const padding = 60;
+        // Chart dimensions - responsive to canvas size with extra space for rotated labels
+        const padding = 80;
+        const bottomPadding = 120; // Extra space for rotated names
         const chartWidth = canvas.width - (padding * 2);
-        const chartHeight = canvas.height - (padding * 2);
-        const barWidth = chartWidth / chartData.length * 0.7;
+        const chartHeight = canvas.height - padding - bottomPadding;
+        const barWidth = Math.min(chartWidth / chartData.length * 0.8, 60); // Cap max bar width
         const maxValue = Math.max(...chartData.map(m => m.converted_count));
         
         // Colors (orange-based for conversion)
         const colors = [
             '#F59E0B', '#8B5CF6', '#10B981', '#3B82F6', '#06B6D4',
-            '#EF4444', '#EC4899', '#14B8A6', '#F59E0B', '#6B7280'
+            '#EF4444', '#EC4899', '#14B8A6', '#F59E0B', '#6B7280',
+            '#4F46E5', '#7C3AED', '#DC2626', '#EA580C', '#CA8A04', '#059669',
+            '#0891B2', '#C2410C', '#9333EA', '#DC2626', '#16A34A', '#2563EB',
+            '#7C2D12', '#92400E', '#166534', '#1E40AF', '#581C87', '#991B1B',
+            '#BE123C', '#A21CAF', '#5B21B6', '#1E3A8A', '#0F766E', '#15803D'
         ];
         
         // Clear canvas
@@ -7216,7 +7411,8 @@ getPipelineStatusBreakdown() {
         
         // Draw bars
         chartData.forEach((manager, index) => {
-            const x = padding + (index * (chartWidth / chartData.length)) + ((chartWidth / chartData.length - barWidth) / 2);
+            const spacing = chartWidth / chartData.length;
+            const x = padding + (index * spacing) + ((spacing - barWidth) / 2);
             const barHeight = (manager.converted_count / maxValue) * chartHeight * 0.8;
             const y = padding + chartHeight - barHeight;
             
@@ -7235,9 +7431,9 @@ getPipelineStatusBreakdown() {
             ctx.fillStyle = '#10B981';
             ctx.fillText(`${manager.conversion_rate}%`, x + barWidth/2, y - 30);
             
-            // Draw manager name at bottom (rotated)
+            // Draw manager name at bottom (rotated) - positioned with proper spacing
             ctx.save();
-            ctx.translate(x + barWidth/2, padding + chartHeight + 20);
+            ctx.translate(x + barWidth/2, padding + chartHeight + 35);
             ctx.rotate(-Math.PI/4);
             ctx.fillStyle = '#9CA3AF';
             ctx.font = '12px Arial';
@@ -7301,19 +7497,24 @@ getPipelineStatusBreakdown() {
         if (!canvas) return;
         
         const ctx = canvas.getContext('2d');
-        const chartData = managers.slice(0, 10); // Top 10 performers by value
+        const chartData = managers; // All salespeople by value
         
-        // Chart dimensions
-        const padding = 60;
+        // Chart dimensions - responsive to canvas size with extra space for rotated labels
+        const padding = 80;
+        const bottomPadding = 120; // Extra space for rotated names
         const chartWidth = canvas.width - (padding * 2);
-        const chartHeight = canvas.height - (padding * 2);
-        const barWidth = chartWidth / chartData.length * 0.7;
+        const chartHeight = canvas.height - padding - bottomPadding;
+        const barWidth = Math.min(chartWidth / chartData.length * 0.8, 60); // Cap max bar width
         const maxValue = Math.max(...chartData.map(m => m.total_value));
         
         // Colors (different from count chart)
         const colors = [
             '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#06B6D4',
-            '#EF4444', '#EC4899', '#14B8A6', '#F59E0B', '#6B7280'
+            '#EF4444', '#EC4899', '#14B8A6', '#F59E0B', '#6B7280',
+            '#059669', '#4F46E5', '#7C3AED', '#DC2626', '#EA580C', '#CA8A04',
+            '#0891B2', '#C2410C', '#9333EA', '#DC2626', '#16A34A', '#2563EB',
+            '#7C2D12', '#92400E', '#166534', '#1E40AF', '#581C87', '#991B1B',
+            '#BE123C', '#A21CAF', '#5B21B6', '#1E3A8A', '#0F766E', '#15803D'
         ];
         
         // Clear canvas
@@ -7325,7 +7526,8 @@ getPipelineStatusBreakdown() {
         
         // Draw bars
         chartData.forEach((manager, index) => {
-            const x = padding + (index * (chartWidth / chartData.length)) + ((chartWidth / chartData.length - barWidth) / 2);
+            const spacing = chartWidth / chartData.length;
+            const x = padding + (index * spacing) + ((spacing - barWidth) / 2);
             const barHeight = (manager.total_value / maxValue) * chartHeight * 0.8;
             const y = padding + chartHeight - barHeight;
             
@@ -7340,9 +7542,9 @@ getPipelineStatusBreakdown() {
             const formattedValue = this.formatCurrencyShort(manager.total_value);
             ctx.fillText(formattedValue, x + barWidth/2, y - 10);
             
-            // Draw manager name at bottom (rotated)
+            // Draw manager name at bottom (rotated) - positioned with proper spacing
             ctx.save();
-            ctx.translate(x + barWidth/2, padding + chartHeight + 20);
+            ctx.translate(x + barWidth/2, padding + chartHeight + 35);
             ctx.rotate(-Math.PI/4);
             ctx.fillStyle = '#9CA3AF';
             ctx.font = '12px Arial';
@@ -7416,19 +7618,24 @@ getPipelineStatusBreakdown() {
         if (!canvas) return;
         
         const ctx = canvas.getContext('2d');
-        const chartData = managers.slice(0, 10); // Top 10 performers
+        const chartData = managers; // All salespeople
         
-        // Chart dimensions
-        const padding = 60;
+        // Chart dimensions - responsive to canvas size with extra space for rotated labels
+        const padding = 80;
+        const bottomPadding = 120; // Extra space for rotated names
         const chartWidth = canvas.width - (padding * 2);
-        const chartHeight = canvas.height - (padding * 2);
-        const barWidth = chartWidth / chartData.length * 0.7;
+        const chartHeight = canvas.height - padding - bottomPadding;
+        const barWidth = Math.min(chartWidth / chartData.length * 0.8, 60); // Cap max bar width
         const maxValue = Math.max(...chartData.map(m => m.count));
         
         // Colors
         const colors = [
             '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4',
-            '#EF4444', '#EC4899', '#14B8A6', '#F59E0B', '#6B7280'
+            '#EF4444', '#EC4899', '#14B8A6', '#F59E0B', '#6B7280',
+            '#4F46E5', '#7C3AED', '#DC2626', '#EA580C', '#CA8A04', '#059669',
+            '#0891B2', '#C2410C', '#9333EA', '#DC2626', '#16A34A', '#2563EB',
+            '#7C2D12', '#92400E', '#166534', '#1E40AF', '#581C87', '#991B1B',
+            '#BE123C', '#A21CAF', '#5B21B6', '#1E3A8A', '#0F766E', '#15803D'
         ];
         
         // Clear canvas
@@ -7440,7 +7647,8 @@ getPipelineStatusBreakdown() {
         
         // Draw bars
         chartData.forEach((manager, index) => {
-            const x = padding + (index * (chartWidth / chartData.length)) + ((chartWidth / chartData.length - barWidth) / 2);
+            const spacing = chartWidth / chartData.length;
+            const x = padding + (index * spacing) + ((spacing - barWidth) / 2);
             const barHeight = (manager.count / maxValue) * chartHeight * 0.8;
             const y = padding + chartHeight - barHeight;
             
@@ -7454,9 +7662,9 @@ getPipelineStatusBreakdown() {
             ctx.textAlign = 'center';
             ctx.fillText(manager.count, x + barWidth/2, y - 10);
             
-            // Draw manager name at bottom (rotated)
+            // Draw manager name at bottom (rotated) - positioned with proper spacing
             ctx.save();
-            ctx.translate(x + barWidth/2, padding + chartHeight + 20);
+            ctx.translate(x + barWidth/2, padding + chartHeight + 35);
             ctx.rotate(-Math.PI/4);
             ctx.fillStyle = '#9CA3AF';
             ctx.font = '12px Arial';
@@ -8412,7 +8620,11 @@ getPipelineStatusBreakdown() {
     // Enhanced table rendering with comprehensive search and sort
     renderTableWithControls(tableId, data, columns) {
         const searchId = `${tableId}-search`;
-        const pageSize = 50; // Records per page
+        // Set pageSize based on table type - larger for opportunity tabs  
+        let pageSize = 50; // Default records per page
+        if (tableId.includes('design-request') || tableId.includes('site-visit') || tableId.includes('permit')) {
+            pageSize = 500; // Show more records for opportunity tabs
+        }
         
         // Initialize table state if not exists
         if (!this.tableStates) this.tableStates = {};
@@ -8851,7 +9063,7 @@ getPipelineStatusBreakdown() {
                             <table class="table table-borderless" style="margin: 0;">
                                 <tr><td style="font-weight: 600; color: var(--text-secondary); width: 40%;">Margin:</td><td><span class="margin-badge ${this.getMarginClass(quote.profit_percentage)}">${quote.profit_percentage || 0}%</span></td></tr>
                                 <tr><td style="font-weight: 600; color: var(--text-secondary);">Profit Amount:</td><td style="color: var(--text-primary);">AED ${this.formatCurrency(quote.expected_profit || 0)}</td></tr>
-                                <tr><td style="font-weight: 600; color: var(--text-secondary);">Branch:</td><td style="color: var(--text-primary);">${quote.branch || '-'}</td></tr>
+                                <tr><td style="font-weight: 600; color: var(--text-secondary);">Branch:</td><td style="color: var(--text-primary);">${quote.custom_branch || '-'}</td></tr>
                             </table>
                         </div>
                     </div>
@@ -9092,7 +9304,7 @@ calculateBranchPipelineData() {
     this.data.quotations.filter(q => {
         return !excludedStatuses.includes(q.status) && (this.calculatePipeline(q) !== 'None' || q.status === 'Open');
     }).forEach(quote => {
-        const branch = quote.branch || 'Unknown';
+        const branch = quote.custom_branch || 'Unknown';
         
         if (!branchData.has(branch)) {
             branchData.set(branch, {
@@ -9385,8 +9597,8 @@ initializePipelineTimelineChart() {
                 title = 'Lost Quotations';
                 break;
             case 'cancelled_not_amended_quotations':
-                data = this.data.filtered.filter(q => q.custom_cancell_status === 'Cancelled but not amended');
-                title = 'Cancelled but not amended Quotations';
+                data = this.cancelledQuotationsData?.data || [];
+                title = 'Cancelled But Not Amended Quotations';
                 break;
             case 'low_margin_quotes':
                 data = this.data.stats.margin.lowMargin;
@@ -9405,7 +9617,10 @@ initializePipelineTimelineChart() {
                 title = 'Draft Quotations';
                 break;
             case 'pending_dept_approval_quotations':
-                data = this.data.filtered.filter(q => q.workflow_state === 'Pending Dept Approval');
+                data = this.data.filtered.filter(q =>
+                    q.workflow_state === 'Pending Dept Approval' &&
+                    !['Partially Ordered', 'Lost', 'Cancelled', 'Expired'].includes(q.status)
+                );
                 title = 'Pending Dept Approval Quotations';
                 break;
             default:
@@ -9504,6 +9719,64 @@ initializePipelineTimelineChart() {
     showAllQuotations() {
         const content = this.generateDrilldownContent(this.data.filtered);
         $('#drilldown-title').html(`<i class="fa fa-list"></i> All Quotations (${this.data.filtered.length})`);
+        $('#drilldown-content').html(content);
+        $('#drilldownModal').modal('show');
+    }
+    
+    showAllDesignRequests() {
+        const designRequests = this.data.design_requests || [];
+        const content = this.generateGenericDrilldownContent(designRequests, this.getOpportunityColumns('design-request'), 'Design Requests');
+        $('#drilldown-title').html(`<i class="fa fa-drafting-compass"></i> All Design Requests (${designRequests.length})`);
+        $('#drilldown-content').html(content);
+        $('#drilldownModal').modal('show');
+    }
+    
+    showAllSiteVisits() {
+        const siteVisits = this.data.site_visits || [];
+        const content = this.generateGenericDrilldownContent(siteVisits, this.getOpportunityColumns('site-visit'), 'Site Visits');
+        $('#drilldown-title').html(`<i class="fa fa-map-marker-alt"></i> All Site Visits (${siteVisits.length})`);
+        $('#drilldown-content').html(content);
+        $('#drilldownModal').modal('show');
+    }
+    
+    showAllPermits() {
+        const permits = this.data.permits || [];
+        const content = this.generateGenericDrilldownContent(permits, this.getOpportunityColumns('permit'), 'Permits');
+        $('#drilldown-title').html(`<i class="fa fa-file-signature"></i> All Permits (${permits.length})`);
+        $('#drilldown-content').html(content);
+        $('#drilldownModal').modal('show');
+    }
+    
+    showAllLostQuotes() {
+        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        const columns = [
+            { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
+            { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+            { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+            { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+            { key: 'order_lost_reason', label: 'Reason', sortable: true, icon: 'fa-exclamation-triangle' },
+            { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' }
+        ];
+        const content = this.generateGenericDrilldownContent(lostQuotes, columns, 'Lost Quotations');
+        $('#drilldown-title').html(`<i class="fa fa-times-circle"></i> All Lost Quotations (${lostQuotes.length})`);
+        $('#drilldown-content').html(content);
+        $('#drilldownModal').modal('show');
+    }
+    
+    showAllCancelledQuotes() {
+        // Use the cancelled quotations data that is specifically loaded for custom_cancel_status = 'Cancelled but not amended'
+        const cancelledQuotes = this.cancelledQuotationsData?.data || [];
+        const columns = [
+            { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
+            { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+            { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+            { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+            { key: 'custom_cancel_status', label: 'Cancel Status', sortable: true, icon: 'fa-ban' },
+            { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
+            { key: 'custom_branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' }
+        ];
+        const content = this.generateGenericDrilldownContent(cancelledQuotes, columns, 'Cancelled But Not Amended Quotations');
+        $('#drilldown-title').html(`<i class="fa fa-ban"></i> All Cancelled But Not Amended Quotations (${cancelledQuotes.length})`);
         $('#drilldown-content').html(content);
         $('#drilldownModal').modal('show');
     }
@@ -9717,7 +9990,81 @@ initializePipelineTimelineChart() {
         `;
     }
 
+    generateGenericDrilldownContent(data, columns, entityName) {
+        if (!data || data.length === 0) {
+            return `<div class="text-center" style="padding: 2rem;"><p style="color: var(--text-secondary);"><i class="fa fa-inbox" style="margin-right: 0.5rem; font-size: 1.2rem;"></i>No ${entityName.toLowerCase()} available for the selected criteria.</p></div>`;
+        }
+
+        return `
+            <div class="drilldown-container">
+                <div class="modal-section">
+                    <h6><i class="fa fa-info-circle"></i>Summary</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="summary-card">
+                                <div class="summary-value">${data.length}</div>
+                                <div class="summary-label">Total ${entityName}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="summary-card">
+                                <div class="summary-value">${new Date().toLocaleDateString()}</div>
+                                <div class="summary-label">Report Date</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="summary-card">
+                                <div class="summary-value">${Math.ceil(data.length / 50)}</div>
+                                <div class="summary-label">Pages (50 per page)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-section" style="margin-top: 1.5rem;">
+                    <h6><i class="fa fa-table"></i>Detailed Data</h6>
+                    ${this.renderTableWithControls('generic-drilldown-table', data, columns)}
+                </div>
+            </div>
+        `;
+    }
+
     getOpportunityColumns(type) {
+        if (type === 'design-request') {
+            return [
+                { key: 'name', label: 'Design Request', sortable: true, type: 'design_request_link', icon: 'fa-drafting-compass' },
+                { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
+                { key: 'custom_branch', label: 'Branch', sortable: true, icon: 'fa-code-branch' },
+                { key: 'workflow_state', label: 'Workflow State', sortable: true, type: 'badge', icon: 'fa-cog' },
+                { key: 'creation', label: 'Created', sortable: true, type: 'datetime', icon: 'fa-calendar-plus' },
+                { key: 'modified', label: 'Modified', sortable: true, type: 'datetime', icon: 'fa-clock' }
+            ];
+        }
+        
+        if (type === 'site-visit') {
+            return [
+                { key: 'name', label: 'Site Visit', sortable: true, type: 'site_visit_link', icon: 'fa-map-marker-alt' },
+                { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
+                { key: 'custom_branch', label: 'Branch', sortable: true, icon: 'fa-code-branch' },
+                { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
+                { key: 'creation', label: 'Created', sortable: true, type: 'datetime', icon: 'fa-calendar-plus' },
+                { key: 'modified', label: 'Modified', sortable: true, type: 'datetime', icon: 'fa-clock' }
+            ];
+        }
+        
+        if (type === 'permit') {
+            return [
+                { key: 'name', label: 'Permit', sortable: true, type: 'permit_link', icon: 'fa-file-signature' },
+                { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
+                { key: 'company', label: 'Company', sortable: true, icon: 'fa-building' },
+                { key: 'workflow_state', label: 'Workflow State', sortable: true, type: 'badge', icon: 'fa-cog' },
+                { key: 'posting_date', label: 'Posting Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                { key: 'creation', label: 'Created', sortable: true, type: 'datetime', icon: 'fa-calendar-plus' },
+                { key: 'modified', label: 'Modified', sortable: true, type: 'datetime', icon: 'fa-clock' }
+            ];
+        }
+
+        // Default opportunity columns
         const baseColumns = [
             { key: 'name', label: 'Opportunity', sortable: true, type: 'opportunity_link', icon: 'fa-lightbulb' },
             { key: 'customer_name', label: 'Customer', sortable: true, icon: 'fa-building' },
@@ -9979,15 +10326,15 @@ initializePipelineTimelineChart() {
     }
 
     // Filter and utility methods
-    populateFilterOptions() {
-        // Populate company options for searchable dropdown - restricted to PRASTARA DECORATION DESIGN L.L.C only
+    async populateFilterOptions() {
+        // Populate company options for searchable dropdown - restricted to METROPLUS ADVERTISING LLC only
         const companyOptions = $('#company-options');
         if (companyOptions.find('.searchable-option:not([data-value=""])').length === 0) {
-            companyOptions.append(`<div class="searchable-option" data-value="PRASTARA DECORATION DESIGN L.L.C">PRASTARA DECORATION DESIGN L.L.C</div>`);
+            companyOptions.append(`<div class="searchable-option" data-value="PRASTARA DECORATION DESIGN L.L.C">PRASTARA DECORATION DESIGN L.L.C</div>`);
         }
 
         // Populate branch options for searchable dropdown
-        const branches = [...new Set(this.data.quotations.map(q => q.branch).filter(Boolean))];
+        const branches = [...new Set(this.data.quotations.map(q => q.custom_branch).filter(Boolean))];
         const branchOptions = $('#branch-options');
         branchOptions.find('.searchable-option:not([data-value=""])').remove(); // Keep "All Branches" option
         branches.forEach(branch => {
@@ -10003,6 +10350,9 @@ initializePipelineTimelineChart() {
             managerOptions.append(`<div class="searchable-option multi-selectable" data-value="${manager}">${displayName}</div>`);
         });
 
+        // Populate sales team options from quotation custom_team field
+        console.log('About to populate team options from populateFilterOptions...');
+        this.populateTeamOptionsFromQuotations();
 
         // Set current values for searchable dropdowns
         // Set company searchable dropdown value
@@ -10043,6 +10393,15 @@ initializePipelineTimelineChart() {
             $('#account-manager-options .searchable-option').removeClass('multi-selected');
         }
         
+        // Set sales team searchable dropdown value
+        if (this.filters.sales_team) {
+            $('#filter-sales-team').val(this.filters.sales_team);
+            $('#filter-sales-team-input').val(this.filters.sales_team);
+        } else {
+            $('#filter-sales-team').val('');
+            $('#filter-sales-team-input').val('');
+        }
+        
         // Set status searchable dropdown value
         if (this.filters.status && this.filters.status !== 'all') {
             $('#filter-status').val(this.filters.status);
@@ -10060,6 +10419,7 @@ initializePipelineTimelineChart() {
         this.filters.company = $('#filter-company').val() || '';
         this.filters.branch = $('#filter-branch').val() || '';
         this.filters.account_incharge = $('#filter-account-manager').val() || '';
+        this.filters.sales_team = $('#filter-sales-team').val() || '';
         this.filters.status = $('#filter-status').val() || 'all';
         this.filters.amount_min = parseFloat($('#filter-amount-min').val()) || null;
         this.filters.amount_max = parseFloat($('#filter-amount-max').val()) || null;
@@ -10080,7 +10440,7 @@ initializePipelineTimelineChart() {
             from_date: this.filters.from_date,
             to_date: this.filters.to_date,
             status: 'all',
-            company: 'PRASTARA DECORATION DESIGN L.L.C',
+            company: 'PRASTARA DECORATION DESIGN L.L.C',
             branch: '',
             account_incharge: '',
             created_by: '',
@@ -10101,12 +10461,14 @@ initializePipelineTimelineChart() {
         $('#filter-company-input').val('');
         $('#filter-branch-input').val('');
         $('#filter-account-manager-input').val('');
+        $('#filter-sales-team-input').val('');
         $('#filter-status-input').val('');
         
         // Reset hidden input fields (these are what applyAdvancedFilters reads from)
         $('#filter-company').val('');
         $('#filter-branch').val('');
         $('#filter-account-manager').val('');
+        $('#filter-sales-team').val('');
         $('#filter-status').val('all');
         $('#filter-amount-min').val('');
         $('#filter-amount-max').val('');
@@ -10343,6 +10705,33 @@ initializePipelineTimelineChart() {
         this.currentPreset = null;
     }
 
+    selectYearlyRange() {
+        const selectedYear = $('#yearly-select').val();
+        if (!selectedYear) return;
+        
+        // Set from date to January 1st of selected year
+        const fromDate = `${selectedYear}-01-01`;
+        
+        // Set to date to December 31st of selected year
+        const toDate = `${selectedYear}-12-31`;
+        
+        // Update the date input fields
+        $('#from-date').val(fromDate);
+        $('#to-date').val(toDate);
+        
+        // Clear all preset button active states since this is a custom yearly selection
+        $('.preset-btn').removeClass('active');
+        
+        // Clear current preset since this is custom
+        this.currentPreset = null;
+        
+        // Visual feedback - highlight the select dropdown temporarily
+        $('#yearly-select').css('background-color', '#e3f2fd');
+        setTimeout(() => {
+            $('#yearly-select').css('background-color', '');
+        }, 500);
+    }
+
     getMarginClass(margin) {
         const marginValue = parseFloat(margin);
         if (marginValue >= 30) return 'success';
@@ -10551,6 +10940,22 @@ initializePipelineTimelineChart() {
                         `).join('')}
                     </div>
                 </div>
+
+                <div class="modal-section">
+                    <h6><i class="fa fa-list"></i>All Quotations in Pipeline ${stage}</h6>
+                    <div class="quotations-list-container">
+                        ${this.renderTableWithControls(`pipeline-${stage.toLowerCase()}-quotations-table`, quotes, [
+                            { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
+                            { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                            { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                            { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                            { key: 'workflow_state', label: 'Workflow State', sortable: true, icon: 'fa-tasks' },
+                            { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
+                            { key: 'custom_branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' },
+                            { key: 'valid_till', label: 'Valid Till', sortable: true, type: 'date', icon: 'fa-clock' }
+                        ])}
+                    </div>
+                </div>
             </div>
         `;
     }
@@ -10707,7 +11112,7 @@ initializePipelineTimelineChart() {
         // Analyze by branch for lost quotations
         const branchLossMap = new Map();
         lostQuotes.forEach(quote => {
-            const branch = quote.branch || 'Unknown';
+            const branch = quote.custom_branch || 'Unknown';
             if (!branchLossMap.has(branch)) {
                 branchLossMap.set(branch, { count: 0, amount: 0 });
             }
@@ -10817,7 +11222,7 @@ initializePipelineTimelineChart() {
                     
                     <div class="table-container">
                         ${this.renderTableWithControls('branch-loss-table', branchLosses, [
-                            { key: 'branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' },
+                            { key: 'custom_branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' },
                             { key: 'count', label: 'Lost Count', sortable: true, icon: 'fa-list' },
                             { key: 'amount', label: 'Lost Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' }
                         ])}
@@ -10844,11 +11249,15 @@ initializePipelineTimelineChart() {
                 
                 <!-- Recent Lost Quotations -->
                 <div class="data-section">
-                    <div class="section-header">
+                    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
                         <h2 class="section-title">
                             <i class="fa fa-clock"></i>
                             Recent Lost Quotations
                         </h2>
+                        <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.showAllLostQuotes()">
+                            <i class="fa fa-expand"></i>
+                            View All ${lostQuotes.length}
+                        </button>
                     </div>
                     
                     <div class="table-container">
@@ -11075,7 +11484,7 @@ initializePipelineTimelineChart() {
         // Analyze by branch for cancelled but not amended quotations
         const branchCancelledMap = new Map();
         cancelledQuotes.forEach(quote => {
-            const branch = quote.branch || 'Unknown';
+            const branch = quote.custom_branch || 'Unknown';
             if (!branchCancelledMap.has(branch)) {
                 branchCancelledMap.set(branch, { count: 0, amount: 0 });
             }
@@ -11185,7 +11594,7 @@ initializePipelineTimelineChart() {
                         
                         <div class="table-container">
                             ${this.renderTableWithControls('branch-cancelled-table', branchCancelled, [
-                                { key: 'branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' },
+                                { key: 'custom_branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' },
                                 { key: 'count', label: 'Cancelled Count', sortable: true, icon: 'fa-list' },
                                 { key: 'amount', label: 'Cancelled Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' }
                             ])}
@@ -11212,11 +11621,15 @@ initializePipelineTimelineChart() {
                     
                     <!-- Recent Cancelled But Not Amended Quotations -->
                     <div class="data-section">
-                        <div class="section-header">
+                        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
                             <h2 class="section-title">
                                 <i class="fa fa-clock"></i>
                                 Recent Cancelled But Not Amended Quotations
                             </h2>
+                            <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.showAllCancelledQuotes()">
+                                <i class="fa fa-expand"></i>
+                                View All ${cancelledQuotes.length}
+                            </button>
                         </div>
                         
                         <div class="table-container">
@@ -11643,10 +12056,16 @@ initializePipelineTimelineChart() {
                     `).join('')}
                 </div>
 
-                <!-- Recent Site Visits Table -->
+                <!-- All Site Visits Table -->
                 <div class="modal-section" style="margin-top: 2rem;">
-                    <h6><i class="fa fa-clock"></i>Recent Site Visits</h6>
-                    ${this.renderTableWithControls('recent-site-visits', siteVisits.slice(0, 20), [
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h6 style="margin: 0;"><i class="fa fa-list"></i>All Site Visits</h6>
+                        <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.showAllSiteVisits()">
+                            <i class="fa fa-expand"></i>
+                            View All ${siteVisits.length}
+                        </button>
+                    </div>
+                    ${this.renderTableWithControls('all-site-visits', siteVisits, [
                         { key: 'name', label: 'Visit ID', sortable: true, type: 'site_visit_link', icon: 'fa-id-card' },
                         { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
                         { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
@@ -11666,8 +12085,8 @@ initializePipelineTimelineChart() {
         let hasStatusField = false;
         
         designRequests.forEach(request => {
-            const status = request.status || 'Draft';
-            if (request.status) hasStatusField = true;
+            const status = request.workflow_state || 'Draft';
+            if (request.workflow_state) hasStatusField = true;
             if (!statusGroups[status]) {
                 statusGroups[status] = [];
             }
@@ -11754,11 +12173,17 @@ initializePipelineTimelineChart() {
 
                 <!-- Recent Design Requests Table -->
                 <div class="modal-section" style="margin-top: 2rem;">
-                    <h6><i class="fa fa-clock"></i>Recent Design Requests</h6>
-                    ${this.renderTableWithControls('recent-design-requests', designRequests.slice(0, 20), [
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h6 style="margin: 0;"><i class="fa fa-list"></i>All Design Requests</h6>
+                        <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.showAllDesignRequests()">
+                            <i class="fa fa-expand"></i>
+                            View All ${designRequests.length}
+                        </button>
+                    </div>
+                    ${this.renderTableWithControls('all-design-requests', designRequests, [
                         { key: 'name', label: 'Request ID', sortable: true, type: 'design_request_link', icon: 'fa-id-card' },
                         { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
-                        ...(hasStatusField ? [{ key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' }] : []),
+                        ...(hasStatusField ? [{ key: 'workflow_state', label: 'Workflow State', sortable: true, type: 'badge', icon: 'fa-cog' }] : []),
                         { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' },
                         { key: 'modified', label: 'Last Modified', sortable: true, type: 'date', icon: 'fa-clock' }
                     ])}
@@ -11770,11 +12195,18 @@ initializePipelineTimelineChart() {
     renderPermitSection() {
         const permits = this.data.permits || [];
         
-        // Group by status (since workflow_state is not available)
-        const workflowGroups = {
-            'All': permits
-        };
+        // Group by workflow_state
+        const workflowGroups = {};
         let hasWorkflowState = false;
+        
+        permits.forEach(permit => {
+            const workflowState = permit.workflow_state || 'Draft';
+            if (permit.workflow_state) hasWorkflowState = true;
+            if (!workflowGroups[workflowState]) {
+                workflowGroups[workflowState] = [];
+            }
+            workflowGroups[workflowState].push(permit);
+        });
         
         console.log('Permit Workflow Groups:', workflowGroups);
         console.log('Total Permits:', permits.length);
@@ -11850,12 +12282,19 @@ initializePipelineTimelineChart() {
                     `).join('') : ''}
                 </div>
 
-                <!-- Recent Permits Table -->
+                <!-- All Permits Table -->
                 <div class="modal-section" style="margin-top: 2rem;">
-                    <h6><i class="fa fa-clock"></i>Recent Permit Applications</h6>
-                    ${this.renderTableWithControls('recent-permits', permits.slice(0, 20), [
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h6 style="margin: 0;"><i class="fa fa-list"></i>All Permits</h6>
+                        <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.showAllPermits()">
+                            <i class="fa fa-expand"></i>
+                            View All ${permits.length}
+                        </button>
+                    </div>
+                    ${this.renderTableWithControls('all-permits', permits, [
                         { key: 'name', label: 'Permit ID', sortable: true, type: 'permit_link', icon: 'fa-id-card' },
                         { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
+                        ...(hasWorkflowState ? [{ key: 'workflow_state', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' }] : []),
                         { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' },
                         { key: 'modified', label: 'Last Modified', sortable: true, type: 'date', icon: 'fa-clock' }
                     ])}
@@ -12440,8 +12879,11 @@ initializePipelineTimelineChart() {
     
     // Handle multi-selection for Account Manager dropdown
     async handleAccountManagerMultiSelect(selectedOption, value, text, hiddenInput) {
+        const input = $('#filter-account-manager-input');
         const currentValues = hiddenInput.val() ? hiddenInput.val().split(',').map(v => v.trim()).filter(Boolean) : [];
         
+        // Get the clean text without any HTML highlighting
+        const cleanText = selectedOption.data('original-text') || selectedOption.get(0).textContent || text;
         
         if (selectedOption.hasClass('multi-selected')) {
             // Unselect: remove from current values
@@ -12457,7 +12899,12 @@ initializePipelineTimelineChart() {
             hiddenInput.val(currentValues.join(','));
         }
         
+        // Update display with comma-separated names
         this.updateAccountManagerDisplay();
+        
+        // Clear the search input and show all options for continued searching
+        input.val('');
+        this.showAllSearchableOptions('account-manager');
         
         // Apply filters immediately after selection change
         console.log('Before applying filters - Hidden input value:', hiddenInput.val());
@@ -12476,13 +12923,7 @@ initializePipelineTimelineChart() {
         await this.renderCurrentSection();
         console.log('After renderCurrentSection - Rendering complete');
         
-        // Add a delay check to see if data gets reset
-        setTimeout(() => {
-            console.log('After 2 seconds - Filtered data count:', this.data.filtered ? this.data.filtered.length : 'undefined');
-            console.log('After 2 seconds - account_incharge filter:', this.filters.account_incharge);
-        }, 2000);
-        
-        // Don't hide options to allow multiple selections
+        // Don't hide options to allow multiple selections and continued searching
     }
     
     updateAccountManagerDisplay() {
@@ -12491,11 +12932,11 @@ initializePipelineTimelineChart() {
         const displayText = $('#selected-managers-text');
         const input = $('#filter-account-manager-input');
         
-        const selectedValues = hiddenInput.val() ? hiddenInput.val().split(',').filter(Boolean) : [];
+        const selectedValues = hiddenInput.val() ? hiddenInput.val().split(',').map(v => v.trim()).filter(Boolean) : [];
         
         if (selectedValues.length === 0) {
             displayDiv.hide();
-            input.val('');
+            input.attr('placeholder', 'Search account managers...');
         } else {
             // Get display names for selected managers
             const displayNames = selectedValues.map(manager => {
@@ -12504,11 +12945,106 @@ initializePipelineTimelineChart() {
             
             displayText.text(displayNames.join(', '));
             displayDiv.show();
-            input.val(`${selectedValues.length} manager(s) selected`);
+            
+            // Update placeholder to show selection count but keep input clear for searching
+            input.attr('placeholder', `${selectedValues.length} manager(s) selected - continue searching...`);
         }
     }
 
+    populateTeamOptionsFromQuotations() {
+        console.log('Populating team options...');
+        console.log('Quotations data available:', this.data && this.data.quotations ? this.data.quotations.length : 'No data');
+        
+        if (!this.data || !this.data.quotations) {
+            console.log('No quotations data available yet');
+            return;
+        }
+        
+        // Debug first quotation structure
+        if (this.data.quotations.length > 0) {
+            console.log('Sample quotation structure:', Object.keys(this.data.quotations[0]));
+            console.log('First quotation custom_team:', this.data.quotations[0].custom_sales_team);
+            
+            // Check for alternative field names
+            const possibleFields = ['custom_sales_team', 'team', 'sales_team', 'ihg_team'];
+            possibleFields.forEach(field => {
+                if (this.data.quotations[0][field]) {
+                    console.log(`Found team field '${field}':`, this.data.quotations[0][field]);
+                }
+            });
+        }
+        
+        // Get unique teams from quotation data - try multiple possible field names
+        this.teamFieldName = 'custom_sales_team';
+        if (this.data.quotations.length > 0) {
+            const possibleFields = ['custom_sales_team', 'team', 'sales_team', 'ihg_team'];
+            const firstQuotation = this.data.quotations[0];
+            for (const field of possibleFields) {
+                if (firstQuotation[field]) {
+                    this.teamFieldName = field;
+                    console.log('Using team field:', this.teamFieldName);
+                    break;
+                }
+            }
+        }
+        
+        const allTeams = this.data.quotations.map(q => q[this.teamFieldName]);
+        console.log(`All ${this.teamFieldName} values:`, allTeams);
+        
+        const teams = [...new Set(this.data.quotations
+            .map(q => q[this.teamFieldName])
+            .filter(team => team && team.trim() !== ''))]; // Filter out empty/null teams
+        
+        console.log('Unique teams found:', teams);
+        teams.sort(); // Sort alphabetically
+        
+        const salesTeamOptions = $('#sales-team-options');
+        if (salesTeamOptions.length === 0) {
+            console.log('Sales team options element not found!');
+            return;
+        }
+        
+        salesTeamOptions.find('.searchable-option:not([data-value=""])').remove(); // Keep "All Teams" option
+        
+        if (teams.length > 0) {
+            teams.forEach(team => {
+                console.log('Adding team option:', team);
+                salesTeamOptions.append(`<div class="searchable-option" data-value="${team}">${team}</div>`);
+            });
+            console.log('Added', teams.length, 'team options');
+        } else {
+            console.log('No teams found in quotation data');
+            console.log('This likely means:');
+            console.log('1. The team field has a different name');
+            console.log('2. The team field is empty/null in all quotations');  
+            console.log('3. The quotation data structure is different than expected');
+        }
+    }
 
+    addTestTeamOptions() {
+        console.log('Adding direct test team options...');
+        const salesTeamOptions = $('#sales-team-options');
+        
+        if (salesTeamOptions.length === 0) {
+            console.log('ERROR: #sales-team-options element not found!');
+            console.log('Available elements with "team" in ID:', $('[id*="team"]').map(function() { return this.id; }).get());
+            return;
+        }
+        
+        console.log('Found sales-team-options element:', salesTeamOptions);
+        
+        // Clear existing options except "All Teams"
+        salesTeamOptions.find('.searchable-option:not([data-value=""])').remove();
+        
+        // Add test options directly
+        const testTeams = ['Test Team 1', 'Test Team 2', 'Test Team 3', 'Development Team', 'Sales Team'];
+        testTeams.forEach(team => {
+            console.log('Adding test team:', team);
+            salesTeamOptions.append(`<div class="searchable-option" data-value="${team}">${team}</div>`);
+        });
+        
+        console.log('Test team options added. Total options now:', salesTeamOptions.find('.searchable-option').length);
+    }
 
     showFullDataModal(title) {
         const tableState = this.tableStates['drilldown-table'];

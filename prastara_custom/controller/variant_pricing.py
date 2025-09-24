@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
@@ -7179,7 +7180,7 @@ def get_period_wise_quotation_report(from_date, to_date, company=None, branch=No
                 q.project_description,
                 q.transaction_date,
                 q.valid_till,
-                q.account_incharge,
+                q.custom_account_incharge,
                 q.owner,
                 q.company,
                 q.branch,
@@ -7193,14 +7194,14 @@ def get_period_wise_quotation_report(from_date, to_date, company=None, branch=No
                 q.opportunity,
                 q.workflow_state,
                 q.quotation_to,
-                COALESCE(u1.full_name, q.account_incharge) as account_incharge_full_name,
+                COALESCE(u1.full_name, q.custom_account_incharge) as account_incharge_full_name,
                 u1.user_image as account_incharge_image,
                 COALESCE(u2.full_name, q.owner) as owner_full_name,
                 u2.user_image as owner_image,
                 q.creation,
                 q.modified
             FROM `tabQuotation` q
-            LEFT JOIN `tabUser` u1 ON q.account_incharge = u1.name
+            LEFT JOIN `tabUser` u1 ON q.custom_account_incharge = u1.name
             LEFT JOIN `tabUser` u2 ON q.owner = u2.name
             WHERE {where_clause}
             ORDER BY q.transaction_date DESC, q.creation DESC
@@ -7383,7 +7384,6 @@ def calculate_profit_fast(items, grand_total):
 
 
 
-
 @frappe.whitelist()
 def get_cancelled_quotations(from_date, to_date, company=None, branch=None, account_incharge=None, customer=None):
     """
@@ -7439,7 +7439,7 @@ def get_cancelled_quotations(from_date, to_date, company=None, branch=None, acco
                 branch = [b for b in branch if b and str(b).strip()]
                 if branch:
                     placeholders = ', '.join(['%(branch_{})s'.format(i) for i in range(len(branch))])
-                    where_conditions.append("q.branch IN ({})".format(placeholders))
+                    where_conditions.append("q.custom_branch IN ({})".format(placeholders))
                     for i, br in enumerate(branch):
                         query_params['branch_{}'.format(i)] = br
 
@@ -7450,7 +7450,7 @@ def get_cancelled_quotations(from_date, to_date, company=None, branch=None, acco
                 account_incharge = [ai for ai in account_incharge if ai and str(ai).strip()]
                 if account_incharge:
                     placeholders = ', '.join(['%(account_incharge_{})s'.format(i) for i in range(len(account_incharge))])
-                    where_conditions.append("q.account_incharge IN ({})".format(placeholders))
+                    where_conditions.append("q.custom_account_incharge IN ({})".format(placeholders))
                     for i, ai in enumerate(account_incharge):
                         query_params['account_incharge_{}'.format(i)] = ai
 
@@ -7478,10 +7478,10 @@ def get_cancelled_quotations(from_date, to_date, company=None, branch=None, acco
                 q.project_description,
                 q.transaction_date,
                 q.valid_till,
-                q.account_incharge,
+                q.custom_account_incharge,
                 q.owner,
                 q.company,
-                q.branch,
+                q.custom_branch,
                 q.total_qty,
                 q.base_net_total,
                 q.base_total_taxes_and_charges,
@@ -7494,14 +7494,14 @@ def get_cancelled_quotations(from_date, to_date, company=None, branch=None, acco
                 q.quotation_to,
                 q.custom_cancel_status,
                 q.docstatus,
-                COALESCE(u1.full_name, q.account_incharge) as account_incharge_full_name,
+                COALESCE(u1.full_name, q.custom_account_incharge) as account_incharge_full_name,
                 u1.user_image as account_incharge_image,
                 COALESCE(u2.full_name, q.owner) as owner_full_name,
                 u2.user_image as owner_image,
                 q.creation,
                 q.modified
             FROM `tabQuotation` q
-            LEFT JOIN `tabUser` u1 ON q.account_incharge = u1.name
+            LEFT JOIN `tabUser` u1 ON q.custom_account_incharge = u1.name
             LEFT JOIN `tabUser` u2 ON q.owner = u2.name
             WHERE {where_clause}
             ORDER BY q.transaction_date DESC, q.creation DESC
@@ -7768,11 +7768,11 @@ def get_ldw_quotation_report(from_date, to_date, company=None, branch=None, acco
                 branch = [b for b in branch if b and str(b).strip()]
                 if branch:
                     placeholders = ', '.join(['%(branch_{})s'.format(i) for i in range(len(branch))])
-                    where_conditions.append("q.branch IN ({})".format(placeholders))
+                    where_conditions.append("q.custom_branch IN ({})".format(placeholders))
                     for i, br in enumerate(branch):
                         query_params['branch_{}'.format(i)] = br
             elif isinstance(branch, str) and branch.strip():
-                where_conditions.append("q.branch = %(branch)s")
+                where_conditions.append("q.custom_branch = %(branch)s")
                 query_params['branch'] = branch
                 
         # Add account incharge filter
@@ -7781,11 +7781,11 @@ def get_ldw_quotation_report(from_date, to_date, company=None, branch=None, acco
                 account_incharge = [a for a in account_incharge if a and str(a).strip()]
                 if account_incharge:
                     placeholders = ', '.join(['%(account_incharge_{})s'.format(i) for i in range(len(account_incharge))])
-                    where_conditions.append("q.account_incharge IN ({})".format(placeholders))
+                    where_conditions.append("q.custom_account_incharge IN ({})".format(placeholders))
                     for i, acc in enumerate(account_incharge):
                         query_params['account_incharge_{}'.format(i)] = acc
             elif isinstance(account_incharge, str) and account_incharge.strip():
-                where_conditions.append("q.account_incharge = %(account_incharge)s")
+                where_conditions.append("q.custom_account_incharge = %(account_incharge)s")
                 query_params['account_incharge'] = account_incharge
                 
         # Add created by filter
@@ -7849,7 +7849,7 @@ def get_ldw_quotation_report(from_date, to_date, company=None, branch=None, acco
                 "q.party_name LIKE %(search_term)s", 
                 "q.customer_name LIKE %(search_term)s",
                 "q.project_description LIKE %(search_term)s",
-                "q.account_incharge LIKE %(search_term)s"
+                "q.custom_account_incharge LIKE %(search_term)s"
             ]
             where_conditions.append("({})".format(" OR ".join(search_conditions)))
             query_params['search_term'] = search_term
@@ -7875,10 +7875,10 @@ def get_ldw_quotation_report(from_date, to_date, company=None, branch=None, acco
                 q.project_description,
                 q.transaction_date,
                 q.valid_till,
-                q.account_incharge,
+                q.custom_account_incharge,
                 q.owner,
                 q.company,
-                q.branch,
+                q.custom_branch,
                 q.total_qty,
                 q.base_net_total,
                 q.base_total_taxes_and_charges,
@@ -7890,14 +7890,14 @@ def get_ldw_quotation_report(from_date, to_date, company=None, branch=None, acco
                 q.workflow_state,
                 q.quotation_to,
                 q.custom_cancel_status,
-                COALESCE(u1.full_name, q.account_incharge) as account_incharge_full_name,
+                COALESCE(u1.full_name, q.custom_account_incharge) as account_incharge_full_name,
                 u1.user_image as account_incharge_image,
                 COALESCE(u2.full_name, q.owner) as owner_full_name,
                 u2.user_image as owner_image,
                 q.creation,
                 q.modified
             FROM `tabQuotation` q
-            LEFT JOIN `tabUser` u1 ON q.account_incharge = u1.name
+            LEFT JOIN `tabUser` u1 ON q.custom_account_incharge = u1.name
             LEFT JOIN `tabUser` u2 ON q.owner = u2.name
             WHERE {where_clause}
             ORDER BY q.transaction_date DESC, q.creation DESC
