@@ -1,5 +1,4 @@
 frappe.pages['prd-pipeline'].on_page_load = function(wrapper) {
-
     var page = frappe.ui.make_app_page({
         parent: wrapper,
         title: 'Sales Intelligence Hub',
@@ -366,6 +365,13 @@ this.data = {
 .close:hover {
     opacity: 1 !important;
     background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.quotation-count-btn:hover {
+    background: rgba(59, 130, 246, 0.1) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
     color: var(--accent-red) !important;
 }
 
@@ -1078,6 +1084,43 @@ this.data = {
                     gap: 1.25rem;
                     margin-bottom: 2rem;
                     padding: 0 1rem;
+                }
+
+                /* Customer Value Tabs */
+                .customer-value-tabs .tab-btn.active {
+                    color: var(--accent-blue) !important;
+                    border-bottom-color: var(--accent-blue) !important;
+                    background: rgba(59, 130, 246, 0.1);
+                }
+
+                .customer-value-tabs .tab-btn:hover {
+                    color: var(--accent-blue);
+                    background: rgba(59, 130, 246, 0.05);
+                }
+
+                .customer-value-tabs .tab-content {
+                    animation: fadeIn 0.3s ease-in-out;
+                }
+
+                /* Pipeline Tabs */
+                .pipeline-tabs .tab-btn.active {
+                    color: var(--accent-blue) !important;
+                    border-bottom-color: var(--accent-blue) !important;
+                    background: rgba(59, 130, 246, 0.1);
+                }
+
+                .pipeline-tabs .tab-btn:hover {
+                    color: var(--accent-blue);
+                    background: rgba(59, 130, 246, 0.05);
+                }
+
+                .pipeline-tabs .tab-content {
+                    animation: fadeIn 0.3s ease-in-out;
+                }
+
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
                 }
 
                 @media (max-width: 768px) {
@@ -3605,7 +3648,7 @@ select.form-control option {
                                                 <i class="fa fa-calendar-alt" style="margin-right: 0.5rem;"></i>Yearly Based
                                             </h6>
                                             <div class="year-select-container">
-                                                <select class="form-control" id="yearly-select" onchange="frappe.sales_intelligence.selectYearlyRange()">
+                                                <select class="form-control" id="yearly-select" onchange="frappe.sales_intelligence.selectYearlyRange()" style="height: 44px;">
                                                     <option value="">Select Year</option>
                                                     <option value="2022">2022</option>
                                                     <option value="2023">2023</option>
@@ -4317,7 +4360,7 @@ select.form-control option {
                 method: 'frappe.client.get_list',
                 args: {
                     doctype: 'Item',
-                    fields: ['item_code', 'custom_category_list', 'is_stock_item'],
+                    fields: ['item_code', 'category_list', 'is_stock_item'],
                     filters: [
                         ['item_code', 'in', itemCodes]
                     ],
@@ -4329,7 +4372,7 @@ select.form-control option {
             if (response.message) {
                 response.message.forEach(item => {
                     itemDetails[item.item_code] = {
-                        category: item.custom_category_list || 'Uncategorized',
+                        category: item.category_list || 'Uncategorized',
                         is_stock_item: item.is_stock_item || 0
                     };
                 });
@@ -4381,17 +4424,17 @@ async loadData() {
             from_date: this.filters.from_date,
             to_date: this.filters.to_date,
             company: this.filters.company,
-            custom_branch: this.filters.branch,
+            branch: this.filters.branch,
             status: this.filters.status
         });
 
         const response = await frappe.call({
-            method: 'prastara_custom.controller.variant_pricing.get_ldw_quotation_report',
+            method: 'qcshr.controller.api.get_ldw_quotation_report',
             args: {
                 from_date: this.filters.from_date,
                 to_date: this.filters.to_date,
                 company: this.filters.company ? [this.filters.company] : [],
-                custom_branch: this.filters.branch ? [this.filters.branch] : [],
+                branch: this.filters.branch ? [this.filters.branch] : [],
                 account_incharge: this.filters.account_incharge ? [this.filters.account_incharge] : [],
                 sales_team: this.filters.sales_team ? [this.filters.sales_team] : [],
                 created_by: this.filters.created_by ? [this.filters.created_by] : [],
@@ -4475,6 +4518,9 @@ async loadData() {
             
             // Load quotation lost reasons
             await this.loadQuotationLostReasons();
+
+            // Load active quotation lost reasons for visual display
+            await this.fetchActiveQuotationLostReasons();
             
             // Populate filter options after data is loaded (for initial load)
             await this.populateFilterOptions();
@@ -4494,12 +4540,12 @@ async loadData() {
             this.showLoading();
             
             const response = await frappe.call({
-                method: 'prastara_custom.controller.variant_pricing.get_cancelled_quotations',
+                method: 'qcshr.controller.api.get_cancelled_quotations',
                 args: {
                     from_date: this.filters.from_date,
                     to_date: this.filters.to_date,
                     company: this.filters.company ? [this.filters.company] : [],
-                    custom_branch: this.filters.branch ? [this.filters.branch] : [],
+                    branch: this.filters.branch ? [this.filters.branch] : [],
                     account_incharge: this.filters.account_incharge ? [this.filters.account_incharge] : [],
                     customer: this.filters.customer
                 }
@@ -4532,25 +4578,25 @@ async loadData() {
         }
         
         // Add branch filter for Metroplus
-        filters.custom_branch = ['like', '%prastara%'];
+        filters.branch = ['like', '%pras%'];
         
         // Try to get status field, fallback to basic fields if not permitted
-        let fields = ['name', 'customer', 'custom_branch', 'creation', 'modified'];
-        
+        let fields = ['name', 'customer', 'branch', 'creation', 'modified', 'opportunity'];
+
         // Try to add status field, but handle gracefully if not permitted
         try {
             const testResponse = await frappe.call({
                 method: 'frappe.client.get_list',
                 args: {
                     doctype: 'Site Visit',
-                    fields: ['name', 'customer', 'custom_branch', 'status', 'creation', 'modified'],
+                    fields: ['name', 'customer', 'branch', 'status', 'creation', 'modified', 'opportunity'],
                     filters: filters,
                     limit_page_length: 1,  // Changed from limit
                     order_by: 'creation desc'
                 }
             });
             // If successful, use full field list including status
-            fields = ['name', 'customer', 'custom_branch', 'status', 'creation', 'modified'];
+            fields = ['name', 'customer', 'branch', 'status', 'creation', 'modified', 'opportunity'];
         } catch (error) {
             console.log('Status field not available for Site Visit, using basic fields');
         }
@@ -4574,16 +4620,16 @@ async loadData() {
         
         this.data.site_visits = siteVisits;
         console.log(`Loaded ${this.data.site_visits.length} site visits filtered for branch: ${this.filters.branch || 'All'}`);
-        
+
         // Optional: Log grouping by status (similar to your Design Request code)
-        console.log('Site visits by status:', 
+        console.log('Site visits by status:',
             this.data.site_visits.reduce((acc, visit) => {
                 const state = visit.status || 'No Status';
                 acc[state] = (acc[state] || 0) + 1;
                 return acc;
             }, {})
         );
-        
+
         return { data: this.data.site_visits, total_count: this.data.site_visits.length };
     } catch (error) {
         console.error('Failed to load site visit data:', error);
@@ -4602,27 +4648,27 @@ async loadData() {
         }
         
         // Add branch filter for Metro
-        filters.custom_branch = ['like', '%metro%'];
+        filters.branch = ['like', '%prastara%'];
         
-        // Try to get workflow_state field, fallback to basic fields if not permitted
-        let fields = ['name', 'customer', 'custom_branch', 'creation', 'modified'];
-        
-        // Try to add workflow_state field, but handle gracefully if not permitted
+        // Try to get status field, fallback to basic fields if not permitted
+        let fields = ['name', 'customer', 'branch', 'creation', 'modified', 'opportunity'];
+
+        // Try to add status field, but handle gracefully if not permitted
         try {
             const testResponse = await frappe.call({
                 method: 'frappe.client.get_list',
                 args: {
                     doctype: 'Design Request',
-                    fields: ['name', 'customer', 'custom_branch', 'workflow_state', 'creation', 'owner'],
+                    fields: ['name', 'customer', 'branch', 'status', 'creation', 'owner', 'opportunity'],
                     filters: filters,
                     limit_page_length: 1,  // Changed from limit
                     order_by: 'creation desc'
                 }
             });
-            // If successful, use full field list including workflow_state
-            fields = ['name', 'customer', 'custom_branch', 'workflow_state', 'creation', 'owner'];
+            // If successful, use full field list including status
+            fields = ['name', 'customer', 'branch', 'status', 'creation', 'owner', 'opportunity'];
         } catch (error) {
-            console.log('Workflow state field not available for Design Request, using basic fields');
+            console.log('Status field not available for Design Request, using basic fields');
         }
         
         const response = await frappe.call({
@@ -4641,13 +4687,13 @@ async loadData() {
         // Apply basic filtering only - remove aggressive company-based filtering
         // This ensures all design requests within the date range are shown
         // Company filtering can be handled differently if needed
-        
+
         this.data.design_requests = designRequests;
         console.log(`Loaded ${this.data.design_requests.length} design requests with filters:`, filters);
         console.log('Sample design request:', this.data.design_requests[0]);
-        console.log('Design requests by workflow state:', 
+        console.log('Design requests by status:',
             this.data.design_requests.reduce((acc, req) => {
-                const state = req.workflow_state || 'No State';
+                const state = req.status || 'No Status';
                 acc[state] = (acc[state] || 0) + 1;
                 return acc;
             }, {})
@@ -4675,7 +4721,7 @@ async loadData() {
             method: 'frappe.client.get_list',
             args: {
                 doctype: 'Permit Form',
-                fields: ['name', 'customer', 'company', 'workflow_state', 'posting_date', 'creation', 'modified'],
+                fields: ['name', 'customer', 'company', 'workflow_state', 'posting_date', 'creation', 'modified', 'quotation'],
                 filters: filters,
                 limit_page_length: 1000,  // Changed from limit
                 order_by: 'posting_date desc'
@@ -4721,12 +4767,12 @@ async loadData() {
     async loadOpportunityData() {
         try {
             const response = await frappe.call({
-                method: 'prastara_custom.controller.variant_pricing.get_opportunity_report',
+                method: 'qcshr.controller.api.get_opportunity_report',
                 args: {
                     from_date: this.filters.from_date,
                     to_date: this.filters.to_date,
                     company: this.filters.company ? [this.filters.company] : [],
-                    custom_branch: this.filters.branch ? [this.filters.branch] : [],
+                    branch: this.filters.branch ? [this.filters.branch] : [],
                     account_incharge: this.filters.account_incharge ? [this.filters.account_incharge] : [],
                     customer: this.filters.customer,
                     status: this.filters.status === 'all' ? null : this.filters.status
@@ -4738,10 +4784,16 @@ async loadData() {
                 console.log('Loaded opportunities:', this.data.opportunities.length);
                 if (this.data.opportunities.length > 0) {
                     console.log('Sample opportunity:', this.data.opportunities[0]);
+                    console.log('Opportunity fields available:', Object.keys(this.data.opportunities[0]));
+                    console.log('Assigned to field:', this.data.opportunities[0].assigned_to);
+                    console.log('Assigned to name field:', this.data.opportunities[0].assigned_to_name);
                 }
                 
                 // Process opportunity data to link with quotations
                 this.processOpportunityData();
+
+                // Fetch and add user full names for assigned_to field
+                await this.addUserNamesToOpportunities();
                 
                 return response.message;
             } else {
@@ -4752,6 +4804,30 @@ async loadData() {
             console.error('Failed to load opportunity data:', error);
             this.data.opportunities = [];
             return { data: [], total_count: 0 };
+        }
+    }
+
+    // Function to fetch active reasons from Quotation Lost Reason doctype
+    async fetchActiveQuotationLostReasons() {
+        try {
+            const reasonsResponse = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Quotation Lost Reason',
+                    fields: ['name', 'order_lost_reason'],
+                    filters: {
+                        custom_disabled: 0
+                    },
+                    limit_page_length: 0
+                }
+            });
+
+            this.activeReasons = reasonsResponse.message || [];
+            return this.activeReasons;
+        } catch (error) {
+            console.error('Error fetching active quotation lost reasons:', error);
+            this.activeReasons = [];
+            return [];
         }
     }
 
@@ -4909,11 +4985,19 @@ async loadData() {
     }
 
     async processData() {
-        // Add calculated fields
+        // Add calculated fields and ensure account manager field is available
         this.data.quotations = this.data.quotations.map(quote => {
             quote.pipeline = this.calculatePipeline(quote);
             quote.days_since_created = Math.ceil((new Date() - new Date(quote.transaction_date)) / (1000 * 60 * 60 * 24));
             quote.days_to_expiry = Math.ceil((new Date(quote.valid_till) - new Date()) / (1000 * 60 * 60 * 24));
+
+            // Ensure account_incharge_full_name field is available
+            if (!quote.account_incharge_full_name && quote.account_incharge) {
+                quote.account_incharge_full_name = quote.account_incharge;
+            } else if (!quote.account_incharge_full_name) {
+                quote.account_incharge_full_name = 'Not Assigned';
+            }
+
             return quote;
         });
         
@@ -5060,6 +5144,7 @@ calculatePipeline(quote) {
     const wonQuotes = data.filter(q => ['Ordered', 'Partially Ordered'].includes(q.status));
     const lostQuotes = data.filter(q => q.status === 'Lost');
     const draftQuotes = data.filter(q => q.status === 'Draft');
+    const holdQuotes = data.filter(q => q.status === 'Hold');
     const pendingQuotes = data.filter(q => ['Open', 'Expired'].includes(q.status));
     const openQuotes = data.filter(q => q.status === 'Open');
     const expiredQuotes = data.filter(q => q.status === 'Expired');
@@ -5147,18 +5232,19 @@ calculatePipeline(quote) {
         !['Partially Ordered', 'Lost', 'Cancelled', 'Expired'].includes(q.status)
     );
     
-    // Calculate total: Won + Lost + Draft + Pending + Cancelled (NOT including Pending Dept Approval)
-    const newTotalCount = wonQuotes.length + lostQuotes.length + draftQuotes.length + pendingQuotes.length + cancelledNotAmendedQuotes.length;
+    // Calculate total: Won + Lost + Draft + Hold + Pending (NOT including Pending Dept Approval and Cancelled)
+    const newTotalCount = wonQuotes.length + lostQuotes.length + draftQuotes.length + holdQuotes.length + pendingQuotes.length;
     const newTotalAmount = wonQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0) +
                           lostQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0) +
                           draftQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0) +
-                          pendingQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0) +
-                          cancelledNotAmendedQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0);
+                          holdQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0) +
+                          pendingQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0);
 
     console.log('=== FINAL COUNTS ===');
     console.log(`Won: ${wonQuotes.length}, Lost: ${lostQuotes.length}, Draft: ${draftQuotes.length}`);
-    console.log(`Pending: ${pendingQuotes.length}, Cancelled: ${cancelledNotAmendedQuotes.length}`);
-    console.log(`Total: ${newTotalCount}`);
+    console.log(`Hold: ${holdQuotes.length}, Pending: ${pendingQuotes.length}`);
+    console.log(`Total (excluding cancelled): ${newTotalCount}`);
+    console.log(`Cancelled (separate): ${cancelledNotAmendedQuotes.length}`);
 
     return {
         total: {
@@ -5189,6 +5275,10 @@ calculatePipeline(quote) {
             count: draftQuotes.length,
             amount: draftQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
         },
+        hold: {
+            count: holdQuotes.length,
+            amount: holdQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
+        },
         pendingDeptApproval: {
             count: pendingDeptApprovalQuotes.length,
             amount: pendingDeptApprovalQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
@@ -5199,7 +5289,9 @@ calculatePipeline(quote) {
             amount: cancelledNotAmendedQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0)
         },
         valueRanges: valueRanges,
-        statusWise: this.calculateStatusWiseBreakdown(data)
+        statusWise: this.calculateStatusWiseBreakdown(data),
+        teamWise: this.calculateTeamWiseStats(data),
+        teamMembers: [] // Will be populated asynchronously
     };
 }
 
@@ -5215,6 +5307,192 @@ calculatePipeline(quote) {
                 percentage: data.length > 0 ? (filtered.length / data.length * 100).toFixed(1) : 0
             };
         });
+    }
+
+    calculateTeamWiseStats(data) {
+        const teamFieldName = this.teamFieldName || 'custom_sales_team';
+
+        // Get unique teams, including those that might be null/empty
+        const allTeams = [...new Set(data.map(q => q[teamFieldName] || 'Unassigned'))];
+
+        const teamStats = {};
+
+        allTeams.forEach(team => {
+            const teamQuotes = data.filter(q => (q[teamFieldName] || 'Unassigned') === team);
+
+            // Calculate counts for each status
+            const wonQuotes = teamQuotes.filter(q => ['Ordered', 'Partially Ordered'].includes(q.status));
+            const openQuotes = teamQuotes.filter(q => q.status === 'Open');
+            const draftQuotes = teamQuotes.filter(q => q.status === 'Draft');
+            const holdQuotes = teamQuotes.filter(q => q.status === 'Hold');
+            const expiredQuotes = teamQuotes.filter(q => q.status === 'Expired');
+            const lostQuotes = teamQuotes.filter(q => q.status === 'Lost');
+            const pendingDeptApprovalQuotes = teamQuotes.filter(q =>
+                q.workflow_state === 'Pending Dept Approval' &&
+                !['Partially Ordered', 'Lost', 'Cancelled', 'Expired'].includes(q.status)
+            );
+
+            // Get cancelled quotes for this team from cached data
+            let cancelledNotAmendedQuotes = [];
+            if (this.cancelledQuotationsData && this.cancelledQuotationsData.data) {
+                cancelledNotAmendedQuotes = this.cancelledQuotationsData.data.filter(q =>
+                    (q[teamFieldName] || 'Unassigned') === team
+                );
+            }
+
+            // Calculate total (excluding Pending Dept Approval and Cancelled Not Amended)
+            const totalCount = wonQuotes.length + openQuotes.length + draftQuotes.length +
+                              holdQuotes.length + expiredQuotes.length + lostQuotes.length;
+
+            teamStats[team] = {
+                team: team,
+                won: wonQuotes.length,
+                open: openQuotes.length,
+                draft: draftQuotes.length,
+                hold: holdQuotes.length,
+                expired: expiredQuotes.length,
+                lost: lostQuotes.length,
+                total: totalCount,
+                pendingDeptApproval: pendingDeptApprovalQuotes.length,
+                cancelledNotAmended: cancelledNotAmendedQuotes.length
+            };
+        });
+
+        return teamStats;
+    }
+
+    async calculateTeamMemberStats(data) {
+        const teamFieldName = this.teamFieldName || 'custom_sales_team';
+
+        // Get unique owners from quotation data
+        const uniqueOwners = [...new Set(data.map(q => q.owner).filter(owner => owner))];
+
+        // Create mapping of owner to team from quotations
+        const ownerTeamMap = {};
+        // Create mapping of owner to account incharge from quotations
+        const ownerAccountInchargeMap = {};
+        data.forEach(q => {
+            if (q.owner) {
+                const team = q[teamFieldName] || 'Unassigned';
+                if (!ownerTeamMap[q.owner]) {
+                    ownerTeamMap[q.owner] = team;
+                }
+
+                // Map account incharge for the owner
+                const accountIncharge = q.account_incharge_full_name || q.custom_account_incharge || 'Not Set';
+                if (!ownerAccountInchargeMap[q.owner]) {
+                    ownerAccountInchargeMap[q.owner] = accountIncharge;
+                }
+            }
+        });
+
+        // Fetch user details for all owners
+        try {
+            const response = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'User',
+                    filters: [['name', 'in', uniqueOwners]],
+                    fields: ['name', 'full_name', 'enabled'],
+                    limit_page_length: 0
+                }
+            });
+
+            const userDetails = response.message || [];
+
+            // Calculate comprehensive quotation metrics for each owner
+            const ownerQuotationCounts = {};
+            const ownerWonCounts = {};
+            const ownerLostCounts = {};
+            const ownerLostValues = {};
+            const ownerPendingCounts = {};
+
+            data.forEach(q => {
+                if (q.owner) {
+                    // Total quotations
+                    ownerQuotationCounts[q.owner] = (ownerQuotationCounts[q.owner] || 0) + 1;
+
+                    // Won quotations (Ordered + Partially Ordered)
+                    if (['Ordered', 'Partially Ordered'].includes(q.status)) {
+                        ownerWonCounts[q.owner] = (ownerWonCounts[q.owner] || 0) + 1;
+                    }
+
+                    // Lost quotations
+                    if (q.status === 'Lost') {
+                        ownerLostCounts[q.owner] = (ownerLostCounts[q.owner] || 0) + 1;
+                        ownerLostValues[q.owner] = (ownerLostValues[q.owner] || 0) + (parseFloat(q.grand_total) || 0);
+                    }
+
+                    // Pending quotations (Open + Draft + Hold)
+                    if (['Open', 'Draft', 'Hold'].includes(q.status)) {
+                        ownerPendingCounts[q.owner] = (ownerPendingCounts[q.owner] || 0) + 1;
+                    }
+                }
+            });
+
+            // Create team member stats with conversion metrics
+            const memberStats = userDetails.map(user => {
+                const totalQuotations = ownerQuotationCounts[user.name] || 0;
+                const wonCount = ownerWonCounts[user.name] || 0;
+                const lostCount = ownerLostCounts[user.name] || 0;
+                const lostValue = ownerLostValues[user.name] || 0;
+                const pendingCount = ownerPendingCounts[user.name] || 0;
+
+                return {
+                    owner: user.name,
+                    team: ownerTeamMap[user.name] || 'Unassigned',
+                    fullName: user.full_name || user.name,
+                    status: user.enabled ? 'Active' : 'Inactive',
+                    enabled: user.enabled,
+                    accountIncharge: ownerAccountInchargeMap[user.name] || 'Not Set',
+                    quotationCount: totalQuotations,
+                    totalQuotations: totalQuotations,
+                    pendingQuotations: pendingCount,
+                    wonCount: wonCount,
+                    lostCount: lostCount,
+                    lostValue: this.formatCurrency(lostValue),
+                    wonConversion: totalQuotations > 0 ? ((wonCount / totalQuotations) * 100).toFixed(1) : '0.0',
+                    lostConversion: totalQuotations > 0 ? ((lostCount / totalQuotations) * 100).toFixed(1) : '0.0',
+                    quotations: data.filter(q => q.owner === user.name) // Store actual quotations for modal
+                };
+            });
+
+            // Sort by team order, then by status (Active first), then by name
+            const teamOrder = ['Team A', 'Team B', 'Team C', 'Team D', 'Team-Biju Balan'];
+
+            memberStats.sort((a, b) => {
+                // First sort by team priority
+                const indexA = teamOrder.indexOf(a.team);
+                const indexB = teamOrder.indexOf(b.team);
+
+                if (indexA !== -1 && indexB !== -1) {
+                    if (indexA !== indexB) return indexA - indexB;
+                } else if (indexA !== -1 && indexB === -1) {
+                    return -1;
+                } else if (indexA === -1 && indexB !== -1) {
+                    return 1;
+                } else {
+                    // Both not in priority list, sort by team name
+                    const teamCompare = a.team.localeCompare(b.team);
+                    if (teamCompare !== 0) return teamCompare;
+                }
+
+                // Within same team, sort by status (Active first)
+                if (a.enabled !== b.enabled) {
+                    return b.enabled - a.enabled; // Active (true) comes before Inactive (false)
+                }
+
+                // Finally sort by full name
+                return a.fullName.localeCompare(b.fullName);
+            });
+
+            return memberStats;
+
+        } catch (error) {
+            console.error('Error fetching user details:', error);
+            frappe.msgprint('Error fetching user details for team members');
+            return [];
+        }
     }
 
 calculatePipelineStats(data) {
@@ -5314,7 +5592,7 @@ calculatePipelineStats(data) {
         
         return {
             companyWise: this.calculateConversionByField(data, 'company', wonStatuses),
-            branchWise: this.calculateConversionByField(data, 'custom_branch', wonStatuses),
+            branchWise: this.calculateConversionByField(data, 'branch', wonStatuses),
             accountInchargeWise: this.calculateConversionByField(data, 'account_incharge', wonStatuses, 'account_incharge_full_name'),
             ownerWise: this.calculateConversionByField(data, 'owner', wonStatuses, 'owner_full_name')
         };
@@ -5364,7 +5642,7 @@ calculatePipelineStats(data) {
         const lowMarginQuotes = marginData.filter(q => parseFloat(q.margin_percentage) < 15);
         
         // Branch-wise margin analysis
-        const branchMargins = this.calculateMarginByField(marginData, 'custom_branch');
+        const branchMargins = this.calculateMarginByField(marginData, 'branch');
         
         // Account manager-wise margin analysis
         const accountManagerMargins = this.calculateMarginByField(marginData, 'account_incharge', 'account_incharge_full_name');
@@ -5899,11 +6177,13 @@ debugWorkflowStates() {
         }
         
         $('#content-area').html(content);
-        
+
         // Initialize charts if needed
-        if (['overview', 'conversion', 'pipeline'].includes(this.currentSection)) {
+        if (['overview', 'conversion', 'pipeline', 'lost'].includes(this.currentSection)) {
             setTimeout(() => this.initializeCharts(), 100);
         }
+
+
     }
 
     renderOverviewSection() {
@@ -6020,13 +6300,34 @@ debugWorkflowStates() {
                         Click to view details
                     </span>
                 </div>
-                
-                <!-- 5. Pending Dept Approval -->
+
+                <!-- 5. Hold Quotations -->
+                <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('hold_quotations')">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-pause-circle" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
+                                Hold Quotations
+                            </h3>
+                            <p class="stat-card-value">${stats.hold.count.toLocaleString()}</p>
+                            <p class="stat-card-amount">AED ${this.formatCurrency(stats.hold.amount)}</p>
+                        </div>
+                        <div class="stat-card-icon" style="background: linear-gradient(135deg, var(--accent-orange), #f59e0b);">
+                            <i class="fa fa-pause-circle"></i>
+                        </div>
+                    </div>
+                    <span class="click-indicator">
+                        <i class="fa fa-mouse-pointer"></i>
+                        Click to view details
+                    </span>
+                </div>
+
+                <!-- 6. Pending Dept Approval -->
                 <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('pending_dept_approval_quotations')">
                     <div class="stat-card-header">
                         <div class="stat-card-content">
                             <h3 class="stat-card-title">
-                                <i class="fa fa-hourglass-half" style="color: var(--accent-warning); margin-right: 0.5rem;"></i>
+                                <i class="fa fa-hourglass-half" style="color: var(--orange-700); margin-right: 0.5rem;"></i>
                                 Pending Dept Approval
                             </h3>
                             <p class="stat-card-value">${stats.pendingDeptApproval.count.toLocaleString()}</p>
@@ -6042,7 +6343,7 @@ debugWorkflowStates() {
                     </span>
                 </div>
                 
-                <!-- 6. Open Quotations -->
+                <!-- 7. Open Quotations -->
                 <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('open_quotations')">
                     <div class="stat-card-header">
                         <div class="stat-card-content">
@@ -6063,7 +6364,7 @@ debugWorkflowStates() {
                     </span>
                 </div>
                 
-                <!-- 7. Expired Quotations -->
+                <!-- 8. Expired Quotations -->
                 <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('expired_quotations')">
                     <div class="stat-card-header">
                         <div class="stat-card-content">
@@ -6084,7 +6385,7 @@ debugWorkflowStates() {
                     </span>
                 </div>
                 
-                <!-- 8. Lost Quotations -->
+                <!-- 9. Lost Quotations -->
                 <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('lost_quotations')">
                     <div class="stat-card-header">
                         <div class="stat-card-content">
@@ -6105,7 +6406,7 @@ debugWorkflowStates() {
                     </span>
                 </div>
                 
-                <!-- 9. Cancelled but not amended Quotations -->
+                <!-- 10. Cancelled but not amended Quotations -->
                 <div class="stat-card" onclick="frappe.sales_intelligence.showDrilldown('cancelled_not_amended_quotations')">
                     <div class="stat-card-header">
                         <div class="stat-card-content">
@@ -6126,7 +6427,266 @@ debugWorkflowStates() {
                     </span>
                 </div>
             </div>
-            
+
+            <!-- Team-wise Breakdown Section with Tabs -->
+            <div class="data-section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fa fa-users"></i>
+                        Team-wise Quotations Breakdown
+                    </h2>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                        <i class="fa fa-info-circle"></i>
+                        <span>Team analysis and member status</span>
+                    </div>
+                </div>
+
+                <!-- Tab Navigation -->
+                <div class="tab-navigation" style="margin-top: 1.5rem; border-bottom: 2px solid var(--border-color);">
+                    <button class="tab-button active" onclick="frappe.sales_intelligence.switchTeamTab('breakdown')"
+                            style="padding: 0.75rem 1.5rem; border: none; background: none; color: var(--text-primary); font-weight: 600; cursor: pointer; border-bottom: 3px solid var(--accent-blue); margin-right: 1rem;">
+                        <i class="fa fa-chart-bar" style="margin-right: 0.5rem;"></i>Team Breakdown
+                    </button>
+                    <button class="tab-button" onclick="frappe.sales_intelligence.switchTeamTab('members')"
+                            style="padding: 0.75rem 1.5rem; border: none; background: none; color: var(--text-secondary); font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; margin-right: 1rem;">
+                        <i class="fa fa-user-friends" style="margin-right: 0.5rem;"></i>Team Members
+                    </button>
+                </div>
+
+                <!-- Tab Content Container -->
+                <div id="team-tab-content" style="margin-top: 1.5rem;">
+                    <!-- Team Breakdown Tab Content -->
+                    <div id="team-breakdown-tab" class="tab-content active">
+
+                <div class="table-responsive" style="margin-top: 1.5rem;">
+                    <table class="table table-striped" style="background: var(--card-bg); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
+                        <thead style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)); border-bottom: 2px solid var(--border-color);">
+                            <tr>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); border: none;">Team</th>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); border: none; text-align: center; background: rgba(59, 130, 246, 0.1);">Total</th>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--accent-green); border: none; text-align: center;">Won Quotes</th>
+                                <th style="padding: 1rem; font-weight: 600; color: green; border: none; text-align: center;">Conversion Rate</th>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--accent-purple); border: none; text-align: center;">Draft Quotes</th>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--accent-orange); border: none; text-align: center;">Hold Quotes</th>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--accent-blue); border: none; text-align: center;">Open</th>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--orange-700); border: none; text-align: center;">Pending Dept Approval</th>
+                                <th style="padding: 1rem; font-weight: 600; color: #e96969; border: none; text-align: center;">Expired Quotations</th>
+                                <th style="padding: 1rem; font-weight: 600; color: red; border: none; text-align: center;">Lost</th>
+                                <th style="padding: 1rem; font-weight: 600; color: red; border: none; text-align: center;">Lost Conversion</th>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--accent-purple); border: none; text-align: center;">Cancelled (Not Amended)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.values(stats.teamWise).sort((a, b) => {
+                                // Define the desired order for teams
+                                const teamOrder = ['Team A', 'Team B', 'Team C', 'Team D', 'Team-Biju Balan'];
+                                const indexA = teamOrder.indexOf(a.team);
+                                const indexB = teamOrder.indexOf(b.team);
+
+                                // If both teams are in the priority list, sort by their index
+                                if (indexA !== -1 && indexB !== -1) {
+                                    return indexA - indexB;
+                                }
+                                // If only A is in the priority list, it comes first
+                                if (indexA !== -1 && indexB === -1) {
+                                    return -1;
+                                }
+                                // If only B is in the priority list, it comes first
+                                if (indexA === -1 && indexB !== -1) {
+                                    return 1;
+                                }
+                                // If neither are in the priority list, sort alphabetically
+                                return a.team.localeCompare(b.team);
+                            }).map((teamData, index) => {
+                                const rowBg = index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)';
+                                return `
+                                <tr style="background: ${rowBg}; border-bottom: 1px solid var(--border-color);">
+                                    <td style="padding: 0.75rem 1rem; font-weight: 500; color: var(--text-primary); border: none;">
+                                        <i class="fa fa-users" style="margin-right: 0.5rem; color: var(--accent-blue);"></i>
+                                        ${teamData.team}
+                                    </td>
+                                    <td style="padding: 0.75rem 1rem; text-align: center; font-weight: 700; color: var(--text-primary); border: none; background: rgba(59, 130, 246, 0.05);">
+                                        ${teamData.total}
+                                    </td>
+                                    <td style="padding: 0.75rem 1rem; text-align: center; color: var(--accent-green); font-weight: 600; border: none;">
+                                        ${teamData.won}
+                                    </td>
+                                    <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                                            <div style="background: rgba(34, 197, 94, 0.1); color: green; padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">
+                                                <i class="fa fa-percentage" style="margin-right: 0.25rem;"></i>
+                                                ${teamData.total > 0 ? ((teamData.won / teamData.total) * 100).toFixed(1) : '0.0'}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style="padding: 0.75rem 1rem; text-align: center; color: var(--accent-purple); font-weight: 600; border: none;">
+                                        ${teamData.draft}
+                                    </td>
+                                    <td style="padding: 0.75rem 1rem; text-align: center; color: var(--accent-orange); font-weight: 600; border: none;">
+                                        ${teamData.hold}
+                                    </td>
+                                    <td style="padding: 0.75rem 1rem; text-align: center; color: var(--accent-blue); font-weight: 600; border: none;">
+                                        ${teamData.open}
+                                    </td>
+                                    <td style="padding: 0.75rem 1rem; text-align: center; color: var(--orange-700); font-weight: 600; border: none; font-style: italic;">
+                                        ${teamData.pendingDeptApproval}
+                                    </td>
+                                    <td style="padding: 0.75rem 1rem; text-align: center; color: #e96969; font-weight: 600; border: none;">
+                                        ${teamData.expired}
+                                    </td>
+                                    <td style="padding: 0.75rem 1rem; text-align: center; color: red; font-weight: 600; border: none;">
+                                        ${teamData.lost}
+                                    </td>
+                                    <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                                            <div style="background: rgba(239, 68, 68, 0.1); color: red; padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">
+                                                <i class="fa fa-percentage" style="margin-right: 0.25rem;"></i>
+                                                ${teamData.total > 0 ? ((teamData.lost / teamData.total) * 100).toFixed(1) : '0.0'}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style="padding: 0.75rem 1rem; text-align: center; color: var(--accent-purple); font-weight: 600; border: none; font-style: italic;">
+                                        ${teamData.cancelledNotAmended}
+                                    </td>
+                                </tr>
+                                `;
+                            }).join('')}
+                            <!-- Total Row -->
+                            <tr style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)); border-top: 2px solid var(--border-color); font-weight: 700;">
+                                <td style="padding: 1rem; font-weight: 700; color: var(--text-primary); border: none;">
+                                    <i class="fa fa-calculator" style="margin-right: 0.5rem; color: var(--accent-blue);"></i>
+                                    TOTAL
+                                </td>
+                                <td style="padding: 1rem; text-align: center; font-weight: 700; color: var(--text-primary); border: none; background: rgba(59, 130, 246, 0.15);">
+                                    ${Object.values(stats.teamWise).reduce((sum, team) => sum + team.total, 0)}
+                                </td>
+                                <td style="padding: 1rem; text-align: center; color: var(--accent-green); font-weight: 700; border: none;">
+                                    ${Object.values(stats.teamWise).reduce((sum, team) => sum + team.won, 0)}
+                                </td>
+                                <td style="padding: 1rem; text-align: center; border: none;">
+                                    <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                                        <div style="background: rgba(34, 197, 94, 0.2); color: green; padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: 700; font-size: 0.875rem;">
+                                            <i class="fa fa-percentage" style="margin-right: 0.25rem;"></i>
+                                            ${Object.values(stats.teamWise).reduce((sum, team) => sum + team.total, 0) > 0 ? ((Object.values(stats.teamWise).reduce((sum, team) => sum + team.won, 0) / Object.values(stats.teamWise).reduce((sum, team) => sum + team.total, 0)) * 100).toFixed(1) : '0.0'}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 1rem; text-align: center; color: var(--accent-purple); font-weight: 700; border: none;">
+                                    ${Object.values(stats.teamWise).reduce((sum, team) => sum + team.draft, 0)}
+                                </td>
+                                <td style="padding: 1rem; text-align: center; color: var(--accent-orange); font-weight: 700; border: none;">
+                                    ${Object.values(stats.teamWise).reduce((sum, team) => sum + team.hold, 0)}
+                                </td>
+                                <td style="padding: 1rem; text-align: center; color: var(--accent-blue); font-weight: 700; border: none;">
+                                    ${Object.values(stats.teamWise).reduce((sum, team) => sum + team.open, 0)}
+                                </td>
+                                <td style="padding: 1rem; text-align: center; color: var(--orange-700); font-weight: 700; border: none; font-style: italic;">
+                                    ${Object.values(stats.teamWise).reduce((sum, team) => sum + team.pendingDeptApproval, 0)}
+                                </td>
+                                <td style="padding: 1rem; text-align: center; color: #e96969; font-weight: 700; border: none;">
+                                    ${Object.values(stats.teamWise).reduce((sum, team) => sum + team.expired, 0)}
+                                </td>
+                                <td style="padding: 1rem; text-align: center; color: red; font-weight: 700; border: none;">
+                                    ${Object.values(stats.teamWise).reduce((sum, team) => sum + team.lost, 0)}
+                                </td>
+                                <td style="padding: 1rem; text-align: center; border: none;">
+                                    <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                                        <div style="background: rgba(239, 68, 68, 0.2); color: red; padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: 700; font-size: 0.875rem;">
+                                            <i class="fa fa-percentage" style="margin-right: 0.25rem;"></i>
+                                            ${Object.values(stats.teamWise).reduce((sum, team) => sum + team.total, 0) > 0 ? ((Object.values(stats.teamWise).reduce((sum, team) => sum + team.lost, 0) / Object.values(stats.teamWise).reduce((sum, team) => sum + team.total, 0)) * 100).toFixed(1) : '0.0'}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 1rem; text-align: center; color: var(--accent-purple); font-weight: 700; border: none; font-style: italic;">
+                                    ${Object.values(stats.teamWise).reduce((sum, team) => sum + team.cancelledNotAmended, 0)}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                    </div>
+
+                    <!-- Team Members Tab Content -->
+                    <div id="team-members-tab" class="tab-content" style="display: none;">
+                        <!-- Filters for Team Members -->
+                        <div class="filters-section" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <label style="font-weight: 600; color: var(--text-primary);">Team:</label>
+                                    <select id="member-team-filter" style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--card-bg); color: var(--text-primary); min-width: 150px;">
+                                        <option value="all">All Teams</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <label style="font-weight: 600; color: var(--text-primary);">Status:</label>
+                                    <select id="member-status-filter" style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--card-bg); color: var(--text-primary);">
+                                        <option value="all">All</option>
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <label style="font-weight: 600; color: var(--text-primary);">Sales Person:</label>
+                                    <select id="member-person-filter" style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--card-bg); color: var(--text-primary); min-width: 200px;">
+                                        <option value="all">All Sales Persons</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.clearTeamMemberFilters()" style="margin-left: auto;">
+                                    <i class="fa fa-times"></i> Clear Filters
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-striped" style="background: var(--card-bg); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
+                                <thead id="team-members-thead" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)); border-bottom: 2px solid var(--border-color);">
+                                    <tr>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); border: none; cursor: pointer;" onclick="frappe.sales_intelligence.sortTeamMembersTable('owner')">
+                                            Owner <i class="fa fa-sort" style="margin-left: 0.5rem; opacity: 0.6;"></i>
+                                        </th>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); border: none; cursor: pointer;" onclick="frappe.sales_intelligence.sortTeamMembersTable('team')">
+                                            Team <i class="fa fa-sort" style="margin-left: 0.5rem; opacity: 0.6;"></i>
+                                        </th>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); border: none; cursor: pointer;" onclick="frappe.sales_intelligence.sortTeamMembersTable('fullName')">
+                                            Full Name <i class="fa fa-sort" style="margin-left: 0.5rem; opacity: 0.6;"></i>
+                                        </th>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); border: none; cursor: pointer;" onclick="frappe.sales_intelligence.sortTeamMembersTable('incharge')">
+                                            Account Incharge <i class="fa fa-sort" style="margin-left: 0.5rem; opacity: 0.6;"></i>
+                                        </th>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); border: none; text-align: center; cursor: pointer;" onclick="frappe.sales_intelligence.sortTeamMembersTable('status')">
+                                            Status <i class="fa fa-sort" style="margin-left: 0.5rem; opacity: 0.6;"></i>
+                                        </th>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--accent-blue); border: none; text-align: center; cursor: pointer;" onclick="frappe.sales_intelligence.sortTeamMembersTable('total')">
+                                            Total Quotations <i class="fa fa-sort" style="margin-left: 0.5rem; opacity: 0.6;"></i>
+                                        </th>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--accent-orange); border: none; text-align: center; cursor: pointer;" onclick="frappe.sales_intelligence.sortTeamMembersTable('pending')">
+                                            Pending Quotations <i class="fa fa-sort" style="margin-left: 0.5rem; opacity: 0.6;"></i>
+                                        </th>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--accent-red); border: none; text-align: center; cursor: pointer;" onclick="frappe.sales_intelligence.sortTeamMembersTable('lost')">
+                                            Lost Count <i class="fa fa-sort" style="margin-left: 0.5rem; opacity: 0.6;"></i>
+                                        </th>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--accent-green); border: none; text-align: center; cursor: pointer;" onclick="frappe.sales_intelligence.sortTeamMembersTable('wonConversion')">
+                                            Won Conversion <i class="fa fa-sort" style="margin-left: 0.5rem; opacity: 0.6;"></i>
+                                        </th>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--accent-red); border: none; text-align: center; cursor: pointer;" onclick="frappe.sales_intelligence.sortTeamMembersTable('lostConversion')">
+                                            Lost Conversion <i class="fa fa-sort" style="margin-left: 0.5rem; opacity: 0.6;"></i>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="team-members-tbody">
+                                    <tr>
+                                        <td colspan="9" style="padding: 2rem; text-align: center; color: var(--text-secondary);">
+                                            <i class="fa fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>
+                                            Loading team member data...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Value Range Analysis for Pending Quotes -->
             <div class="data-section">
                 <div class="section-header">
@@ -8491,19 +9051,108 @@ getPipelineStatusBreakdown() {
                         </h2>
                         <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
                             <i class="fa fa-dollar-sign"></i>
-                            <span>Highest value customers</span>
+                            <span>Highest value customers with conversion tracking</span>
                         </div>
                     </div>
-                    
-                    ${this.renderTableWithControls('customers-by-value', stats.top_by_value, [
-                        { key: 'name', label: 'Customer', sortable: true, icon: 'fa-building' },
-                        { key: 'total_quotes', label: 'Total Quotes', sortable: true, icon: 'fa-list' },
-                        { key: 'total_value', label: 'Total Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
-                        { key: 'won_quotes', label: 'Won', sortable: true, icon: 'fa-trophy' },
-                        { key: 'conversion_rate', label: 'Conversion', sortable: true, type: 'conversion', icon: 'fa-percentage' },
-                        { key: 'avg_margin', label: 'Avg Margin', sortable: true, type: 'margin', icon: 'fa-chart-line' },
-                        { key: 'days_since_last_quote', label: 'Days Since Last', sortable: true, type: 'days', icon: 'fa-clock' }
-                    ])}
+
+                    <!-- Customer Value Tabs -->
+                    <div class="customer-value-tabs" style="margin-bottom: 1.5rem;">
+                        <nav class="tab-nav" style="display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 1rem;">
+                            <button class="tab-btn active" data-tab="top-customers" onclick="frappe.sales_intelligence.switchCustomerTab('top-customers')"
+                                style="padding: 0.75rem 1.5rem; border: none; background: none; color: var(--text-secondary); font-weight: 600; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.3s ease;">
+                                <i class="fa fa-trophy" style="margin-right: 0.5rem;"></i>
+                                Top Customers
+                            </button>
+                            <button class="tab-btn" data-tab="conversion-tracking" onclick="frappe.sales_intelligence.switchCustomerTab('conversion-tracking')"
+                                style="padding: 0.75rem 1.5rem; border: none; background: none; color: var(--text-secondary); font-weight: 600; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.3s ease;">
+                                <i class="fa fa-exchange-alt" style="margin-right: 0.5rem;"></i>
+                                Conversion Tracking
+                            </button>
+                        </nav>
+
+                        <!-- Top Customers Tab Content -->
+                        <div id="top-customers-tab" class="tab-content active">
+                            ${this.renderTableWithControls('customers-by-value', stats.top_by_value, [
+                                { key: 'name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                                { key: 'total_quotes', label: 'Total Quotes', sortable: true, icon: 'fa-list' },
+                                { key: 'total_value', label: 'Total Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                                { key: 'won_quotes', label: 'Won', sortable: true, icon: 'fa-trophy' },
+                                { key: 'conversion_rate', label: 'Conversion', sortable: true, type: 'conversion', icon: 'fa-percentage' },
+                                { key: 'avg_margin', label: 'Avg Margin', sortable: true, type: 'margin', icon: 'fa-chart-line' },
+                                { key: 'days_since_last_quote', label: 'Days Since Last', sortable: true, type: 'days', icon: 'fa-clock' }
+                            ])}
+                        </div>
+
+                        <!-- Conversion Tracking Tab Content -->
+                        <div id="conversion-tracking-tab" class="tab-content" style="display: none;">
+                            <div class="conversion-tracking-container">
+                                <!-- Customers with Sales Order Conversions -->
+                                <div class="conversion-summary" style="margin-bottom: 2rem;">
+                                    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                                        <div class="stat-card">
+                                            <div class="stat-card-header">
+                                                <div class="stat-card-content">
+                                                    <h3 class="stat-card-title">
+                                                        <i class="fa fa-handshake" style="color: var(--accent-green); margin-right: 0.5rem;"></i>
+                                                        Converting Customers
+                                                    </h3>
+                                                    <p class="stat-card-value">${this.getConvertingCustomersCount(stats.top_by_value)}</p>
+                                                    <p class="stat-card-amount">
+                                                        <i class="fa fa-check-circle" style="color: var(--accent-green); margin-right: 0.25rem;"></i>
+                                                        With sales orders
+                                                    </p>
+                                                </div>
+                                                <div class="stat-card-icon success">
+                                                    <i class="fa fa-handshake"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="stat-card">
+                                            <div class="stat-card-header">
+                                                <div class="stat-card-content">
+                                                    <h3 class="stat-card-title">
+                                                        <i class="fa fa-chart-line" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
+                                                        Total Conversions
+                                                    </h3>
+                                                    <p class="stat-card-value">${this.getTotalConversionsCount(stats.top_by_value)}</p>
+                                                    <p class="stat-card-amount">
+                                                        <i class="fa fa-file-invoice" style="color: var(--accent-blue); margin-right: 0.25rem;"></i>
+                                                        Sales orders created
+                                                    </p>
+                                                </div>
+                                                <div class="stat-card-icon info">
+                                                    <i class="fa fa-chart-line"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="stat-card">
+                                            <div class="stat-card-header">
+                                                <div class="stat-card-content">
+                                                    <h3 class="stat-card-title">
+                                                        <i class="fa fa-money-bill-wave" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
+                                                        Conversion Value
+                                                    </h3>
+                                                    <p class="stat-card-value">AED ${this.formatCurrency(this.getTotalConversionValue(stats.top_by_value))}</p>
+                                                    <p class="stat-card-amount">
+                                                        <i class="fa fa-dollar-sign" style="color: var(--accent-orange); margin-right: 0.25rem;"></i>
+                                                        From converted quotes
+                                                    </p>
+                                                </div>
+                                                <div class="stat-card-icon warning">
+                                                    <i class="fa fa-money-bill-wave"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Customers with Conversion Details Table -->
+                                ${this.renderCustomerConversionTable(stats.top_by_value)}
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Top Customers by Conversion -->
@@ -8752,6 +9401,28 @@ getPipelineStatusBreakdown() {
                                     <i class="fa fa-external-link-alt"></i>
                                 </button>
                             </td>`;
+                        } else if (col.type === 'conversion_actions') {
+                            return `<td>
+                                <div style="display: flex; gap: 0.25rem;">
+                                    <button class="btn btn-xs btn-primary" onclick="event.stopPropagation(); frappe.sales_intelligence.showCustomerQuotationDetails('${item.name}')" title="View customer quotations" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                        <i class="fa fa-eye" style="margin-right: 0.25rem;"></i>
+                                        View Details
+                                    </button>
+                                </div>
+                            </td>`;
+                        } else if (col.type === 'pipeline_customer_actions') {
+                            return `<td>
+                                <div style="display: flex; gap: 0.25rem;">
+                                    <button class="btn btn-xs btn-primary" onclick="event.stopPropagation(); frappe.sales_intelligence.showPipelineCustomerDetails('${item.customer_name}')" title="View customer quotation history" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                        <i class="fa fa-history" style="margin-right: 0.25rem;"></i>
+                                        History
+                                    </button>
+                                    <button class="btn btn-xs btn-success" onclick="event.stopPropagation(); frappe.sales_intelligence.showPipelineCustomerQuotations('${item.customer_name}', ${JSON.stringify(item.current_quotations).replace(/"/g, '&quot;')})" title="View current pipeline quotations" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                        <i class="fa fa-layer-group" style="margin-right: 0.25rem;"></i>
+                                        Current
+                                    </button>
+                                </div>
+                            </td>`;
                         } else if (col.type === 'quotation_links') {
                             const quotations = item.quotations || [];
                             if (quotations.length === 0) {
@@ -8821,6 +9492,28 @@ getPipelineStatusBreakdown() {
                             const badgeClass = days < 0 ? 'danger' : days <= 7 ? 'warning' : 'info';
                             const text = days < 0 ? `${Math.abs(days)} days expired` : `${days} days`;
                             return `<td><span class="status-badge ${badgeClass}">${text}</span></td>`;
+                        } else if (col.key === 'data_source') {
+                            const dataSource = item[col.key] || 'unknown';
+                            const isOpportunitySection = dataSource === 'opportunity_section';
+                            const badgeClass = isOpportunitySection ? 'info' : 'secondary';
+                            const icon = isOpportunitySection ? 'fa-database' : 'fa-link';
+                            const text = isOpportunitySection ? 'Opportunity Section' : 'Linked Quotation';
+                            return `<td><span class="status-badge ${badgeClass}"><i class="fa ${icon}" style="margin-right: 0.25rem;"></i>${text}</span></td>`;
+                        } else if (col.key === 'document_quotation') {
+                            const docQuotation = item[col.key];
+                            if (docQuotation && docQuotation !== 'N/A') {
+                                return `<td>
+                                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                                        <strong style="color: var(--accent-green); cursor: pointer;" onclick="event.stopPropagation(); window.open('/app/quotation/${docQuotation}', '_blank')" title="Open document quotation in new tab">${docQuotation}</strong>
+                                        <button class="btn btn-xs btn-success" onclick="event.stopPropagation(); window.open('/app/quotation/${docQuotation}', '_blank')" title="Open document quotation in new tab" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; background: var(--accent-green); border: 1px solid var(--accent-green); color: white; border-radius: 4px;">
+                                            <i class="fa fa-external-link-alt" style="font-size: 0.7rem;"></i>
+                                        </button>
+                                    </div>
+                                </td>`;
+                            } else {
+                                return `<td><span style="color: var(--text-muted);">N/A</span></td>`;
+                            }
+
                         } else if (col.key === 'customer_name') {
                             return `<td>${item.customer_name || item.party_name || item.name || 'Unknown'}</td>`;
                         } else if (col.key === 'quotation') {
@@ -8982,6 +9675,549 @@ getPipelineStatusBreakdown() {
         }
     }
 
+    // Customer conversion helper methods
+    getConvertingCustomersCount(customers) {
+        return customers.filter(customer => customer.won_quotes && customer.won_quotes > 0).length;
+    }
+
+    getTotalConversionsCount(customers) {
+        return customers.reduce((total, customer) => total + (customer.won_quotes || 0), 0);
+    }
+
+    getTotalConversionValue(customers) {
+        return customers.reduce((total, customer) => total + (customer.won_value || 0), 0);
+    }
+
+    // Enhance customers with detailed order breakdown
+    enhanceCustomersWithOrderDetails(customers) {
+        return customers.map(customer => {
+            // The customer data already has the correct calculations from calculateCustomerWiseStats
+            // won_quotes = Ordered + Partially Ordered
+            // pending_quotes = Open + Expired
+            // pending_value = value of Open + Expired quotations
+
+            return {
+                ...customer,
+                ordered_quotes: customer.won_quotes || 0,
+                pending_quotes: customer.pending_quotes || 0,
+                pending_value: customer.pending_value || 0
+            };
+        });
+    }
+
+    // Tab switching functionality
+    switchCustomerTab(tabName) {
+        // Remove active class from all tabs and content
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.color = 'var(--text-secondary)';
+            btn.style.borderBottomColor = 'transparent';
+        });
+
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+            content.style.display = 'none';
+        });
+
+        // Add active class to clicked tab
+        const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+            activeBtn.style.color = 'var(--accent-blue)';
+            activeBtn.style.borderBottomColor = 'var(--accent-blue)';
+        }
+
+        // Show corresponding content
+        const activeContent = document.getElementById(`${tabName}-tab`);
+        if (activeContent) {
+            activeContent.classList.add('active');
+            activeContent.style.display = 'block';
+        }
+    }
+
+    // Customer conversion table renderer
+    renderCustomerConversionTable(customers) {
+        // Filter customers who have conversions (won quotes)
+        const convertingCustomers = customers.filter(customer => customer.won_quotes && customer.won_quotes > 0);
+
+        if (convertingCustomers.length === 0) {
+            return `
+                <div class="empty-state" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                    <i class="fa fa-info-circle" style="font-size: 2rem; margin-bottom: 1rem; color: var(--accent-blue);"></i>
+                    <h3>No Converting Customers Found</h3>
+                    <p>No customers have converted quotations to sales orders in the current date range.</p>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="data-section">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class="fa fa-users-cog"></i>
+                        Customers with Sales Order Conversions
+                    </h3>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                        <i class="fa fa-exchange-alt"></i>
+                        <span>Customers who have converted quotations to sales orders</span>
+                    </div>
+                </div>
+
+                ${this.renderTableWithControls('customer-conversions', this.enhanceCustomersWithOrderDetails(convertingCustomers), [
+                    { key: 'name', label: 'Customer', sortable: true, icon: 'fa-building', type: 'customer_link' },
+                    { key: 'total_quotes', label: 'Total Quotes', sortable: true, icon: 'fa-list' },
+                    { key: 'ordered_quotes', label: 'Ordered', sortable: true, icon: 'fa-check-circle' },
+                    { key: 'pending_quotes', label: 'Pending for Order', sortable: true, icon: 'fa-clock' },
+                    { key: 'conversion_rate', label: 'Conversion Rate', sortable: true, type: 'conversion', icon: 'fa-percentage' },
+                    { key: 'won_value', label: 'Ordered Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                    { key: 'pending_value', label: 'Pending Value', sortable: true, type: 'currency', icon: 'fa-hourglass-half' },
+                    { key: 'avg_margin', label: 'Avg Margin', sortable: true, type: 'margin', icon: 'fa-chart-line' },
+                    { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
+                    { key: 'actions', label: 'Actions', sortable: false, icon: 'fa-cog', type: 'conversion_actions' }
+                ])}
+            </div>
+        `;
+    }
+
+    // Show customer quotation details
+    async showCustomerQuotationDetails(customerName, isHistoricalView = false) {
+        // Declare filters outside try block for error logging
+        let filters = { party_name: customerName };
+
+        try {
+            console.log('showCustomerQuotationDetails called with:', {
+                customerName: customerName,
+                isHistoricalView: isHistoricalView,
+                hasFilters: !!this.filters
+            });
+
+            // Build filters - use date range only if not historical view
+            if (!isHistoricalView && this.filters && this.filters.from_date && this.filters.to_date) {
+                filters.creation = ['between', [this.filters.from_date, this.filters.to_date]];
+            }
+
+            console.log('API call filters:', filters);
+
+            // Fetch customer quotations with sales order information
+            const response = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Quotation',
+                    filters: filters,
+                    fields: [
+                        'name', 'transaction_date', 'base_grand_total', 'status'
+                    ],
+                    order_by: 'transaction_date desc',
+                    limit_page_length: 0  // Get all records without limit
+                }
+            });
+
+            console.log('API response received:', {
+                hasMessage: !!response.message,
+                quotationCount: (response.message || []).length,
+                sampleQuotation: (response.message || [])[0]
+            });
+
+            // Debug: Check all unique status values in the response
+            const uniqueStatusValues = [...new Set((response.message || []).map(q => q.status))];
+            console.log('All unique status values in response:', uniqueStatusValues);
+
+            // Debug: Count by status
+            const statusCounts = {};
+            (response.message || []).forEach(q => {
+                statusCounts[q.status] = (statusCounts[q.status] || 0) + 1;
+            });
+            console.log('Count by status:', statusCounts);
+
+            const quotations = (response.message || []).map(quote => ({
+                ...quote,
+                quotation: quote.name, // Map name field to quotation field for consistency
+                account_incharge_full_name: 'Not Available', // Default value since field may not be accessible
+                converted_to_sales_order: quote.status === 'Ordered' || quote.status === 'Partially Ordered', // Derive from status
+                sales_order_reference: quote.status === 'Ordered' || quote.status === 'Partially Ordered' ? 'Available' : 'Not Available' // Default value
+            }));
+
+            // Group quotations by status
+            const statusGroups = this.groupQuotationsByStatus(quotations);
+            const allStatuses = Object.keys(statusGroups);
+
+            // Calculate comprehensive customer metrics
+            const totalValue = quotations.reduce((sum, q) => sum + (q.base_grand_total || 0), 0);
+            const orderedQuotations = [...(statusGroups['Ordered'] || []), ...(statusGroups['Partially Ordered'] || [])];
+            const orderedValue = orderedQuotations.reduce((sum, q) => sum + (q.base_grand_total || 0), 0);
+
+            // Debug: Log filtering results
+            console.log('Status groups:', statusGroups);
+            console.log('Ordered quotations count:', orderedQuotations.length);
+            console.log('Status group counts:', {
+                'Ordered': (statusGroups['Ordered'] || []).length,
+                'Partially Ordered': (statusGroups['Partially Ordered'] || []).length
+            });
+            const openQuotations = statusGroups['Open'] || [];
+            const openValue = openQuotations.reduce((sum, q) => sum + (q.base_grand_total || 0), 0);
+            const conversionRate = quotations.length > 0 ? Math.round((orderedQuotations.length / quotations.length) * 100) : 0;
+
+            // Generate initial table content - show only ordered/partially ordered by default
+            const initialTableContent = this.renderFilterableQuotationTable(orderedQuotations, 'ordered', customerName);
+
+            // Determine customer priority based on order history and value
+            let customerPriority = 'Standard';
+            let priorityColor = '#6b7280';
+            if (orderedQuotations.length >= 5 && orderedValue >= 100000) {
+                customerPriority = 'VIP';
+                priorityColor = '#dc2626';
+            } else if (orderedQuotations.length >= 3 && orderedValue >= 50000) {
+                customerPriority = 'Premium';
+                priorityColor = '#f59e0b';
+            } else if (orderedQuotations.length >= 1 && orderedValue >= 10000) {
+                customerPriority = 'Valued';
+                priorityColor = '#059669';
+            }
+
+            const modalContent = `
+                <div class="customer-quotation-details" id="customer-quotation-details">
+                    <div class="customer-header" style="margin-bottom: 2rem; padding: 1.5rem; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); border-radius: 12px; color: white;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                            <h2 style="margin: 0; font-size: 1.5rem;">
+                                <i class="fa fa-building" style="margin-right: 0.75rem;"></i>
+                                ${customerName} - ${isHistoricalView ? 'Complete History' : 'Customer Analysis'}
+                            </h2>
+                            <div style="background: ${priorityColor}; padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold; font-size: 0.875rem;">
+                                <i class="fa fa-star" style="margin-right: 0.5rem;"></i>
+                                ${customerPriority} Customer
+                            </div>
+                        </div>
+
+                        <!-- Value Metrics Row -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 8px;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.25rem;">
+                                    ${this.formatCurrency(totalValue)}
+                                </div>
+                                <div style="font-size: 0.875rem; opacity: 0.9;">Total Quotation Value</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.25rem; color: #10b981;">
+                                    ${this.formatCurrency(orderedValue)}
+                                </div>
+                                <div style="font-size: 0.875rem; opacity: 0.9;">Ordered Value</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.25rem; color: #f59e0b;">
+                                    ${this.formatCurrency(openValue)}
+                                </div>
+                                <div style="font-size: 0.875rem; opacity: 0.9;">Open Pipeline Value</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.25rem;">
+                                    ${conversionRate}%
+                                </div>
+                                <div style="font-size: 0.875rem; opacity: 0.9;">Conversion Rate</div>
+                            </div>
+                        </div>
+
+                        <!-- Count Metrics Row -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem;">
+                            <div style="text-align: center; padding: 0.75rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
+                                <div style="font-weight: bold; font-size: 1.1rem;">${quotations.length}</div>
+                                <div style="font-size: 0.8rem; opacity: 0.9;">Total Quotes</div>
+                            </div>
+                            <div style="text-align: center; padding: 0.75rem; background: rgba(16,185,129,0.2); border-radius: 6px;">
+                                <div style="font-weight: bold; font-size: 1.1rem; color: #10b981;">${orderedQuotations.length}</div>
+                                <div style="font-size: 0.8rem; opacity: 0.9;">Ordered</div>
+                            </div>
+                            <div style="text-align: center; padding: 0.75rem; background: rgba(245,158,11,0.2); border-radius: 6px;">
+                                <div style="font-weight: bold; font-size: 1.1rem; color: #f59e0b;">${openQuotations.length}</div>
+                                <div style="font-size: 0.8rem; opacity: 0.9;">Open</div>
+                            </div>
+                            <div style="text-align: center; padding: 0.75rem; background: rgba(255,255,255,0.1); border-radius: 6px;">
+                                <div style="font-weight: bold; font-size: 1.1rem;">${(statusGroups['Draft'] || []).length}</div>
+                                <div style="font-size: 0.8rem; opacity: 0.9;">Draft</div>
+                            </div>
+                            <div style="text-align: center; padding: 0.75rem; background: rgba(239,68,68,0.2); border-radius: 6px;">
+                                <div style="font-weight: bold; font-size: 1.1rem; color: #ef4444;">${(statusGroups['Lost'] || []).length}</div>
+                                <div style="font-size: 0.8rem; opacity: 0.9;">Lost</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div class="filter-section" style="margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                            <label style="font-weight: 600; color: var(--text-primary);">
+                                <i class="fa fa-filter" style="margin-right: 0.5rem;"></i>
+                                Filter by Status:
+                            </label>
+                            <select id="status-filter-${customerName.replace(/[^a-zA-Z0-9]/g, '')}"
+                                    onchange="frappe.sales_intelligence.filterCustomerQuotationsByStatus(this.value, '${customerName}')"
+                                    style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--card-bg); color: var(--text-primary);">
+                                <option value="ordered" selected>Ordered & Partially Ordered (${orderedQuotations.length})</option>
+                                <option value="all">All Statuses (${quotations.length})</option>
+                                ${allStatuses.map(status =>
+                                    `<option value="${status}">${status} (${statusGroups[status].length})</option>`
+                                ).join('')}
+                            </select>
+                            <div style="margin-left: auto; display: flex; gap: 0.5rem;">
+                                <span style="font-size: 0.875rem; color: var(--text-secondary);">
+                                    Total Value: <strong style="color: var(--text-primary);">AED ${this.formatCurrency(totalValue)}</strong>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quotations Table -->
+                    <div class="quotations-table-section">
+                        <div id="all-quotations-section">
+                            <h3 style="color: var(--text-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa fa-check-circle" style="color: var(--accent-green);"></i>
+                                <span id="section-title">Ordered & Partially Ordered Quotations (${orderedQuotations.length})</span>
+                                <span style="margin-left: auto; font-size: 0.875rem; color: var(--text-secondary);">
+                                    Value: <strong id="section-value">AED ${this.formatCurrency(orderedValue)}</strong>
+                                </span>
+                            </h3>
+                            <div id="quotations-table-container">
+                                ${initialTableContent}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Show modal with higher z-index and close button
+            const dialog = new frappe.ui.Dialog({
+                title: `${isHistoricalView ? 'Customer Historical Analysis' : 'Customer Quotation Details'}: ${customerName}`,
+                fields: [
+                    {
+                        fieldtype: 'HTML',
+                        options: modalContent
+                    }
+                ],
+                size: 'extra-large',
+                primary_action_label: 'Close',
+                primary_action: function() {
+                    dialog.hide();
+                }
+            });
+
+            // Store quotations data for filtering
+            this.currentCustomerQuotations = quotations;
+
+            // Set higher z-index to ensure it appears above the pipeline modal (which uses 10001)
+            dialog.show();
+            setTimeout(() => {
+                if (dialog.$wrapper) {
+                    dialog.$wrapper.css('z-index', '10002');
+                    dialog.$wrapper.find('.modal-backdrop').css('z-index', '10001');
+                }
+            }, 100);
+
+        } catch (error) {
+            console.error('Error fetching customer quotations:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                customerName: customerName,
+                isHistoricalView: isHistoricalView,
+                filters: filters
+            });
+            frappe.msgprint({
+                title: 'Error Loading Customer Data',
+                message: `Failed to load quotations for ${customerName}. Error: ${error.message || 'Unknown error'}`,
+                indicator: 'red'
+            });
+        }
+    }
+
+    // Group quotations by status
+    groupQuotationsByStatus(quotations) {
+        const groups = {};
+        quotations.forEach(quote => {
+            const status = quote.status || 'Unknown';
+            if (!groups[status]) {
+                groups[status] = [];
+            }
+            groups[status].push(quote);
+        });
+        return groups;
+    }
+
+    // Filter customer quotations by status
+    filterCustomerQuotationsByStatus(selectedStatus, customerName) {
+        // Get current modal content
+        const modalElement = document.getElementById('customer-quotation-details');
+        if (!modalElement) return;
+
+        // Get stored quotations data
+        const quotations = this.currentCustomerQuotations || [];
+
+        let filteredQuotations = quotations;
+        let sectionTitle = 'All Quotations';
+        let sectionIcon = 'fa-list';
+
+        if (selectedStatus === 'ordered') {
+            filteredQuotations = quotations.filter(q => q.status === 'Ordered' || q.status === 'Partially Ordered');
+            sectionTitle = 'Ordered & Partially Ordered Quotations';
+            sectionIcon = 'fa-check-circle';
+        } else if (selectedStatus !== 'all') {
+            filteredQuotations = quotations.filter(q => q.status === selectedStatus);
+            sectionTitle = `${selectedStatus} Quotations`;
+            sectionIcon = 'fa-list';
+        }
+
+        // Update section title and value
+        const titleElement = document.getElementById('section-title');
+        const valueElement = document.getElementById('section-value');
+        const tableContainer = document.getElementById('quotations-table-container');
+
+        if (titleElement) {
+            titleElement.textContent = `${sectionTitle} (${filteredQuotations.length})`;
+            // Update the icon in the parent h3 element
+            const h3Element = titleElement.parentElement;
+            if (h3Element) {
+                const iconElement = h3Element.querySelector('i');
+                if (iconElement) {
+                    iconElement.className = `fa ${sectionIcon}`;
+                    iconElement.style.color = selectedStatus === 'ordered' ? 'var(--accent-green)' : '';
+                }
+            }
+        }
+
+        if (valueElement) {
+            const totalValue = filteredQuotations.reduce((sum, q) => sum + (q.base_grand_total || 0), 0);
+            valueElement.innerHTML = `Value: <strong>AED ${this.formatCurrency(totalValue)}</strong>`;
+        }
+
+        if (tableContainer) {
+            tableContainer.innerHTML = this.renderFilterableQuotationTable(filteredQuotations, selectedStatus, customerName);
+        }
+    }
+
+    // Render filterable quotation table for customer details
+    renderFilterableQuotationTable(quotations, type, customerName) {
+        const tableId = `customer-quotations-${type}-${customerName.replace(/[^a-zA-Z0-9]/g, '')}`;
+
+        if (quotations.length === 0) {
+            return `<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                <i class="fa fa-info-circle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                <p>No quotations found for the selected filter.</p>
+            </div>`;
+        }
+
+        return `
+            <div class="table-responsive">
+                <table class="table table-striped" id="${tableId}">
+                    <thead>
+                        <tr>
+                            <th>Quotation</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Account Manager</th>
+                            <th>Valid Till</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${quotations.map(quote => `
+                            <tr>
+                                <td>
+                                    <strong style="color: var(--accent-blue);">${quote.quotation || quote.name}</strong>
+                                </td>
+                                <td>${quote.transaction_date ? frappe.datetime.str_to_user(quote.transaction_date) : '-'}</td>
+                                <td>AED ${this.formatCurrency(quote.base_grand_total || 0)}</td>
+                                <td>
+                                    <span class="status-badge ${this.getStatusClass(quote.status)}">
+                                        <i class="fa ${this.getStatusIcon(quote.status)}" style="margin-right: 0.25rem;"></i>
+                                        ${quote.status}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        ${this.getUserAvatar(quote.account_incharge_full_name || 'Unknown', 24)}
+                                        <span>${quote.account_incharge_full_name || '-'}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    ${quote.valid_till ? frappe.datetime.str_to_user(quote.valid_till) : '-'}
+                                </td>
+                                <td>
+                                    <div style="display: flex; gap: 0.25rem;">
+                                        <button class="btn btn-sm btn-primary" onclick="window.open('/app/quotation/${quote.quotation || quote.name}', '_blank')" title="Open quotation">
+                                            <i class="fa fa-external-link-alt"></i>
+                                        </button>
+                                        ${quote.sales_order_reference ?
+                                            `<button class="btn btn-sm btn-success" onclick="window.open('/app/sales-order/${quote.sales_order_reference}', '_blank')" title="Open sales order">
+                                                <i class="fa fa-file-invoice"></i>
+                                            </button>` : ''
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // Render quotation table for customer details
+    renderQuotationTable(quotations, type) {
+        const tableId = `customer-quotations-${type}`;
+        return `
+            <div class="table-responsive">
+                <table class="table table-striped" id="${tableId}">
+                    <thead>
+                        <tr>
+                            <th>Quotation</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Account Manager</th>
+                            <th>Valid Till</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${quotations.map(quote => `
+                            <tr>
+                                <td>
+                                    <strong style="color: var(--accent-blue);">${quote.quotation || quote.name}</strong>
+                                </td>
+                                <td>${quote.transaction_date ? frappe.datetime.str_to_user(quote.transaction_date) : '-'}</td>
+                                <td>AED ${this.formatCurrency(quote.base_grand_total || 0)}</td>
+                                <td>
+                                    <span class="status-badge ${this.getStatusClass(quote.status)}">
+                                        <i class="fa ${this.getStatusIcon(quote.status)}" style="margin-right: 0.25rem;"></i>
+                                        ${quote.status}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        ${this.getUserAvatar(quote.account_incharge_full_name || 'Unknown', 24)}
+                                        <span>${quote.account_incharge_full_name || '-'}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    ${quote.valid_till ? frappe.datetime.str_to_user(quote.valid_till) : '-'}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" onclick="window.open('/app/quotation/${quote.quotation || quote.name}', '_blank')" title="Open quotation">
+                                        <i class="fa fa-external-link-alt"></i>
+                                    </button>
+                                    ${quote.sales_order_reference ?
+                                        `<button class="btn btn-sm btn-success" onclick="window.open('/app/sales-order/${quote.sales_order_reference}', '_blank')" title="Open sales order" style="margin-left: 0.25rem;">
+                                            <i class="fa fa-file-invoice"></i>
+                                        </button>` : ''
+                                    }
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
     // Modal and detail methods
     showQuotationDetails(quotationName) {
         console.log('showQuotationDetails called with:', quotationName);
@@ -9063,7 +10299,7 @@ getPipelineStatusBreakdown() {
                             <table class="table table-borderless" style="margin: 0;">
                                 <tr><td style="font-weight: 600; color: var(--text-secondary); width: 40%;">Margin:</td><td><span class="margin-badge ${this.getMarginClass(quote.profit_percentage)}">${quote.profit_percentage || 0}%</span></td></tr>
                                 <tr><td style="font-weight: 600; color: var(--text-secondary);">Profit Amount:</td><td style="color: var(--text-primary);">AED ${this.formatCurrency(quote.expected_profit || 0)}</td></tr>
-                                <tr><td style="font-weight: 600; color: var(--text-secondary);">Branch:</td><td style="color: var(--text-primary);">${quote.custom_branch || '-'}</td></tr>
+                                <tr><td style="font-weight: 600; color: var(--text-secondary);">Branch:</td><td style="color: var(--text-primary);">${quote.branch || '-'}</td></tr>
                             </table>
                         </div>
                     </div>
@@ -9304,7 +10540,7 @@ calculateBranchPipelineData() {
     this.data.quotations.filter(q => {
         return !excludedStatuses.includes(q.status) && (this.calculatePipeline(q) !== 'None' || q.status === 'Open');
     }).forEach(quote => {
-        const branch = quote.custom_branch || 'Unknown';
+        const branch = quote.branch || 'Unknown';
         
         if (!branchData.has(branch)) {
             branchData.set(branch, {
@@ -9522,6 +10758,56 @@ switchPipelineTab(tabName) {
     }
 }
 
+
+switchMainLostTab(element, tabName) {
+    // Remove active class from all main tabs and panes in the main lost analysis section
+    element.closest('.main-lost-tabs').querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    element.closest('.main-lost-tabs').querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+    // Add active class to selected tab and pane
+    element.classList.add('active');
+    const targetPane = document.getElementById(tabName);
+    if (targetPane) {
+        targetPane.classList.add('active');
+    }
+}
+
+switchActivatedServiceTab(tabName) {
+    // Remove active class from all service tab buttons
+    document.querySelectorAll('.service-tab-button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.service-tab-panel').forEach(panel => {
+        panel.classList.remove('active');
+        panel.style.display = 'none';
+    });
+
+    // Add active class to selected tab
+    const selectedButton = document.querySelector(`[data-tab="${tabName}"]`);
+    if (selectedButton) {
+        selectedButton.classList.add('active');
+
+        // Update button styles
+        document.querySelectorAll('.service-tab-button').forEach(btn => {
+            if (btn === selectedButton) {
+                btn.style.background = 'var(--accent-blue)';
+                btn.style.color = 'white';
+                btn.style.fontWeight = '600';
+            } else {
+                btn.style.background = 'rgba(52, 152, 219, 0.3)';
+                btn.style.color = 'var(--text-primary)';
+                btn.style.fontWeight = '500';
+            }
+        });
+    }
+
+    // Show selected tab panel
+    const targetPanel = document.getElementById(`${tabName}-tab`);
+    if (targetPanel) {
+        targetPanel.classList.add('active');
+        targetPanel.style.display = 'block';
+    }
+}
+
+
 initializePipelineTimelineChart() {
     const canvas = document.getElementById('pipelineTimelineChart');
     if (!canvas) return;
@@ -9615,6 +10901,10 @@ initializePipelineTimelineChart() {
             case 'draft_quotations':
                 data = this.data.filtered.filter(q => q.status === 'Draft');
                 title = 'Draft Quotations';
+                break;
+            case 'hold_quotations':
+                data = this.data.filtered.filter(q => q.status === 'Hold');
+                title = 'Hold Quotations';
                 break;
             case 'pending_dept_approval_quotations':
                 data = this.data.filtered.filter(q =>
@@ -9746,19 +11036,903 @@ initializePipelineTimelineChart() {
         $('#drilldown-content').html(content);
         $('#drilldownModal').modal('show');
     }
+
+    // Team tab switching functions
+    switchTeamTab(tabName) {
+        // Remove active class from all tabs
+        $('.tab-button').removeClass('active').css({
+            'color': 'var(--text-secondary)',
+            'border-bottom': '3px solid transparent'
+        });
+
+        // Hide all tab content
+        $('.tab-content').hide();
+
+        // Show selected tab and update button style
+        if (tabName === 'breakdown') {
+            $('#team-breakdown-tab').show();
+            $('.tab-button:first').addClass('active').css({
+                'color': 'var(--text-primary)',
+                'border-bottom': '3px solid var(--accent-blue)'
+            });
+        } else if (tabName === 'members') {
+            $('#team-members-tab').show();
+            $('.tab-button:last').addClass('active').css({
+                'color': 'var(--text-primary)',
+                'border-bottom': '3px solid var(--accent-blue)'
+            });
+
+            // Load team member data if not already loaded
+            this.loadTeamMemberData();
+        }
+    }
+
+    async loadTeamMemberData() {
+        const tbody = $('#team-members-tbody');
+
+        try {
+            // Show loading state if we don't have data yet
+            if (!this.data.stats.overview.teamMembers || this.data.stats.overview.teamMembers.length === 0) {
+                tbody.html(`
+                    <tr>
+                        <td colspan="9" style="padding: 2rem; text-align: center; color: var(--text-secondary);">
+                            <i class="fa fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>
+                            Loading team member data...
+                        </td>
+                    </tr>
+                `);
+
+                // Calculate team member stats
+                const memberStats = await this.calculateTeamMemberStats(this.data.filtered);
+                this.data.stats.overview.teamMembers = memberStats;
+            }
+
+            // Render the team member data
+            const memberStats = this.data.stats.overview.teamMembers;
+
+            if (memberStats.length === 0) {
+                tbody.html(`
+                    <tr>
+                        <td colspan="9" style="padding: 2rem; text-align: center; color: var(--text-secondary);">
+                            <i class="fa fa-info-circle" style="margin-right: 0.5rem;"></i>
+                            No team member data available
+                        </td>
+                    </tr>
+                `);
+                return;
+            }
+
+            // Populate sales person filter
+            this.populateSalesPersonFilter(memberStats);
+
+            // Store the data for filtering
+            this.teamMemberData = memberStats;
+
+            // Render the filtered data
+            this.renderFilteredTeamMembers(memberStats);
+
+        } catch (error) {
+            console.error('Error loading team member data:', error);
+            tbody.html(`
+                <tr>
+                    <td colspan="9" style="padding: 2rem; text-align: center; color: var(--accent-red);">
+                        <i class="fa fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+                        Error loading team member data
+                    </td>
+                </tr>
+            `);
+        }
+    }
+
+    populateSalesPersonFilter(memberStats) {
+        const salesPersonFilter = $('#member-person-filter');
+        const teamFilter = $('#member-team-filter');
+
+        // Clear existing options except "All"
+        salesPersonFilter.find('option[value!="all"]').remove();
+        teamFilter.find('option[value!="all"]').remove();
+
+        // Get unique sales persons and sort them
+        const uniquePersons = [...new Set(memberStats.map(m => m.fullName))].sort();
+        uniquePersons.forEach(person => {
+            salesPersonFilter.append(`<option value="${person}">${person}</option>`);
+        });
+
+        // Get unique teams with proper sorting (priority teams first)
+        const teamOrder = ['Team A', 'Team B', 'Team C', 'Team D', 'Team-Biju Balan'];
+        const allUniqueTeams = [...new Set(memberStats.map(m => m.team))];
+
+        // Sort teams: priority teams first, then others alphabetically
+        const sortedTeams = allUniqueTeams.sort((a, b) => {
+            const indexA = teamOrder.indexOf(a);
+            const indexB = teamOrder.indexOf(b);
+
+            if (indexA !== -1 && indexB !== -1) {
+                return indexA - indexB;
+            }
+            if (indexA !== -1 && indexB === -1) {
+                return -1;
+            }
+            if (indexA === -1 && indexB !== -1) {
+                return 1;
+            }
+            return a.localeCompare(b);
+        });
+
+        sortedTeams.forEach(team => {
+            teamFilter.append(`<option value="${team}">${team}</option>`);
+        });
+
+        // Add event listeners for filters
+        $('#member-team-filter, #member-status-filter, #member-person-filter').off('change').on('change', () => {
+            this.applyTeamMemberFilters();
+        });
+    }
+
+    applyTeamMemberFilters() {
+        if (!this.teamMemberData) return;
+
+        const teamFilter = $('#member-team-filter').val();
+        const statusFilter = $('#member-status-filter').val();
+        const personFilter = $('#member-person-filter').val();
+
+        let filteredData = this.teamMemberData;
+
+        // Apply team filter
+        if (teamFilter !== 'all') {
+            filteredData = filteredData.filter(m => m.team === teamFilter);
+        }
+
+        // Apply status filter
+        if (statusFilter !== 'all') {
+            if (statusFilter === 'active') {
+                filteredData = filteredData.filter(m => m.enabled);
+            } else if (statusFilter === 'inactive') {
+                filteredData = filteredData.filter(m => !m.enabled);
+            }
+        }
+
+        // Apply person filter
+        if (personFilter !== 'all') {
+            filteredData = filteredData.filter(m => m.fullName === personFilter);
+        }
+
+        this.renderFilteredTeamMembers(filteredData);
+    }
+
+    renderFilteredTeamMembers(memberStats) {
+        const tbody = $('#team-members-tbody');
+
+        if (memberStats.length === 0) {
+            tbody.html(`
+                <tr>
+                    <td colspan="9" style="padding: 2rem; text-align: center; color: var(--text-secondary);">
+                        <i class="fa fa-search" style="margin-right: 0.5rem;"></i>
+                        No team members match the selected filters
+                    </td>
+                </tr>
+            `);
+            return;
+        }
+
+        const rows = memberStats.map((member, index) => {
+            const rowBg = index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)';
+            const statusColor = member.enabled ? 'var(--accent-green)' : 'var(--accent-red)';
+            const statusIcon = member.enabled ? 'fa-check-circle' : 'fa-times-circle';
+
+            return `
+                <tr style="background: ${rowBg}; border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 0.75rem 1rem; font-weight: 500; color: var(--text-primary); border: none;">
+                        <i class="fa fa-user" style="margin-right: 0.5rem; color: var(--accent-blue);"></i>
+                        ${member.owner}
+                    </td>
+                    <td style="padding: 0.75rem 1rem; color: var(--text-primary); border: none;">
+                        <i class="fa fa-users" style="margin-right: 0.5rem; color: var(--accent-purple);"></i>
+                        ${member.team}
+                    </td>
+                    <td style="padding: 0.75rem 1rem; color: var(--text-primary); border: none;">
+                        ${member.fullName}
+                    </td>
+                    <td style="padding: 0.75rem 1rem; color: var(--text-primary); border: none;">
+                        <i class="fa fa-user-tie" style="margin-right: 0.5rem; color: var(--accent-green);"></i>
+                        ${member.accountIncharge || 'Not Set'}
+                    </td>
+                    <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                        <span style="color: ${statusColor}; font-weight: 600;">
+                            <i class="fa ${statusIcon}" style="margin-right: 0.5rem;"></i>
+                            ${member.status}
+                        </span>
+                    </td>
+                    <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                        <button class="btn btn-link quotation-count-btn" onclick="frappe.sales_intelligence.showOwnerQuotations('${member.owner}')"
+                                style="color: var(--accent-blue); font-weight: 700; text-decoration: none; border: none; background: none; padding: 0.5rem 1rem; border-radius: 6px; transition: all 0.2s ease;">
+                            <i class="fa fa-file-alt" style="margin-right: 0.5rem;"></i>
+                            ${member.quotationCount}
+                        </button>
+                    </td>
+                    <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                        <button class="btn btn-link pending-quotation-btn" onclick="frappe.sales_intelligence.showPendingQuotations('${member.owner}')"
+                                style="color: var(--accent-orange); font-weight: 600; text-decoration: none; border: none; background: none; padding: 0.5rem 1rem; border-radius: 6px; transition: all 0.2s ease;">
+                            <i class="fa fa-clock" style="margin-right: 0.5rem;"></i>
+                            ${member.pendingQuotations}
+                        </button>
+                    </td>
+                    <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                        <div style="color: var(--accent-red); font-weight: 600;">
+                            <i class="fa fa-times-circle" style="margin-right: 0.5rem;"></i>
+                            ${member.lostCount}
+                        </div>
+                    </td>
+                    <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                            <div style="background: rgba(34, 197, 94, 0.1); color: var(--accent-green); padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">
+                                <i class="fa fa-percentage" style="margin-right: 0.25rem;"></i>
+                                ${member.wonConversion}%
+                            </div>
+                        </div>
+                    </td>
+                    <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                            <div style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">
+                                <i class="fa fa-percentage" style="margin-right: 0.25rem;"></i>
+                                ${member.lostConversion}%
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        tbody.html(rows);
+    }
+
+    clearTeamMemberFilters() {
+        $('#member-team-filter').val('all');
+        $('#member-status-filter').val('all');
+        $('#member-person-filter').val('all');
+        this.applyTeamMemberFilters();
+    }
+
+    sortTeamMembersTable(column) {
+        if (!this.teamMemberData || this.teamMemberData.length === 0) {
+            return;
+        }
+
+        // Initialize sort state if not exists
+        if (!this.teamMemberSortState) {
+            this.teamMemberSortState = { column: null, ascending: true };
+        }
+
+        // Toggle sort direction if same column, otherwise start with ascending
+        if (this.teamMemberSortState.column === column) {
+            this.teamMemberSortState.ascending = !this.teamMemberSortState.ascending;
+        } else {
+            this.teamMemberSortState.ascending = true;
+        }
+        this.teamMemberSortState.column = column;
+
+        // Update all header icons
+        $('#team-members-thead th i').removeClass('fa-sort-up fa-sort-down').addClass('fa-sort').css('opacity', '0.6');
+
+        // Update clicked column icon
+        const clickedHeader = $(`th[onclick*="${column}"] i`);
+        clickedHeader.removeClass('fa-sort').addClass(this.teamMemberSortState.ascending ? 'fa-sort-up' : 'fa-sort-down').css('opacity', '1');
+
+        // Sort the data
+        const sortedData = [...this.teamMemberData].sort((a, b) => {
+            let aVal, bVal;
+
+            switch (column) {
+                case 'owner':
+                    aVal = a.owner || '';
+                    bVal = b.owner || '';
+                    break;
+                case 'team':
+                    aVal = a.team || '';
+                    bVal = b.team || '';
+                    break;
+                case 'fullName':
+                    aVal = a.fullName || '';
+                    bVal = b.fullName || '';
+                    break;
+                case 'incharge':
+                    aVal = a.accountIncharge || '';
+                    bVal = b.accountIncharge || '';
+                    break;
+                case 'status':
+                    aVal = a.status || '';
+                    bVal = b.status || '';
+                    break;
+                case 'total':
+                    aVal = a.totalQuotations || 0;
+                    bVal = b.totalQuotations || 0;
+                    break;
+                case 'pending':
+                    aVal = a.pendingQuotations || 0;
+                    bVal = b.pendingQuotations || 0;
+                    break;
+                case 'lost':
+                    aVal = a.lostCount || 0;
+                    bVal = b.lostCount || 0;
+                    break;
+                case 'wonConversion':
+                    aVal = parseFloat(a.wonConversion) || 0;
+                    bVal = parseFloat(b.wonConversion) || 0;
+                    break;
+                case 'lostConversion':
+                    aVal = parseFloat(a.lostConversion) || 0;
+                    bVal = parseFloat(b.lostConversion) || 0;
+                    break;
+                default:
+                    return 0;
+            }
+
+            // Handle numeric vs string comparison
+            if (typeof aVal === 'number' && typeof bVal === 'number') {
+                return this.teamMemberSortState.ascending ? aVal - bVal : bVal - aVal;
+            } else {
+                // String comparison
+                aVal = String(aVal).toLowerCase();
+                bVal = String(bVal).toLowerCase();
+                if (aVal < bVal) return this.teamMemberSortState.ascending ? -1 : 1;
+                if (aVal > bVal) return this.teamMemberSortState.ascending ? 1 : -1;
+                return 0;
+            }
+        });
+
+        // Apply current filters to sorted data
+        const teamFilter = $('#member-team-filter').val();
+        const statusFilter = $('#member-status-filter').val();
+        const personFilter = $('#member-person-filter').val();
+
+        let filteredData = sortedData;
+
+        if (teamFilter !== 'all') {
+            filteredData = filteredData.filter(m => m.team === teamFilter);
+        }
+        if (statusFilter !== 'all') {
+            filteredData = filteredData.filter(m => m.status === statusFilter);
+        }
+        if (personFilter !== 'all') {
+            filteredData = filteredData.filter(m => m.fullName === personFilter);
+        }
+
+        // Re-render the table with sorted and filtered data
+        this.renderFilteredTeamMembers(filteredData);
+    }
+
+    showOwnerQuotations(owner) {
+        if (!this.teamMemberData) return;
+
+        const member = this.teamMemberData.find(m => m.owner === owner);
+        if (!member || !member.quotations) return;
+
+        const quotations = member.quotations;
+
+        // Debug logging
+        console.log('Owner:', owner);
+        console.log('Member found:', member.fullName);
+        console.log('Quotations count:', quotations.length);
+        if (quotations.length > 0) {
+            console.log('Sample quotation fields:', Object.keys(quotations[0]));
+            console.log('Sample quotation:', quotations[0]);
+        }
+
+        // Create modal content
+        const modalContent = `
+            <div class="quotation-details-modal">
+                <div class="modal-header" style="border-bottom: 2px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+                    <h4 style="margin: 0; color: var(--text-primary);">
+                        <i class="fa fa-file-alt" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
+                        Quotations by ${member.fullName}
+                    </h4>
+                    <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary);">
+                        Team: ${member.team} | Status: ${member.status} | Total: ${quotations.length} quotations
+                    </p>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-striped" style="margin: 0;">
+                        <thead style="background: var(--table-header-bg);">
+                            <tr>
+                                <th>Quotation</th>
+                                <th>Customer</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Grand Total</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${quotations.map((quote, index) => {
+                                const statusColor = this.getStatusColor(quote.status);
+
+                                // Try multiple possible field names for amount
+                                const grandTotal = quote.base_grand_total || quote.grand_total || quote.total || 0;
+                                const amount = grandTotal ? `₹${grandTotal.toLocaleString()}` : 'N/A';
+
+                                const date = quote.transaction_date ?
+                                    frappe.datetime.str_to_user(quote.transaction_date) :
+                                    (quote.creation ? frappe.datetime.str_to_user(quote.creation) : 'N/A');
+
+                                // Debug logging for amount issues
+                                if (index === 0) {
+                                    console.log('First quotation amount debug:', {
+                                        base_grand_total: quote.base_grand_total,
+                                        grand_total: quote.grand_total,
+                                        total: quote.total,
+                                        finalAmount: grandTotal,
+                                        allFields: Object.keys(quote)
+                                    });
+                                }
+
+                                return `
+                                    <tr>
+                                        <td style="font-weight: 600; color: var(--accent-blue);">${quote.quotation || quote.name || 'N/A'}</td>
+                                        <td>${quote.customer_name || quote.party_name || quote.customer || 'N/A'}</td>
+                                        <td>
+                                            <span style="color: ${statusColor}; font-weight: 600;">
+                                                ${quote.status}
+                                            </span>
+                                        </td>
+                                        <td>${date}</td>
+                                        <td style="font-weight: 600;">${amount}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary" onclick="frappe.sales_intelligence.openQuotation('${quote.quotation || quote.name}')" style="font-size: 0.875rem;">
+                                                <i class="fa fa-external-link-alt"></i> View
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Summary Section -->
+                <div class="quotation-summary" style="margin-top: 1.5rem; padding: 1rem; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa fa-file-alt" style="color: var(--accent-blue); font-size: 1.2rem;"></i>
+                                <span style="font-weight: 600; color: var(--text-primary);">Total Quotations:</span>
+                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--accent-blue);">${quotations.length}</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa fa-calculator" style="color: var(--accent-green); font-size: 1.2rem;"></i>
+                                <span style="font-weight: 600; color: var(--text-primary);">Total Value:</span>
+                                <span style="font-size: 1.2rem; font-weight: 700; color: var(--accent-green);">
+                                    ₹${quotations.reduce((sum, quote) => {
+                                        const grandTotal = quote.base_grand_total || quote.grand_total || quote.total || 0;
+                                        return sum + grandTotal;
+                                    }, 0).toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                            <i class="fa fa-info-circle"></i>
+                            <span>Click "View" to open quotation in new tab</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Show modal
+        $('#drilldown-title').html(`<i class="fa fa-user"></i> ${member.fullName} - Quotations (${quotations.length})`);
+        $('#drilldown-content').html(modalContent);
+        $('#drilldownModal').modal('show');
+    }
+
+    showPendingQuotations(owner) {
+        if (!this.teamMemberData) return;
+
+        const member = this.teamMemberData.find(m => m.owner === owner);
+        if (!member || !member.quotations) return;
+
+        // Filter for pending quotations only (Open, Draft, Hold)
+        const pendingQuotations = member.quotations.filter(q => ['Open', 'Draft', 'Hold'].includes(q.status));
+
+        if (pendingQuotations.length === 0) {
+            frappe.msgprint(`No pending quotations found for ${member.fullName}`);
+            return;
+        }
+
+        // Use the same format as overview cards
+        const content = this.generateDrilldownContent(pendingQuotations, `Pending Quotations by ${member.fullName}`, 'pending_quotations');
+
+        // Show modal
+        $('#drilldown-title').html(`<i class="fa fa-clock"></i> ${member.fullName} - Pending Quotations (${pendingQuotations.length})`);
+        $('#drilldown-content').html(content);
+        $('#drilldownModal').modal('show');
+    }
+
+    getStatusColor(status) {
+        const statusColors = {
+            'Won': 'var(--accent-green)',
+            'Ordered': 'var(--accent-green)',
+            'Partially Ordered': 'var(--accent-green)',
+            'Open': 'var(--accent-blue)',
+            'Draft': 'var(--accent-purple)',
+            'Hold': 'var(--accent-orange)',
+            'Lost': 'var(--accent-red)',
+            'Expired': 'var(--accent-red)',
+            'Cancelled': 'var(--text-secondary)'
+        };
+        return statusColors[status] || 'var(--text-primary)';
+    }
+
+    openQuotation(quotationName) {
+        if (!quotationName || quotationName === 'undefined') {
+            frappe.msgprint('Quotation name not found');
+            return;
+        }
+
+        // Open in new tab
+        const url = `/app/quotation/${quotationName}`;
+        window.open(url, '_blank');
+
+        // Close the modal
+        $('#drilldownModal').modal('hide');
+    }
+
+    showLostQuotationsDetail(type, identifier) {
+        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        let filteredQuotes = [];
+        let title = '';
+        let subtitle = '';
+
+        switch (type) {
+            case 'customer':
+                filteredQuotes = lostQuotes.filter(quote => {
+                    const customer = quote.customer_name || quote.party_name || quote.customer || 'Unknown';
+                    return customer === identifier;
+                });
+                title = `Lost Quotations - Customer: ${identifier}`;
+                subtitle = `Analysis of lost quotations for customer ${identifier}`;
+                break;
+
+            case 'salesperson':
+                filteredQuotes = lostQuotes.filter(quote => quote.account_incharge === identifier);
+                title = `Lost Quotations - Sales Person: ${identifier}`;
+                subtitle = `Analysis of lost quotations by sales person ${identifier}`;
+                break;
+
+            case 'team':
+                const teamFieldName = this.teamFieldName || 'custom_sales_team';
+                filteredQuotes = lostQuotes.filter(quote => {
+                    const team = quote[teamFieldName] || 'Unassigned';
+                    return team === identifier;
+                });
+                title = `Lost Quotations - Team: ${identifier}`;
+                subtitle = `Analysis of lost quotations by team ${identifier}`;
+                break;
+
+            case 'pipeline':
+                filteredQuotes = lostQuotes.filter(quote => quote.workflow_state === identifier);
+                title = `Lost Quotations - ${identifier}`;
+                let pipelineDescription = '';
+                switch(identifier) {
+                    case 'Pipeline A':
+                        pipelineDescription = 'Very High Confidence Pipeline (90-100%)';
+                        break;
+                    case 'Pipeline B':
+                        pipelineDescription = 'High Confidence Pipeline (75-90%)';
+                        break;
+                    case 'Pipeline C':
+                        pipelineDescription = 'Medium Confidence Pipeline (50-75%)';
+                        break;
+                }
+                subtitle = `Analysis of lost quotations from ${pipelineDescription}`;
+                break;
+
+            default:
+                frappe.msgprint('Invalid analysis type');
+                return;
+        }
+
+        if (filteredQuotes.length === 0) {
+            frappe.msgprint(`No lost quotations found for ${type}: ${identifier}`);
+            return;
+        }
+
+        // Calculate summary
+        const totalCount = filteredQuotes.length;
+        const totalValue = filteredQuotes.reduce((sum, quote) => {
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+            return sum + amount;
+        }, 0);
+
+        // Create modal content
+        const modalContent = `
+            <div class="lost-quotations-modal">
+                <!-- Scrollable Content Container -->
+                <div style="max-height: 70vh; overflow-y: auto; padding-right: 1rem;">
+                    <div class="content-header" style="margin-bottom: 1.5rem;">
+                        <h4 style="margin: 0; color: var(--text-primary);">
+                            <i class="fa fa-exclamation-triangle" style="color: var(--accent-red); margin-right: 0.5rem;"></i>
+                            ${title}
+                        </h4>
+                        <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary);">${subtitle}</p>
+                    </div>
+
+                    <!-- Summary Stats -->
+                    <div class="summary-stats" style="display: flex; gap: 2rem; margin-bottom: 1.5rem; padding: 1rem; background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa fa-list-ol" style="color: var(--accent-red); font-size: 1.2rem;"></i>
+                            <div>
+                                <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-red);">${totalCount}</div>
+                                <div style="font-size: 0.875rem; color: var(--text-secondary);">Total Lost Quotations</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa fa-calculator" style="color: var(--accent-red); font-size: 1.2rem;"></i>
+                            <div>
+                                <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-red);">₹${totalValue.toLocaleString()}</div>
+                                <div style="font-size: 0.875rem; color: var(--text-secondary);">Total Lost Value</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quotations Table -->
+                    <div class="table-responsive">
+                    <table class="table table-striped" style="margin: 0;">
+                        <thead style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)); border-bottom: 2px solid var(--border-color);">
+                            <tr>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--text-primary);">Quotation</th>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--text-primary);">Customer</th>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--text-primary);">Date</th>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--text-primary);">Grand Total</th>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--text-primary);">Account Incharge</th>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--text-primary);">Loss Reason</th>
+                                <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); text-align: center;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filteredQuotes.map((quote, index) => {
+                                const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+                                const formattedAmount = amount ? `₹${amount.toLocaleString()}` : 'N/A';
+                                const date = quote.transaction_date ?
+                                    frappe.datetime.str_to_user(quote.transaction_date) :
+                                    (quote.creation ? frappe.datetime.str_to_user(quote.creation) : 'N/A');
+                                const customer = quote.customer_name || quote.party_name || quote.customer || 'N/A';
+                                const accountIncharge = quote.account_incharge_full_name || quote.account_incharge || 'N/A';
+                                const lossReason = quote.order_lost_reason || quote.custom_lost_reason || quote.lost_reason || 'Not specified';
+                                const rowBg = index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)';
+
+                                return `
+                                    <tr style="background: ${rowBg}; border-bottom: 1px solid var(--border-color);">
+                                        <td style="padding: 0.75rem 1rem; font-weight: 600; color: var(--accent-blue);">
+                                            ${quote.quotation || quote.name || 'N/A'}
+                                        </td>
+                                        <td style="padding: 0.75rem 1rem; color: var(--text-primary);">
+                                            ${customer}
+                                        </td>
+                                        <td style="padding: 0.75rem 1rem; color: var(--text-primary);">
+                                            ${date}
+                                        </td>
+                                        <td style="padding: 0.75rem 1rem; font-weight: 600; color: var(--accent-red);">
+                                            ${formattedAmount}
+                                        </td>
+                                        <td style="padding: 0.75rem 1rem; color: var(--text-primary);">
+                                            ${accountIncharge}
+                                        </td>
+                                        <td style="padding: 0.75rem 1rem; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
+                                            ${lossReason}
+                                        </td>
+                                        <td style="padding: 0.75rem 1rem; text-align: center;">
+                                            <button class="btn btn-sm btn-primary" onclick="frappe.sales_intelligence.openQuotation('${quote.quotation || quote.name}')" style="font-size: 0.875rem;">
+                                                <i class="fa fa-external-link-alt"></i> View
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Additional Analysis -->
+                <div class="additional-analysis" style="margin-top: 1.5rem; padding: 1rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                        <i class="fa fa-chart-line" style="color: var(--accent-blue);"></i>
+                        <h5 style="margin: 0; color: var(--text-primary);">Quick Insights</h5>
+                    </div>
+                    <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Average Lost Value</div>
+                            <div style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">
+                                ₹${totalCount > 0 ? Math.round(totalValue / totalCount).toLocaleString() : '0'}
+                            </div>
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Date Range</div>
+                            <div style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">
+                                ${this.getDateRange(filteredQuotes)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+        `;
+
+        // Show modal
+        $('#drilldown-title').html(`<i class="fa fa-exclamation-triangle"></i> Lost Quotations Analysis`);
+        $('#drilldown-content').html(modalContent);
+        $('#drilldownModal').modal('show');
+    }
+
+    showAmountRangeDetails(rangeLabel, minAmount, maxAmount) {
+        try {
+            // Filter lost quotations by amount range
+            const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+            const quotes = lostQuotes.filter(quote => {
+                const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+                return amount >= minAmount && amount < maxAmount;
+            });
+
+            if (!quotes || quotes.length === 0) {
+                frappe.msgprint(`No lost quotations found for range: ${rangeLabel}`);
+                return;
+            }
+
+            // Calculate summary
+            const totalCount = quotes.length;
+            const totalValue = quotes.reduce((sum, quote) => {
+                const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+                return sum + amount;
+            }, 0);
+
+            const avgValue = totalValue / totalCount;
+
+            // Determine range display information
+            let rangeDescription = '';
+            let rangeIcon = 'fa-money-bill-wave';
+            let rangeColor = '#4CAF50';
+
+            switch(rangeLabel) {
+                case '0-10K':
+                    rangeDescription = 'Lost quotations with value between 0 - 10,000';
+                    rangeIcon = 'fa-coins';
+                    rangeColor = '#4CAF50';
+                    break;
+                case '10K-25K':
+                    rangeDescription = 'Lost quotations with value between 10,000 - 25,000';
+                    rangeIcon = 'fa-coins';
+                    rangeColor = '#2196F3';
+                    break;
+                case '25K-50K':
+                    rangeDescription = 'Lost quotations with value between 25,000 - 50,000';
+                    rangeIcon = 'fa-money-bill';
+                    rangeColor = '#FF9800';
+                    break;
+                case '50K-100K':
+                    rangeDescription = 'Lost quotations with value between 50,000 - 1,00,000';
+                    rangeIcon = 'fa-money-bill-alt';
+                    rangeColor = '#E91E63';
+                    break;
+                case '100K+':
+                    rangeDescription = 'Lost quotations with value above 1,00,000';
+                    rangeIcon = 'fa-money-bill-wave';
+                    rangeColor = '#9C27B0';
+                    break;
+            }
+
+            const title = `Amount Range: ${rangeLabel}`;
+            const subtitle = rangeDescription;
+
+            // Create modal content
+            const modalContent = `
+                <div class="amount-range-modal">
+                    <!-- Scrollable Content Container -->
+                    <div style="max-height: 70vh; overflow-y: auto; padding-right: 1rem;">
+                        <div class="content-header" style="margin-bottom: 1.5rem;">
+                            <h4 style="margin: 0; color: var(--text-primary);">
+                                <i class="fa ${rangeIcon}" style="color: ${rangeColor}; margin-right: 0.5rem;"></i>
+                                ${title}
+                            </h4>
+                            <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary);">${subtitle}</p>
+                        </div>
+
+                        <!-- Summary Stats -->
+                        <div class="summary-stats" style="display: flex; gap: 2rem; margin-bottom: 1.5rem; padding: 1rem; background: linear-gradient(135deg, ${rangeColor}15, ${rangeColor}05); border-radius: 8px; border: 1px solid ${rangeColor}30;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa fa-list-ol" style="color: ${rangeColor}; font-size: 1.2rem;"></i>
+                                <div>
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: ${rangeColor};">${totalCount}</div>
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary);">Total Lost Quotations</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa fa-calculator" style="color: ${rangeColor}; font-size: 1.2rem;"></i>
+                                <div>
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: ${rangeColor};">${frappe.format(totalValue, {fieldtype: 'Currency'})}</div>
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary);">Total Lost Value</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa fa-chart-line" style="color: ${rangeColor}; font-size: 1.2rem;"></i>
+                                <div>
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: ${rangeColor};">${frappe.format(avgValue, {fieldtype: 'Currency'})}</div>
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary);">Average Value</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quotations Table -->
+                        ${this.generateGenericDrilldownContent(quotes, [
+                            { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
+                            { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                            { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                            { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                            { key: 'project_description', label: 'Project Description', sortable: true, icon: 'fa-project-diagram' },
+                            { key: 'custom_lost_reason', label: 'Reason', sortable: true, icon: 'fa-exclamation-triangle' },
+                            { key: 'order_lost_reason', label: 'Detailed Reason', sortable: true, icon: 'fa-info-circle' },
+                            { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' }
+                        ])}
+                    </div>
+                </div>
+            `;
+
+            // Show modal
+            $('#drilldown-title').html(`<i class="fa ${rangeIcon}"></i> Amount Wise Lost Analysis`);
+            $('#drilldown-content').html(modalContent);
+            $('#drilldownModal').modal('show');
+
+        } catch (error) {
+            console.error('Error loading amount range details:', error);
+            frappe.msgprint('Error loading quotation details. Please try again.');
+        }
+    }
+
+    getDateRange(quotes) {
+        if (!quotes || quotes.length === 0) return 'No dates';
+
+        const dates = quotes
+            .map(q => q.transaction_date || q.creation)
+            .filter(d => d)
+            .sort();
+
+        if (dates.length === 0) return 'No dates';
+        if (dates.length === 1) return frappe.datetime.str_to_user(dates[0]);
+
+        const earliest = frappe.datetime.str_to_user(dates[0]);
+        const latest = frappe.datetime.str_to_user(dates[dates.length - 1]);
+
+        return `${earliest} to ${latest}`;
+    }
     
     showAllLostQuotes() {
-        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        const allLostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+
+        // Apply current reason filter if one is selected
+        const selectedReason = document.getElementById('lost-reason-filter') ? document.getElementById('lost-reason-filter').value : '';
+        let lostQuotes = allLostQuotes;
+        if (selectedReason && selectedReason !== '') {
+            lostQuotes = allLostQuotes.filter(q => {
+                // Only check custom_lost_reason (the "Reason" column)
+                const customReason = q.custom_lost_reason ? q.custom_lost_reason.trim() : '';
+                return customReason === selectedReason;
+            });
+        }
+
         const columns = [
             { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
             { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
             { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
             { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
-            { key: 'order_lost_reason', label: 'Reason', sortable: true, icon: 'fa-exclamation-triangle' },
+            { key: 'custom_lost_reason', label: 'Reason', sortable: true, icon: 'fa-exclamation-triangle' },
+            { key: 'order_lost_reason', label: 'Detailed Reason', sortable: true, icon: 'fa-info-circle' },
             { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' }
         ];
-        const content = this.generateGenericDrilldownContent(lostQuotes, columns, 'Lost Quotations');
-        $('#drilldown-title').html(`<i class="fa fa-times-circle"></i> All Lost Quotations (${lostQuotes.length})`);
+
+        const titleText = selectedReason ?
+            `All Lost Quotations - Filtered by: ${selectedReason} (${lostQuotes.length})` :
+            `All Lost Quotations (${lostQuotes.length})`;
+
+        const content = this.generateLostQuotationsDrilldownContent(allLostQuotes, lostQuotes, columns, selectedReason);
+        $('#drilldown-title').html(`<i class="fa fa-times-circle"></i> ${titleText}`);
         $('#drilldown-content').html(content);
         $('#drilldownModal').modal('show');
     }
@@ -9773,7 +11947,7 @@ initializePipelineTimelineChart() {
             { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
             { key: 'custom_cancel_status', label: 'Cancel Status', sortable: true, icon: 'fa-ban' },
             { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
-            { key: 'custom_branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' }
+            { key: 'branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' }
         ];
         const content = this.generateGenericDrilldownContent(cancelledQuotes, columns, 'Cancelled But Not Amended Quotations');
         $('#drilldown-title').html(`<i class="fa fa-ban"></i> All Cancelled But Not Amended Quotations (${cancelledQuotes.length})`);
@@ -10029,23 +12203,94 @@ initializePipelineTimelineChart() {
         `;
     }
 
+    // Generate drilldown content specifically for Lost Quotations with reason filtering
+    generateLostQuotationsDrilldownContent(allLostQuotes, filteredLostQuotes, columns, currentFilter) {
+        if (!allLostQuotes || allLostQuotes.length === 0) {
+            return `<div class="text-center" style="padding: 2rem;"><p style="color: var(--text-secondary);"><i class="fa fa-inbox" style="margin-right: 0.5rem; font-size: 1.2rem;"></i>No lost quotations available.</p></div>`;
+        }
+
+        const uniqueReasons = this.getDynamicLossReasons(allLostQuotes);
+
+        return `
+            <div class="drilldown-container">
+                <div class="modal-section">
+                    <h6><i class="fa fa-info-circle"></i>Summary</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="summary-card">
+                                <div class="summary-value">${filteredLostQuotes.length}</div>
+                                <div class="summary-label">${currentFilter ? 'Filtered' : 'Total'} Lost Quotations</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="summary-card">
+                                <div class="summary-value">${new Date().toLocaleDateString()}</div>
+                                <div class="summary-label">Report Date</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="summary-card">
+                                <div class="summary-value">${uniqueReasons.length}</div>
+                                <div class="summary-label">Unique Reasons</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter Section -->
+                <div class="modal-section" style="margin-top: 1.5rem;">
+                    <h6><i class="fa fa-filter"></i>Filter Options</h6>
+                    <div class="filter-section" style="padding: 1rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa fa-filter" style="color: var(--accent-blue);"></i>
+                                <span style="font-weight: 600; color: var(--text-primary);">Filter by Reason:</span>
+                            </div>
+                            <div style="flex: 1; max-width: 300px;">
+                                <select id="modal-lost-reason-filter" class="form-control" style="padding: 0.5rem; height: 44px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary);" onchange="frappe.sales_intelligence.filterModalLostQuotationsByReason()">
+                                    <option value="">All Reasons</option>
+                                    ${uniqueReasons.map(reason =>
+                                        `<option value="${reason}" ${currentFilter === reason ? 'selected' : ''}>${reason}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
+                                <span id="modal-lost-filter-count">Showing ${filteredLostQuotes.length} of ${allLostQuotes.length} quotations</span>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('modal-lost-reason-filter').value = ''; frappe.sales_intelligence.filterModalLostQuotationsByReason();" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                    <i class="fa fa-times"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-section" style="margin-top: 1.5rem;">
+                    <h6><i class="fa fa-table"></i>Detailed Data</h6>
+                    <div id="modal-lost-quotations-table-container">
+                        ${this.renderTableWithControls('modal-lost-quotations-table', filteredLostQuotes, columns)}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     getOpportunityColumns(type) {
         if (type === 'design-request') {
             return [
                 { key: 'name', label: 'Design Request', sortable: true, type: 'design_request_link', icon: 'fa-drafting-compass' },
                 { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
-                { key: 'custom_branch', label: 'Branch', sortable: true, icon: 'fa-code-branch' },
-                { key: 'workflow_state', label: 'Workflow State', sortable: true, type: 'badge', icon: 'fa-cog' },
+                { key: 'branch', label: 'Branch', sortable: true, icon: 'fa-code-branch' },
+                { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
                 { key: 'creation', label: 'Created', sortable: true, type: 'datetime', icon: 'fa-calendar-plus' },
                 { key: 'modified', label: 'Modified', sortable: true, type: 'datetime', icon: 'fa-clock' }
             ];
         }
-        
+
         if (type === 'site-visit') {
             return [
                 { key: 'name', label: 'Site Visit', sortable: true, type: 'site_visit_link', icon: 'fa-map-marker-alt' },
                 { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
-                { key: 'custom_branch', label: 'Branch', sortable: true, icon: 'fa-code-branch' },
+                { key: 'branch', label: 'Branch', sortable: true, icon: 'fa-code-branch' },
                 { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
                 { key: 'creation', label: 'Created', sortable: true, type: 'datetime', icon: 'fa-calendar-plus' },
                 { key: 'modified', label: 'Modified', sortable: true, type: 'datetime', icon: 'fa-clock' }
@@ -10334,7 +12579,7 @@ initializePipelineTimelineChart() {
         }
 
         // Populate branch options for searchable dropdown
-        const branches = [...new Set(this.data.quotations.map(q => q.custom_branch).filter(Boolean))];
+        const branches = [...new Set(this.data.quotations.map(q => q.branch).filter(Boolean))];
         const branchOptions = $('#branch-options');
         branchOptions.find('.searchable-option:not([data-value=""])').remove(); // Keep "All Branches" option
         branches.forEach(branch => {
@@ -10599,78 +12844,113 @@ initializePipelineTimelineChart() {
     }
 
     getDateRangeForPreset(preset) {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = today.getMonth();
-        const date = today.getDate();
-        const day = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-        
+        // Use Frappe's date utility to avoid timezone issues
+        const today = frappe.datetime.get_today();
+        const todayDate = frappe.datetime.str_to_obj(today);
+        const year = todayDate.getFullYear();
+        const month = todayDate.getMonth();
+        const date = todayDate.getDate();
+        const day = todayDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
         let fromDate, toDate;
-        
+
         switch (preset) {
             case 'today':
-                fromDate = toDate = new Date(year, month, date);
-                break;
-                
+                // Use frappe.datetime.get_today() directly to avoid timezone issues
+                return {
+                    from_date: today,
+                    to_date: today
+                };
+
             case 'yesterday':
-                fromDate = toDate = new Date(year, month, date - 1);
-                break;
-                
+                // Use frappe.datetime.add_days for proper date calculation
+                const yesterday = frappe.datetime.add_days(today, -1);
+                return {
+                    from_date: yesterday,
+                    to_date: yesterday
+                };
+
             case 'this_week':
                 // Start from Monday (day 1)
                 const daysFromMonday = (day + 6) % 7;
-                fromDate = new Date(year, month, date - daysFromMonday);
-                toDate = new Date(year, month, date + (6 - daysFromMonday));
-                break;
-                
+                const weekStart = frappe.datetime.add_days(today, -daysFromMonday);
+                const weekEnd = frappe.datetime.add_days(weekStart, 6);
+                return {
+                    from_date: weekStart,
+                    to_date: weekEnd
+                };
+
             case 'last_week':
                 const lastWeekDaysFromMonday = (day + 6) % 7 + 7;
-                fromDate = new Date(year, month, date - lastWeekDaysFromMonday);
-                toDate = new Date(year, month, date - lastWeekDaysFromMonday + 6);
-                break;
-                
+                const lastWeekStart = frappe.datetime.add_days(today, -lastWeekDaysFromMonday);
+                const lastWeekEnd = frappe.datetime.add_days(lastWeekStart, 6);
+                return {
+                    from_date: lastWeekStart,
+                    to_date: lastWeekEnd
+                };
+
             case 'this_month':
-                fromDate = new Date(year, month, 1);
-                toDate = new Date(year, month + 1, 0); // Last day of current month
-                break;
-                
+                const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+                const nextMonth = new Date(year, month + 1, 0);
+                const monthEnd = `${year}-${String(month + 1).padStart(2, '0')}-${String(nextMonth.getDate()).padStart(2, '0')}`;
+                return {
+                    from_date: monthStart,
+                    to_date: monthEnd
+                };
+
             case 'last_month':
-                fromDate = new Date(year, month - 1, 1);
-                toDate = new Date(year, month, 0); // Last day of previous month
-                break;
-                
+                const lastMonthNum = month === 0 ? 12 : month;
+                const lastMonthYear = month === 0 ? year - 1 : year;
+                const lastMonthStart = `${lastMonthYear}-${String(lastMonthNum).padStart(2, '0')}-01`;
+                const lastMonthLastDay = new Date(lastMonthYear, lastMonthNum, 0);
+                const lastMonthEnd = `${lastMonthYear}-${String(lastMonthNum).padStart(2, '0')}-${String(lastMonthLastDay.getDate()).padStart(2, '0')}`;
+                return {
+                    from_date: lastMonthStart,
+                    to_date: lastMonthEnd
+                };
+
             case 'this_quarter':
                 const currentQuarter = Math.floor(month / 3);
-                fromDate = new Date(year, currentQuarter * 3, 1);
-                toDate = new Date(year, currentQuarter * 3 + 3, 0);
-                break;
-                
+                const quarterStart = `${year}-${String(currentQuarter * 3 + 1).padStart(2, '0')}-01`;
+                const quarterLastMonth = currentQuarter * 3 + 3;
+                const quarterLastDay = new Date(year, quarterLastMonth, 0);
+                const quarterEnd = `${year}-${String(quarterLastMonth).padStart(2, '0')}-${String(quarterLastDay.getDate()).padStart(2, '0')}`;
+                return {
+                    from_date: quarterStart,
+                    to_date: quarterEnd
+                };
+
             case 'last_quarter':
                 const lastQuarter = Math.floor(month / 3) - 1;
                 const lastQuarterYear = lastQuarter < 0 ? year - 1 : year;
-                const lastQuarterMonth = lastQuarter < 0 ? 3 : lastQuarter * 3;
-                fromDate = new Date(lastQuarterYear, lastQuarterMonth, 1);
-                toDate = new Date(lastQuarterYear, lastQuarterMonth + 3, 0);
-                break;
-                
+                const lastQuarterNum = lastQuarter < 0 ? 3 : lastQuarter;
+                const lastQuarterStart = `${lastQuarterYear}-${String(lastQuarterNum * 3 + 1).padStart(2, '0')}-01`;
+                const lastQuarterLastMonth = lastQuarterNum * 3 + 3;
+                const lastQuarterLastDay = new Date(lastQuarterYear, lastQuarterLastMonth, 0);
+                const lastQuarterEnd = `${lastQuarterYear}-${String(lastQuarterLastMonth).padStart(2, '0')}-${String(lastQuarterLastDay.getDate()).padStart(2, '0')}`;
+                return {
+                    from_date: lastQuarterStart,
+                    to_date: lastQuarterEnd
+                };
+
             case 'this_year':
-                fromDate = new Date(year, 0, 1);
-                toDate = new Date(year, 11, 31);
-                break;
-                
+                return {
+                    from_date: `${year}-01-01`,
+                    to_date: `${year}-12-31`
+                };
+
             case 'last_year':
-                fromDate = new Date(year - 1, 0, 1);
-                toDate = new Date(year - 1, 11, 31);
-                break;
-                
+                return {
+                    from_date: `${year - 1}-01-01`,
+                    to_date: `${year - 1}-12-31`
+                };
+
             default:
-                fromDate = toDate = today;
+                return {
+                    from_date: today,
+                    to_date: today
+                };
         }
-        
-        return {
-            from_date: fromDate.toISOString().split('T')[0],
-            to_date: toDate.toISOString().split('T')[0]
-        };
     }
 
     getPresetLabel(preset) {
@@ -10753,6 +13033,9 @@ initializePipelineTimelineChart() {
         if (this.currentSection === 'overview') {
             this.drawStatusChart();
             this.drawTrendChart();
+        } else if (this.currentSection === 'lost') {
+            // Initialize lost analysis charts
+            setTimeout(() => this.initializeLostAnalysisCharts(), 200);
         }
     }
 
@@ -10854,20 +13137,688 @@ initializePipelineTimelineChart() {
         });
     }
 
-    showPipelineDetails(stage) {
+    // Lost Analysis Chart Functions
+    initializeLostAnalysisCharts() {
+        // Initialize the customer lost chart by default (since customer tab is active)
+        this.drawCustomerLostChart();
+    }
+
+    drawCustomerLostChart() {
+        console.log('Drawing customer lost chart...');
+        const canvas = document.getElementById('customer-lost-chart');
+        console.log('Canvas element found:', !!canvas);
+        if (!canvas) {
+            console.log('Canvas not found for customer-lost-chart');
+            return;
+        }
+
+        console.log('Total quotations in data:', this.data.quotations?.length || 0);
+        console.log('Sample quotation data:', this.data.quotations?.[0]);
+
+        // Let's check what statuses exist
+        const statuses = [...new Set(this.data.quotations?.map(q => q.status) || [])];
+        console.log('Available statuses:', statuses);
+
+        // Let's check docstatus values
+        const docstatuses = [...new Set(this.data.quotations?.map(q => q.docstatus) || [])];
+        console.log('Available docstatuses:', docstatuses);
+
+        // Try different filters to see what works
+        const lostOnly = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        console.log('Lost quotes (without docstatus filter):', lostOnly.length);
+
+        const docstatus1Only = this.data.quotations.filter(q => q.docstatus === 1) || [];
+        console.log('Docstatus 1 quotes:', docstatus1Only.length);
+
+        // Try with just Lost status first, then apply docstatus if needed
+        let lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        console.log('Lost quotes (status only):', lostQuotes.length);
+
+        // If we have lost quotes, prefer those with docstatus 1, but don't require it if none exist
+        if (lostQuotes.length > 0) {
+            const lostWithDocstatus = lostQuotes.filter(q => q.docstatus === 1);
+            if (lostWithDocstatus.length > 0) {
+                lostQuotes = lostWithDocstatus;
+                console.log('Using lost quotes with docstatus 1:', lostQuotes.length);
+            } else {
+                console.log('No lost quotes with docstatus 1, using all lost quotes');
+            }
+        }
+
+        const customerAnalysis = this.calculateCustomerLostStats(lostQuotes);
+        console.log('Customer analysis:', customerAnalysis);
+
+        this.drawLostBarChart(canvas, customerAnalysis, 'Customer', 'customer');
+    }
+
+    drawSalesPersonLostChart() {
+        console.log('Drawing sales person lost chart...');
+        const canvas = document.getElementById('salesperson-lost-chart');
+        if (!canvas) {
+            console.log('Canvas not found for salesperson-lost-chart');
+            return;
+        }
+
+        // Use same filtering logic as customer chart for consistency
+        let lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        console.log('Sales person lost quotes (status only):', lostQuotes.length);
+
+        if (lostQuotes.length > 0) {
+            const lostWithDocstatus = lostQuotes.filter(q => q.docstatus === 1);
+            if (lostWithDocstatus.length > 0) {
+                lostQuotes = lostWithDocstatus;
+                console.log('Using sales person lost quotes with docstatus 1:', lostQuotes.length);
+            } else {
+                console.log('No sales person lost quotes with docstatus 1, using all lost quotes');
+            }
+        }
+
+        const salesPersonAnalysis = this.calculateSalesPersonLostStats(lostQuotes);
+        console.log('Sales person analysis:', salesPersonAnalysis);
+
+        this.drawLostBarChart(canvas, salesPersonAnalysis, 'Sales Person', 'salesperson');
+    }
+
+    drawSalesTeamLostChart() {
+        console.log('Drawing sales team lost chart...');
+        const canvas = document.getElementById('salesteam-lost-chart');
+        if (!canvas) {
+            console.log('Canvas not found for salesteam-lost-chart');
+            return;
+        }
+
+        // Use same filtering logic as customer chart for consistency
+        let lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        console.log('Sales team lost quotes (status only):', lostQuotes.length);
+
+        if (lostQuotes.length > 0) {
+            const lostWithDocstatus = lostQuotes.filter(q => q.docstatus === 1);
+            if (lostWithDocstatus.length > 0) {
+                lostQuotes = lostWithDocstatus;
+                console.log('Using sales team lost quotes with docstatus 1:', lostQuotes.length);
+            } else {
+                console.log('No sales team lost quotes with docstatus 1, using all lost quotes');
+            }
+        }
+
+        const salesTeamAnalysis = this.calculateSalesTeamLostStats(lostQuotes);
+        console.log('Sales team analysis:', salesTeamAnalysis);
+
+        this.drawLostBarChart(canvas, salesTeamAnalysis, 'Sales Team', 'salesteam');
+    }
+
+    drawLostBarChart(canvas, data, entityType, chartType) {
+        console.log(`Drawing ${entityType} bar chart with data:`, data);
+        if (!canvas || !data || data.length === 0) {
+            console.log('Canvas or data not available:', { canvas: !!canvas, dataLength: data?.length });
+
+            // Draw "No Data" message on canvas
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('No Data Available', canvas.width / 2, canvas.height / 2);
+            }
+            return;
+        }
+
+        // Set canvas dimensions if not set
+        if (canvas.width === 0 || canvas.height === 0) {
+            canvas.width = 1200;
+            canvas.height = 600; // Increased height for better label visibility
+            console.log('Set canvas dimensions:', canvas.width, 'x', canvas.height);
+        }
+
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw dark background for better visibility
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+
+        // Show more items - increase from 10 to 20 for better coverage
+        const maxItems = Math.min(data.length, 20);
+        const topData = data.slice(0, maxItems);
+        const maxCount = Math.max(...topData.map(item => item.count), 1);
+
+        const chartHeight = canvas.height - 200; // More space for rotated labels
+        const chartWidth = canvas.width - 120;
+        const barWidth = Math.max(Math.min(chartWidth / topData.length - 10, 60), 25); // Adaptive bar width
+        const spacing = Math.max((chartWidth - (topData.length * barWidth)) / (topData.length + 1), 5);
+        const startX = 80;
+
+        // Draw bars
+        topData.forEach((item, index) => {
+            const barHeight = (item.count / maxCount) * chartHeight;
+            const x = startX + (spacing + barWidth) * index;
+            const y = canvas.height - 160 - barHeight; // More space at bottom for labels
+
+            // Bar with gradient effect
+            const color = this.getChartColor(index);
+            const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, this.darkenColor(color, 20));
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x, y, barWidth, barHeight);
+
+            // Bar border
+            ctx.strokeStyle = this.darkenColor(color, 40);
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, barWidth, barHeight);
+
+            // Count label on top of bar with background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            const countText = item.count.toString();
+            const countWidth = ctx.measureText(countText).width + 8;
+            ctx.fillRect(x + barWidth / 2 - countWidth / 2, y - 25, countWidth, 20);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(countText, x + barWidth / 2, y - 10);
+
+            // Amount label inside the bar (if bar is tall enough) or just below the count
+            if (item.sum) {
+                const amountText = `AED ${this.formatCurrency(item.sum)}`;
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+
+                // Show amount below the count label
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                const amountWidth = ctx.measureText(amountText).width + 8;
+                ctx.fillRect(x + barWidth / 2 - amountWidth / 2, y - 45, amountWidth, 18);
+
+                ctx.fillStyle = '#ffeb3b'; // Yellow color for amount
+                ctx.fillText(amountText, x + barWidth / 2, y - 32);
+            }
+
+            // Entity name - show diagonally below the bar
+            const displayName = (item.fullName || item.name || 'Unknown');
+            const maxNameLength = 25; // Slightly shorter for diagonal display
+            const truncatedName = displayName.length > maxNameLength
+                ? displayName.substring(0, maxNameLength - 3) + '...'
+                : displayName;
+
+            // Save the current transformation matrix
+            ctx.save();
+
+            // Move to the position where we want to draw the rotated text
+            const textX = x + barWidth / 2;
+            const textY = canvas.height - 100;
+            ctx.translate(textX, textY);
+
+            // Rotate the canvas 45 degrees for diagonal text
+            ctx.rotate(-Math.PI / 4); // -45 degrees in radians
+
+            // Draw the name diagonally
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(truncatedName, 0, 0);
+
+            // Restore the transformation matrix
+            ctx.restore();
+        });
+
+        // Chart title with background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(0, 0, canvas.width, 40);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Lost Quotations by ${entityType} (Top ${maxItems})`, canvas.width / 2, 25);
+
+        // Add total count
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '12px Arial';
+        ctx.fillText(`Total ${entityType}s: ${data.length}`, canvas.width / 2, 42);
+
+        // Y-axis labels with better styling
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 5; i++) {
+            const value = Math.round((maxCount / 5) * i);
+            const y = canvas.height - 160 - (chartHeight / 5) * i;
+            ctx.fillText(value.toString(), 70, y + 4);
+
+            // Draw horizontal grid lines
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(80, y);
+            ctx.lineTo(canvas.width - 40, y);
+            ctx.stroke();
+        }
+
+        // Add Y-axis label
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.save();
+        ctx.translate(20, canvas.height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = 'center';
+        ctx.fillText('Number of Lost Quotations', 0, 0);
+        ctx.restore();
+    }
+
+    // Tab switching function for lost analysis
+    switchLostAnalysisTab(tabName) {
+        // Update button states
+        document.querySelectorAll('.sub-tab-button').forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.background = 'rgba(220, 38, 127, 0.3)';
+            btn.style.color = 'var(--text-primary)';
+        });
+
+        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        document.querySelector(`[data-tab="${tabName}"]`).style.background = 'var(--accent-red)';
+        document.querySelector(`[data-tab="${tabName}"]`).style.color = 'white';
+
+        // Update panel visibility
+        document.querySelectorAll('.sub-tab-panel').forEach(panel => {
+            panel.style.display = 'none';
+        });
+
+        document.getElementById(`${tabName}-tab`).style.display = 'block';
+
+        // Draw appropriate chart
+        setTimeout(() => {
+            switch(tabName) {
+                case 'customer-lost':
+                    this.drawCustomerLostChart();
+                    break;
+                case 'salesperson-lost':
+                    this.drawSalesPersonLostChart();
+                    break;
+                case 'salesteam-lost':
+                    this.drawSalesTeamLostChart();
+                    break;
+            }
+        }, 100);
+    }
+
+    // Tab switching function for pipeline lost analysis
+    switchPipelineLostAnalysisTab(tabName) {
+        // Update button states for pipeline tabs
+        const container = document.querySelector('.pipeline-lost-analysis-container');
+        if (container) {
+            container.querySelectorAll('.sub-tab-button').forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.background = 'rgba(59, 130, 246, 0.3)';
+                btn.style.color = 'var(--text-primary)';
+            });
+
+            const activeBtn = container.querySelector(`[data-tab="${tabName}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+                activeBtn.style.background = 'var(--accent-blue)';
+                activeBtn.style.color = 'white';
+            }
+
+            // Update panel states
+            container.querySelectorAll('.sub-tab-panel').forEach(panel => {
+                panel.classList.remove('active');
+                panel.style.display = 'none';
+            });
+
+            const activePanel = document.getElementById(`${tabName}-tab`);
+            if (activePanel) {
+                activePanel.classList.add('active');
+                activePanel.style.display = 'block';
+            }
+        }
+    }
+
+    // Modal functions for clickable cards
+    showCustomerLostDetails(customerName) {
+        console.log('Looking for customer:', customerName);
+
+        // Use same flexible filtering as chart display
+        let allLostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        if (allLostQuotes.length > 0) {
+            const lostWithDocstatus = allLostQuotes.filter(q => q.docstatus === 1);
+            if (lostWithDocstatus.length > 0) {
+                allLostQuotes = lostWithDocstatus;
+            }
+        }
+
+        console.log('Total lost quotes available:', allLostQuotes.length);
+
+        // Filter by customer name with debug info
+        const lostQuotes = allLostQuotes.filter(q => {
+            const customerMatch = (q.customer_name === customerName || q.party_name === customerName || q.customer === customerName);
+            if (customerMatch) {
+                console.log('Found matching quote:', q.quotation, 'for customer:', q.customer_name || q.party_name || q.customer);
+            }
+            return customerMatch;
+        });
+
+        console.log('Filtered lost quotes for customer:', lostQuotes.length);
+
+        this.showLostDetailsModal('Customer', customerName, lostQuotes);
+    }
+
+    showSalesPersonLostDetails(salesPersonName) {
+        // Use same flexible filtering as chart display
+        let allLostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        if (allLostQuotes.length > 0) {
+            const lostWithDocstatus = allLostQuotes.filter(q => q.docstatus === 1);
+            if (lostWithDocstatus.length > 0) {
+                allLostQuotes = lostWithDocstatus;
+            }
+        }
+
+        const lostQuotes = allLostQuotes.filter(q => q.account_incharge === salesPersonName);
+
+        this.showLostDetailsModal('Sales Person', salesPersonName, lostQuotes);
+    }
+
+    showSalesTeamLostDetails(teamName) {
+        // Use same flexible filtering as chart display
+        let allLostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        if (allLostQuotes.length > 0) {
+            const lostWithDocstatus = allLostQuotes.filter(q => q.docstatus === 1);
+            if (lostWithDocstatus.length > 0) {
+                allLostQuotes = lostWithDocstatus;
+            }
+        }
+
+        const teamFieldName = this.teamFieldName || 'custom_sales_team';
+        const lostQuotes = allLostQuotes.filter(q => q[teamFieldName] === teamName);
+
+        this.showLostDetailsModal('Sales Team', teamName, lostQuotes);
+    }
+
+    showLostDetailsModal(entityType, entityName, quotes) {
+        if (!quotes || quotes.length === 0) {
+            frappe.msgprint(`No lost quotations found for ${entityType}: ${entityName}`);
+            return;
+        }
+
+        const totalAmount = quotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0);
+
+        const modalContent = `
+            <div class="lost-details-container">
+                <!-- Header -->
+                <div class="modal-header-info" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h4 style="margin: 0; color: var(--text-primary); font-size: 1.1rem;">
+                                <i class="fa fa-exclamation-triangle" style="color: var(--accent-red); margin-right: 0.5rem;"></i>
+                                Lost Quotations - ${entityType}: ${entityName}
+                            </h4>
+                            <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+                                ${quotes.length} quotations • AED ${this.formatCurrency(totalAmount)} total value
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quotations Table -->
+                <div class="table-container">
+                    ${this.renderTableWithControls('lost-details-table', quotes, [
+                        { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
+                        { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                        { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                        { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                        { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
+                        { key: 'custom_lost_reason', label: 'Lost Reason', sortable: true, icon: 'fa-exclamation-triangle' },
+                        { key: 'order_lost_reason', label: 'Detailed Reason', sortable: true, icon: 'fa-info-circle' },
+                        { key: 'project_description', label: 'Project', sortable: true, icon: 'fa-project-diagram' }
+                    ])}
+                </div>
+
+                <!-- Summary Stats -->
+                <div class="summary-stats" style="margin-top: 1.5rem; padding: 1rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <h5 style="margin: 0 0 1rem 0; color: var(--text-primary);">
+                        <i class="fa fa-chart-bar" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
+                        Quick Summary
+                    </h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 600; color: var(--accent-red);">${quotes.length}</div>
+                            <div style="font-size: 0.875rem; color: var(--text-secondary);">Total Lost</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 600; color: var(--accent-orange);">AED ${this.formatCurrency(totalAmount)}</div>
+                            <div style="font-size: 0.875rem; color: var(--text-secondary);">Total Value</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 600; color: var(--accent-blue);">AED ${quotes.length > 0 ? this.formatCurrency(totalAmount / quotes.length) : '0'}</div>
+                            <div style="font-size: 0.875rem; color: var(--text-secondary);">Average Value</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Show modal
+        $('#drilldown-title').html(`<i class="fa fa-exclamation-triangle"></i> Lost Quotations Analysis`);
+        $('#drilldown-content').html(modalContent);
+        $('#drilldownModal').modal('show');
+    }
+
+    // Customer filter functions
+    applyCustomerFilter() {
+        const selectedCustomer = document.getElementById('customer-filter').value;
+        const table = document.getElementById('customer-lost-table');
+
+        if (!table) return;
+
+        const rows = table.querySelectorAll('tbody tr[data-customer]');
+
+        rows.forEach(row => {
+            const customerName = row.getAttribute('data-customer');
+            if (selectedCustomer === 'all' || customerName === selectedCustomer) {
+                // Only show if it also passes the search
+                const searchTerm = document.getElementById('customer-search').value.toLowerCase();
+                const searchText = row.getAttribute('data-search-text');
+                if (!searchTerm || searchText.includes(searchTerm)) {
+                    row.style.display = '';
+                }
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Update table info
+        const visibleRows = Array.from(rows).filter(row => row.style.display !== 'none');
+        console.log(`Filtered ${visibleRows.length} of ${rows.length} customers for: ${selectedCustomer}`);
+    }
+
+    clearCustomerFilter() {
+        const filterSelect = document.getElementById('customer-filter');
+        const searchInput = document.getElementById('customer-search');
+        if (filterSelect) {
+            filterSelect.value = 'all';
+        }
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        this.applyCustomerFilter();
+        this.searchCustomerTable();
+    }
+
+    searchCustomerTable() {
+        const searchTerm = document.getElementById('customer-search').value.toLowerCase();
+        const table = document.getElementById('customer-lost-table');
+
+        if (!table) return;
+
+        const rows = table.querySelectorAll('tbody tr[data-search-text]');
+
+        rows.forEach(row => {
+            const searchText = row.getAttribute('data-search-text');
+            if (!searchTerm || searchText.includes(searchTerm)) {
+                // Only show if it also passes the filter
+                const currentFilter = document.getElementById('customer-filter').value;
+                const customerName = row.getAttribute('data-customer');
+                if (currentFilter === 'all' || customerName === currentFilter) {
+                    row.style.display = '';
+                }
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // Sales Person filter and search functions
+    applySalesPersonFilter() {
+        const selectedPerson = document.getElementById('salesperson-filter').value;
+        const table = document.getElementById('salesperson-lost-table');
+
+        if (!table) return;
+
+        const rows = table.querySelectorAll('tbody tr[data-salesperson]');
+
+        rows.forEach(row => {
+            const personName = row.getAttribute('data-salesperson');
+            if (selectedPerson === 'all' || personName === selectedPerson) {
+                // Only show if it also passes the search
+                const searchTerm = document.getElementById('salesperson-search').value.toLowerCase();
+                const searchText = row.getAttribute('data-search-text');
+                if (!searchTerm || searchText.includes(searchTerm)) {
+                    row.style.display = '';
+                }
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    clearSalesPersonFilter() {
+        const filterSelect = document.getElementById('salesperson-filter');
+        const searchInput = document.getElementById('salesperson-search');
+        if (filterSelect) {
+            filterSelect.value = 'all';
+        }
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        this.applySalesPersonFilter();
+        this.searchSalesPersonTable();
+    }
+
+    searchSalesPersonTable() {
+        const searchTerm = document.getElementById('salesperson-search').value.toLowerCase();
+        const table = document.getElementById('salesperson-lost-table');
+
+        if (!table) return;
+
+        const rows = table.querySelectorAll('tbody tr[data-search-text]');
+
+        rows.forEach(row => {
+            const searchText = row.getAttribute('data-search-text');
+            if (!searchTerm || searchText.includes(searchTerm)) {
+                // Only show if it also passes the filter
+                const currentFilter = document.getElementById('salesperson-filter').value;
+                const personName = row.getAttribute('data-salesperson');
+                if (currentFilter === 'all' || personName === currentFilter) {
+                    row.style.display = '';
+                }
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // Sales Team filter and search functions
+    applySalesTeamFilter() {
+        const selectedTeam = document.getElementById('salesteam-filter').value;
+        const table = document.getElementById('salesteam-lost-table');
+
+        if (!table) return;
+
+        const rows = table.querySelectorAll('tbody tr[data-salesteam]');
+
+        rows.forEach(row => {
+            const teamName = row.getAttribute('data-salesteam');
+            if (selectedTeam === 'all' || teamName === selectedTeam) {
+                // Only show if it also passes the search
+                const searchTerm = document.getElementById('salesteam-search').value.toLowerCase();
+                const searchText = row.getAttribute('data-search-text');
+                if (!searchTerm || searchText.includes(searchTerm)) {
+                    row.style.display = '';
+                }
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    clearSalesTeamFilter() {
+        const filterSelect = document.getElementById('salesteam-filter');
+        const searchInput = document.getElementById('salesteam-search');
+        if (filterSelect) {
+            filterSelect.value = 'all';
+        }
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        this.applySalesTeamFilter();
+        this.searchSalesTeamTable();
+    }
+
+    searchSalesTeamTable() {
+        const searchTerm = document.getElementById('salesteam-search').value.toLowerCase();
+        const table = document.getElementById('salesteam-lost-table');
+
+        if (!table) return;
+
+        const rows = table.querySelectorAll('tbody tr[data-search-text]');
+
+        rows.forEach(row => {
+            const searchText = row.getAttribute('data-search-text');
+            if (!searchTerm || searchText.includes(searchTerm)) {
+                // Only show if it also passes the filter
+                const currentFilter = document.getElementById('salesteam-filter').value;
+                const teamName = row.getAttribute('data-salesteam');
+                if (currentFilter === 'all' || teamName === currentFilter) {
+                    row.style.display = '';
+                }
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    async showPipelineDetails(stage) {
         const pipelineData = this.data.stats.pipeline[stage];
         if (!pipelineData || !pipelineData.quotes) {
             frappe.msgprint(`No data available for Pipeline ${stage}.`);
             return;
         }
 
-        const content = this.generatePipelineDetailsContent(stage, pipelineData.quotes);
-        $('#quotation-title').html(`<i class="fa fa-layer-group"></i> Pipeline ${stage} - Value Range Analysis`);
-        $('#quotation-content').html(content);
+        // Show modal with loading content first
+        $('#quotation-title').html(`<i class="fa fa-layer-group"></i> Pipeline ${stage} - Analysis`);
+        $('#quotation-content').html(`
+            <div style="text-align: center; padding: 3rem;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <p style="margin-top: 1rem; color: var(--text-secondary);">Loading pipeline analysis...</p>
+            </div>
+        `);
         $('#quotationDetailsModal').modal('show');
+
+        // Generate content with customer analysis
+        const content = await this.generatePipelineDetailsContent(stage, pipelineData.quotes);
+        $('#quotation-content').html(content);
     }
 
-    generatePipelineDetailsContent(stage, quotes) {
+    async generatePipelineDetailsContent(stage, quotes) {
+        // Generate customer analysis data
+        const customerAnalysis = await this.generatePipelineCustomerAnalysis(stage, quotes);
+
         // Define value ranges
         const ranges = [
             { min: 0, max: 5000, label: '0 - 5K AED', id: '0-5k', color: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.3)' },
@@ -10941,23 +13892,309 @@ initializePipelineTimelineChart() {
                     </div>
                 </div>
 
-                <div class="modal-section">
-                    <h6><i class="fa fa-list"></i>All Quotations in Pipeline ${stage}</h6>
-                    <div class="quotations-list-container">
-                        ${this.renderTableWithControls(`pipeline-${stage.toLowerCase()}-quotations-table`, quotes, [
-                            { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
-                            { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
-                            { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
-                            { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
-                            { key: 'workflow_state', label: 'Workflow State', sortable: true, icon: 'fa-tasks' },
-                            { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
-                            { key: 'custom_branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' },
-                            { key: 'valid_till', label: 'Valid Till', sortable: true, type: 'date', icon: 'fa-clock' }
-                        ])}
+                <!-- Pipeline Tabs -->
+                <div class="pipeline-tabs" style="margin-bottom: 1.5rem;">
+                    <nav class="tab-nav" style="display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 1rem;">
+                        <button class="tab-btn active" data-tab="quotations" onclick="frappe.sales_intelligence.switchPipelineTab('quotations', '${stage}')"
+                            style="padding: 0.75rem 1.5rem; border: none; background: none; color: var(--text-secondary); font-weight: 600; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.3s ease;">
+                            <i class="fa fa-list" style="margin-right: 0.5rem;"></i>
+                            All Quotations (${quotes.length})
+                        </button>
+                        <button class="tab-btn" data-tab="customer-analysis" onclick="frappe.sales_intelligence.switchPipelineTab('customer-analysis', '${stage}')"
+                            style="padding: 0.75rem 1.5rem; border: none; background: none; color: var(--text-secondary); font-weight: 600; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.3s ease;">
+                            <i class="fa fa-users-cog" style="margin-right: 0.5rem;"></i>
+                            Customer Analysis (${customerAnalysis.returningCustomers.length})
+                        </button>
+                    </nav>
+
+                    <!-- All Quotations Tab -->
+                    <div id="quotations-tab" class="tab-content active">
+                        <div class="modal-section">
+                            <h6><i class="fa fa-list"></i>All Quotations in Pipeline ${stage}</h6>
+                            <div class="quotations-list-container">
+                                ${this.renderTableWithControls(`pipeline-${stage.toLowerCase()}-quotations-table`, quotes, [
+                                    { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
+                                    { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                                    { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                                    { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                                    { key: 'workflow_state', label: 'Workflow State', sortable: true, icon: 'fa-tasks' },
+                                    { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
+                                    { key: 'branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' },
+                                    { key: 'valid_till', label: 'Valid Till', sortable: true, type: 'date', icon: 'fa-clock' }
+                                ])}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer Analysis Tab -->
+                    <div id="customer-analysis-tab" class="tab-content" style="display: none;">
+                        ${this.renderPipelineCustomerAnalysisTab(stage, customerAnalysis)}
                     </div>
                 </div>
             </div>
         `;
+    }
+
+    // Generate customer analysis for pipeline
+    async generatePipelineCustomerAnalysis(stage, quotes) {
+        try {
+            // Get unique customers from current pipeline quotes
+            const pipelineCustomers = [...new Set(quotes.map(q => q.party_name))];
+
+            // Fetch all quotations for these customers (beyond the current date range)
+            const customerQuotations = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Quotation',
+                    filters: {
+                        party_name: ['in', pipelineCustomers]
+                    },
+                    fields: [
+                        'name', 'party_name', 'transaction_date', 'base_grand_total',
+                        'status', 'workflow_state', 'creation'
+                    ],
+                    order_by: 'creation desc',
+                    limit_page_length: 1000
+                }
+            });
+
+            const allCustomerQuotes = (customerQuotations.message || []).map(quote => ({
+                ...quote,
+                quotation: quote.name, // Map name field to quotation field for consistency
+                account_incharge_full_name: 'Not Available' // Default value since field may not be accessible
+            }));
+
+            // Analyze customers with previous orders
+            const returningCustomers = [];
+
+            pipelineCustomers.forEach(customerName => {
+                const customerQuotes = allCustomerQuotes.filter(q => q.party_name === customerName);
+                const orderedQuotes = customerQuotes.filter(q => ['Ordered', 'Partially Ordered'].includes(q.status));
+                const currentPipelineQuotes = quotes.filter(q => q.party_name === customerName);
+
+                if (orderedQuotes.length > 0) {
+                    returningCustomers.push({
+                        customer_name: customerName,
+                        total_quotes: customerQuotes.length,
+                        ordered_quotes: orderedQuotes.length,
+                        current_pipeline_quotes: currentPipelineQuotes.length,
+                        ordered_value: orderedQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0),
+                        current_pipeline_value: currentPipelineQuotes.reduce((sum, q) => sum + (q.base_grand_total || 0), 0),
+                        conversion_rate: ((orderedQuotes.length / customerQuotes.length) * 100).toFixed(1),
+                        last_order_date: orderedQuotes.length > 0 ? orderedQuotes[0].transaction_date : null,
+                        account_manager: currentPipelineQuotes.length > 0 ? (currentPipelineQuotes[0].account_incharge_full_name || currentPipelineQuotes[0].account_incharge || 'Not Assigned') : 'Not Assigned',
+                        ordered_quotations: orderedQuotes,
+                        current_quotations: currentPipelineQuotes.map(q => ({
+                            ...q,
+                            quotation: q.quotation || q.name, // Ensure quotation field exists
+                            account_incharge_full_name: 'Not Available' // Default value since field may not be accessible
+                        }))
+                    });
+                }
+            });
+
+            // Sort by current pipeline value (descending)
+            returningCustomers.sort((a, b) => b.current_pipeline_value - a.current_pipeline_value);
+
+            return {
+                returningCustomers,
+                summary: {
+                    total_customers: pipelineCustomers.length,
+                    returning_customers: returningCustomers.length,
+                    new_customers: pipelineCustomers.length - returningCustomers.length,
+                    total_previous_orders: returningCustomers.reduce((sum, c) => sum + c.ordered_quotes, 0),
+                    total_previous_value: returningCustomers.reduce((sum, c) => sum + c.ordered_value, 0)
+                }
+            };
+        } catch (error) {
+            console.error('Error generating pipeline customer analysis:', error);
+            return {
+                returningCustomers: [],
+                summary: {
+                    total_customers: 0,
+                    returning_customers: 0,
+                    new_customers: 0,
+                    total_previous_orders: 0,
+                    total_previous_value: 0
+                }
+            };
+        }
+    }
+
+    // Render customer analysis tab
+    renderPipelineCustomerAnalysisTab(stage, customerAnalysis) {
+        const { returningCustomers, summary } = customerAnalysis;
+
+        return `
+            <div class="customer-analysis-container">
+                <!-- Summary Statistics -->
+                <div class="modal-section">
+                    <h6><i class="fa fa-chart-pie"></i>Customer Analysis Summary</h6>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div style="text-align: center; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                                <h4 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${summary.total_customers}</h4>
+                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Total Customers</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div style="text-align: center; padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                                <h4 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${summary.returning_customers}</h4>
+                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Returning Customers</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div style="text-align: center; padding: 1rem; background: rgba(245, 158, 11, 0.1); border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3);">
+                                <h4 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">${summary.new_customers}</h4>
+                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">New Customers</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div style="text-align: center; padding: 1rem; background: rgba(139, 92, 246, 0.1); border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.3);">
+                                <h4 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem 0;">AED ${this.formatCurrency(summary.total_previous_value)}</h4>
+                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Previous Orders Value</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                ${returningCustomers.length > 0 ? `
+                <!-- Returning Customers Table -->
+                <div class="modal-section">
+                    <h6><i class="fa fa-users"></i>Customers with Previous Orders (${returningCustomers.length})</h6>
+                    <div style="margin-bottom: 1rem; padding: 0.75rem; background: rgba(16, 185, 129, 0.1); border-radius: 6px; border-left: 4px solid var(--accent-green);">
+                        <p style="margin: 0; font-size: 0.875rem; color: var(--text-secondary);">
+                            <strong style="color: var(--accent-green);">💡 Key Insight:</strong> These customers have previously placed orders and are now in your ${stage} pipeline. They represent high-conversion potential based on past behavior.
+                        </p>
+                    </div>
+
+                    ${this.renderTableWithControls(`pipeline-${stage.toLowerCase()}-customer-analysis-table`, returningCustomers, [
+                        { key: 'customer_name', label: 'Customer', sortable: true, icon: 'fa-building', type: 'customer_link' },
+                        { key: 'current_pipeline_quotes', label: 'Current Pipeline Quotes', sortable: true, icon: 'fa-layer-group' },
+                        { key: 'current_pipeline_value', label: 'Pipeline Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                        { key: 'ordered_quotes', label: 'Previous Orders', sortable: true, icon: 'fa-check-circle' },
+                        { key: 'ordered_value', label: 'Previous Value', sortable: true, type: 'currency', icon: 'fa-dollar-sign' },
+                        { key: 'conversion_rate', label: 'Conversion Rate', sortable: true, type: 'conversion', icon: 'fa-percentage' },
+                        { key: 'last_order_date', label: 'Last Order', sortable: true, type: 'date', icon: 'fa-calendar' },
+                        { key: 'account_manager', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
+                        { key: 'actions', label: 'Actions', sortable: false, icon: 'fa-cog', type: 'pipeline_customer_actions' }
+                    ])}
+                </div>
+                ` : `
+                <div class="modal-section">
+                    <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <i class="fa fa-info-circle" style="font-size: 2rem; margin-bottom: 1rem; color: var(--accent-blue);"></i>
+                        <h5>No Returning Customers Found</h5>
+                        <p>All customers in this pipeline are new customers with no previous orders.</p>
+                    </div>
+                </div>
+                `}
+            </div>
+        `;
+    }
+
+    // Tab switching for pipeline modal
+    switchPipelineTab(tabName, stage) {
+        // Remove active class from all tabs and content in pipeline modal
+        document.querySelectorAll('#quotationDetailsModal .tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.color = 'var(--text-secondary)';
+            btn.style.borderBottomColor = 'transparent';
+        });
+
+        document.querySelectorAll('#quotationDetailsModal .tab-content').forEach(content => {
+            content.classList.remove('active');
+            content.style.display = 'none';
+        });
+
+        // Add active class to clicked tab
+        const activeBtn = document.querySelector(`#quotationDetailsModal [data-tab="${tabName}"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+            activeBtn.style.color = 'var(--accent-blue)';
+            activeBtn.style.borderBottomColor = 'var(--accent-blue)';
+        }
+
+        // Show corresponding content
+        const activeContent = document.getElementById(`${tabName}-tab`);
+        if (activeContent) {
+            activeContent.classList.add('active');
+            activeContent.style.display = 'block';
+        }
+    }
+
+    // Show pipeline customer quotation history
+    showPipelineCustomerDetails(customerName) {
+        // Call customer quotation details without date restrictions for historical view
+        this.showCustomerQuotationDetails(customerName, true);
+    }
+
+    // Show current pipeline quotations for customer
+    showPipelineCustomerQuotations(customerName, currentQuotations) {
+        try {
+            const quotations = currentQuotations || [];
+
+            const modalContent = `
+                <div class="pipeline-customer-quotations">
+                    <div class="customer-header" style="margin-bottom: 2rem; padding: 1.5rem; background: linear-gradient(135deg, var(--accent-green), var(--accent-blue)); border-radius: 12px; color: white;">
+                        <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">
+                            <i class="fa fa-layer-group" style="margin-right: 0.75rem;"></i>
+                            ${customerName} - Current Pipeline Quotations
+                        </h2>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                            <div>
+                                <strong>Pipeline Quotations:</strong> ${quotations.length}
+                            </div>
+                            <div>
+                                <strong>Total Value:</strong> AED ${this.formatCurrency(quotations.reduce((sum, q) => sum + (q.base_grand_total || 0), 0))}
+                            </div>
+                            <div>
+                                <strong>Account Manager:</strong> ${quotations.length > 0 ? quotations[0].account_incharge_full_name || quotations[0].account_incharge || 'Not assigned' : 'N/A'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pipeline Quotations Table -->
+                    <div class="quotations-section">
+                        <h3 style="color: var(--text-primary); margin-bottom: 1rem;">
+                            <i class="fa fa-list"></i>
+                            Pipeline Quotations (${quotations.length})
+                        </h3>
+                        ${quotations.length > 0 ? this.renderFilterableQuotationTable(quotations, 'pipeline', customerName) :
+                          '<p style="color: var(--text-secondary); font-style: italic; text-align: center; padding: 2rem;">No pipeline quotations found for this customer.</p>'}
+                    </div>
+                </div>
+            `;
+
+            // Show modal with higher z-index and close button
+            const dialog = new frappe.ui.Dialog({
+                title: `Pipeline Quotations: ${customerName}`,
+                fields: [
+                    {
+                        fieldtype: 'HTML',
+                        options: modalContent
+                    }
+                ],
+                size: 'extra-large',
+                primary_action_label: 'Close',
+                primary_action: function() {
+                    dialog.hide();
+                }
+            });
+
+            // Set higher z-index to ensure it appears above the pipeline modal (which uses 10001)
+            dialog.show();
+            setTimeout(() => {
+                if (dialog.$wrapper) {
+                    dialog.$wrapper.css('z-index', '10002');
+                    dialog.$wrapper.find('.modal-backdrop').css('z-index', '10001');
+                }
+            }, 100);
+
+        } catch (error) {
+            console.error('Error showing pipeline customer quotations:', error);
+            frappe.msgprint('Error loading pipeline quotations');
+        }
     }
 
     showRangeQuotations(stage, rangeId, rangeLabel) {
@@ -11089,6 +14326,18 @@ initializePipelineTimelineChart() {
     renderLostQuotationsSection() {
         const stats = this.data.stats.overview;
         const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost');
+
+        // Debug logging
+        console.log('=== DEBUGGING LOST QUOTATIONS ===');
+        console.log('Total quotations:', this.data.quotations?.length || 0);
+        console.log('Lost quotations found:', lostQuotes.length);
+        if (lostQuotes.length > 0) {
+            console.log('First lost quote sample:', lostQuotes[0]);
+            console.log('Lost quote fields available:', Object.keys(lostQuotes[0]));
+            console.log('custom_lost_reason values:', lostQuotes.map(q => q.custom_lost_reason).filter(Boolean));
+            console.log('order_lost_reason values:', lostQuotes.map(q => q.order_lost_reason).filter(Boolean));
+        }
+        console.log('=== END DEBUG ===');
         
         
         // Analyze lost reasons
@@ -11109,41 +14358,88 @@ initializePipelineTimelineChart() {
             ...data
         })).sort((a, b) => b.amount - a.amount);
         
-        // Analyze by branch for lost quotations
-        const branchLossMap = new Map();
-        lostQuotes.forEach(quote => {
-            const branch = quote.custom_branch || 'Unknown';
-            if (!branchLossMap.has(branch)) {
-                branchLossMap.set(branch, { count: 0, amount: 0 });
+        // Analyze by branch for all quotations with conversion metrics
+        const branchMap = new Map();
+        this.data.filtered.forEach(quote => {
+            const branch = quote.branch || 'Unknown';
+            if (!branchMap.has(branch)) {
+                branchMap.set(branch, {
+                    total_count: 0,
+                    lost_count: 0,
+                    lost_amount: 0,
+                    won_count: 0,
+                    won_amount: 0,
+                    total_amount: 0
+                });
             }
-            const branchData = branchLossMap.get(branch);
-            branchData.count++;
-            branchData.amount += quote.base_grand_total || 0;
+            const branchData = branchMap.get(branch);
+            branchData.total_count++;
+            branchData.total_amount += quote.base_grand_total || 0;
+
+            if (quote.status === 'Lost') {
+                branchData.lost_count++;
+                branchData.lost_amount += quote.base_grand_total || 0;
+            } else if (['Ordered', 'Partially Ordered'].includes(quote.status)) {
+                branchData.won_count++;
+                branchData.won_amount += quote.base_grand_total || 0;
+            }
         });
-        
-        const branchLosses = Array.from(branchLossMap.entries()).map(([branch, data]) => ({
+
+        const branchLosses = Array.from(branchMap.entries()).map(([branch, data]) => ({
             branch,
-            ...data
+            count: data.lost_count,
+            amount: data.lost_amount,
+            total_quotations: data.total_count,
+            won_conversion: data.total_count > 0 ? ((data.won_count / data.total_count) * 100).toFixed(1) : '0.0',
+            lost_conversion: data.total_count > 0 ? ((data.lost_count / data.total_count) * 100).toFixed(1) : '0.0'
         })).sort((a, b) => b.amount - a.amount);
-        
-        // Analyze by account manager for lost quotations
-        const managerLossMap = new Map();
-        lostQuotes.forEach(quote => {
-            const manager = quote.account_incharge_full_name || quote.account_incharge || 'Unknown';
-            if (!managerLossMap.has(manager)) {
-                managerLossMap.set(manager, { count: 0, amount: 0 });
+
+        // Analyze by account manager for all quotations with conversion metrics
+        const managerMap = new Map();
+        this.data.filtered.forEach(quote => {
+            const manager = quote.account_incharge || 'Unknown';
+            const managerDisplayName = quote.account_incharge_full_name || manager;
+            if (!managerMap.has(manager)) {
+                managerMap.set(manager, {
+                    total_count: 0,
+                    lost_count: 0,
+                    lost_amount: 0,
+                    won_count: 0,
+                    won_amount: 0,
+                    total_amount: 0
+                });
             }
-            const managerData = managerLossMap.get(manager);
-            managerData.count++;
-            managerData.amount += quote.base_grand_total || 0;
+            const managerData = managerMap.get(manager);
+            managerData.total_count++;
+            managerData.total_amount += quote.base_grand_total || 0;
+
+            if (quote.status === 'Lost') {
+                managerData.lost_count++;
+                managerData.lost_amount += quote.base_grand_total || 0;
+            } else if (['Ordered', 'Partially Ordered'].includes(quote.status)) {
+                managerData.won_count++;
+                managerData.won_amount += quote.base_grand_total || 0;
+            }
         });
-        
-        const managerLosses = Array.from(managerLossMap.entries()).map(([manager, data]) => ({
-            manager,
-            ...data
-        })).sort((a, b) => b.amount - a.amount);
-        
-        
+
+        const managerLosses = Array.from(managerMap.entries()).map(([manager, data]) => {
+            // Get the display name for this manager
+            const displayName = this.data.filtered.find(q => (q.account_incharge || 'Unknown') === manager)?.account_incharge_full_name || manager;
+            return {
+            manager: displayName,
+            count: data.lost_count,
+            amount: data.lost_amount,
+            total_quotations: data.total_count,
+            won_count: data.won_count,
+            won_amount: data.won_amount,
+            won_conversion: data.total_count > 0 ? ((data.won_count / data.total_count) * 100).toFixed(1) : '0.0',
+            lost_conversion: data.total_count > 0 ? ((data.lost_count / data.total_count) * 100).toFixed(1) : '0.0'
+        };
+        }).sort((a, b) => b.amount - a.amount);
+
+        // Store original manager data for filtering
+        this.originalManagerData = managerLosses;
+
         return `
             <div class="lost-quotations-container">
                 <!-- Lost Quotations Overview -->
@@ -11198,82 +14494,2415 @@ initializePipelineTimelineChart() {
                         </div>
                     </div>
                 </div>
-                
-                <!-- Standardized Loss Reasons Analysis -->
+
+                <!-- Additional Analysis Cards -->
+                <div class="stats-grid" style="margin: 1.5rem 0;">
+                    <!-- Top Customer with Lost Quotations -->
+                    <div class="stat-card" onclick="frappe.sales_intelligence.showLostQuotationsDetail('customer', '${this.getTopLostCustomer(lostQuotes).name}')"
+                         style="cursor: pointer; transition: all 0.3s ease;">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-user-tie" style="color: var(--accent-red); margin-right: 0.5rem;"></i>
+                                    Top Customer - Lost Quotations
+                                </h3>
+                                <p class="stat-card-value" style="color: var(--accent-red); font-size: 1.1rem; line-height: 1.3;">
+                                    ${this.getTopLostCustomer(lostQuotes).name}
+                                </p>
+                                <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                                    <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                                        <i class="fa fa-list-ol" style="margin-right: 0.3rem;"></i>
+                                        ${this.getTopLostCustomer(lostQuotes).count} quotations
+                                    </span>
+                                    <span style="color: var(--accent-red); font-weight: 600; font-size: 0.875rem;">
+                                        <i class="fa fa-calculator" style="margin-right: 0.3rem;"></i>
+                                        AED ${this.formatCurrency(this.getTopLostCustomer(lostQuotes).sum)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="stat-card-action">
+                            <i class="fa fa-mouse-pointer"></i>
+                            Click to view details
+                        </span>
+                    </div>
+
+                    <!-- Top Sales Person with Lost Quotations -->
+                    <div class="stat-card" onclick="frappe.sales_intelligence.showLostQuotationsDetail('salesperson', '${this.getTopLostSalesPerson(lostQuotes).name}')"
+                         style="cursor: pointer; transition: all 0.3s ease;">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-user" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
+                                    Top Sales Person - Lost Quotations
+                                </h3>
+                                <p class="stat-card-value" style="color: var(--accent-orange); font-size: 1.1rem; line-height: 1.3;">
+                                    ${this.getTopLostSalesPerson(lostQuotes).fullName || this.getTopLostSalesPerson(lostQuotes).name}
+                                </p>
+                                <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                                    <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                                        <i class="fa fa-list-ol" style="margin-right: 0.3rem;"></i>
+                                        ${this.getTopLostSalesPerson(lostQuotes).count} quotations
+                                    </span>
+                                    <span style="color: var(--accent-orange); font-weight: 600; font-size: 0.875rem;">
+                                        <i class="fa fa-calculator" style="margin-right: 0.3rem;"></i>
+                                        AED ${this.formatCurrency(this.getTopLostSalesPerson(lostQuotes).sum)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="stat-card-action">
+                            <i class="fa fa-mouse-pointer"></i>
+                            Click to view details
+                        </span>
+                    </div>
+
+                    <!-- Top Sales Team with Lost Quotations -->
+                    <div class="stat-card" onclick="frappe.sales_intelligence.showLostQuotationsDetail('team', '${this.getTopLostTeam(lostQuotes).name}')"
+                         style="cursor: pointer; transition: all 0.3s ease;">
+                        <div class="stat-card-header">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-users" style="color: var(--accent-purple); margin-right: 0.5rem;"></i>
+                                    Top Sales Team - Lost Quotations
+                                </h3>
+                                <p class="stat-card-value" style="color: var(--accent-purple); font-size: 1.1rem; line-height: 1.3;">
+                                    ${this.getTopLostTeam(lostQuotes).name}
+                                </p>
+                                <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                                    <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                                        <i class="fa fa-list-ol" style="margin-right: 0.3rem;"></i>
+                                        ${this.getTopLostTeam(lostQuotes).count} quotations
+                                    </span>
+                                    <span style="color: var(--accent-purple); font-weight: 600; font-size: 0.875rem;">
+                                        <i class="fa fa-calculator" style="margin-right: 0.3rem;"></i>
+                                        AED ${this.formatCurrency(this.getTopLostTeam(lostQuotes).sum)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="stat-card-action">
+                            <i class="fa fa-mouse-pointer"></i>
+                            Click to view details
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Lost Quotations Analysis - Main Tabbed Section -->
                 <div class="data-section">
                     <div class="section-header">
                         <h2 class="section-title">
                             <i class="fa fa-exclamation-triangle"></i>
-                            Standardized Loss Reasons Analysis
+                            Lost Quotations Analysis
                         </h2>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                            <i class="fa fa-info-circle"></i>
+                            <span>Comprehensive analysis of lost quotations across different dimensions</span>
+                        </div>
                     </div>
-                    
-                    ${this.renderStandardizedLossReasons()}
+
+                    <!-- Main Lost Analysis Tabs -->
+                    <div class="main-lost-tabs">
+                        <div class="tab-navigation">
+                            <button class="tab-btn active" onclick="frappe.sales_intelligence.switchMainLostTab(this, 'overview')"
+                                    data-tab="overview">
+                                <i class="fa fa-chart-pie"></i>
+                                <span>Overview</span>
+                            </button>
+                            <button class="tab-btn" onclick="frappe.sales_intelligence.switchMainLostTab(this, 'loss-reasons')"
+                                    data-tab="loss-reasons">
+                                <i class="fa fa-exclamation-triangle"></i>
+                                <span>Lost Reasons</span>
+                            </button>
+                            <button class="tab-btn" onclick="frappe.sales_intelligence.switchMainLostTab(this, 'pipeline-wise-lost')"
+                                    data-tab="pipeline-wise-lost">
+                                <i class="fa fa-layer-group"></i>
+                                <span>Pipeline Wise Lost</span>
+                            </button>
+                            <button class="tab-btn" onclick="frappe.sales_intelligence.switchMainLostTab(this, 'amount-wise-lost')"
+                                    data-tab="amount-wise-lost">
+                                <i class="fa fa-money-bill-wave"></i>
+                                <span>Amount Wise Lost</span>
+                            </button>
+                            <button class="tab-btn" onclick="frappe.sales_intelligence.switchMainLostTab(this, 'manager-branch')"
+                                    data-tab="manager-branch">
+                                <i class="fa fa-users"></i>
+                                <span>Analysis</span>
+                            </button>
+                            <button class="tab-btn" onclick="frappe.sales_intelligence.switchMainLostTab(this, 'activated-services')"
+                                    data-tab="activated-services">
+                                <i class="fa fa-cogs"></i>
+                                <span>Activated Services</span>
+                            </button>
+                        </div>
+
+                        <div class="tab-content">
+                            <!-- Overview Tab -->
+                            <div class="tab-pane active" id="overview">
+                                <div class="tab-header">
+                                    <h4><i class="fa fa-chart-pie"></i> Lost Quotations Overview</h4>
+                                    <p class="tab-description">Detailed analysis of lost quotations by customer, sales person, and sales team</p>
+                                </div>
+
+                                <!-- Lost Analysis Sub-tabs -->
+                                <div class="lost-analysis-container">
+                                    <!-- Sub-Tab Navigation -->
+                                    <div class="sub-tab-navigation" style="margin-bottom: 2rem; width: 100%;">
+                                        <div class="sub-tab-buttons" style="display: flex; width: 100%; border-bottom: 3px solid var(--border-color); background: rgba(220, 38, 127, 0.15); border-radius: 12px 12px 0 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                            <button class="sub-tab-button active" data-tab="customer-lost" onclick="frappe.sales_intelligence.switchLostAnalysisTab('customer-lost')" style="flex: 1; min-width: 180px; padding: 1rem 1.25rem; background: var(--accent-red); color: white; border: none; border-radius: 12px 0 0 0; font-weight: 600; font-size: 0.9rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                                <i class="fa fa-user-tie" style="font-size: 1rem;"></i>
+                                                <span>Customer Wise</span>
+                                            </button>
+                                            <button class="sub-tab-button" data-tab="salesperson-lost" onclick="frappe.sales_intelligence.switchLostAnalysisTab('salesperson-lost')" style="flex: 1; min-width: 180px; padding: 1rem 1.25rem; background: rgba(220, 38, 127, 0.3); color: var(--text-primary); border: none; font-weight: 500; font-size: 0.9rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; border-left: 1px solid rgba(255,255,255,0.1);">
+                                                <i class="fa fa-user" style="font-size: 1rem;"></i>
+                                                <span>Sales Person Wise</span>
+                                            </button>
+                                            <button class="sub-tab-button" data-tab="salesteam-lost" onclick="frappe.sales_intelligence.switchLostAnalysisTab('salesteam-lost')" style="flex: 1; min-width: 180px; padding: 1rem 1.25rem; background: rgba(220, 38, 127, 0.3); color: var(--text-primary); border: none; border-radius: 0 12px 0 0; font-weight: 500; font-size: 0.9rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; border-left: 1px solid rgba(255,255,255,0.1);">
+                                                <i class="fa fa-users" style="font-size: 1rem;"></i>
+                                                <span>Sales Team Wise</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Sub-Tab Contents -->
+                                    <div class="sub-tab-content">
+                                        <!-- Customer Wise Lost Tab -->
+                                        <div class="sub-tab-panel active" id="customer-lost-tab">
+                                            ${this.renderCustomerLostAnalysisTab()}
+                                        </div>
+                                        <!-- Sales Person Wise Lost Tab -->
+                                        <div class="sub-tab-panel" id="salesperson-lost-tab" style="display: none;">
+                                            ${this.renderSalesPersonLostAnalysisTab()}
+                                        </div>
+                                        <!-- Sales Team Wise Lost Tab -->
+                                        <div class="sub-tab-panel" id="salesteam-lost-tab" style="display: none;">
+                                            ${this.renderSalesTeamLostAnalysisTab()}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Combined Lost Reasons Tab -->
+                            <div class="tab-pane" id="loss-reasons">
+                                <div class="tab-header">
+                                    <h4><i class="fa fa-exclamation-triangle"></i> Lost Reasons Analysis</h4>
+                                    <p class="tab-description">Comprehensive analysis with visual charts, recent quotations, and detailed statistics</p>
+                                </div>
+
+                                <!-- Standardized Reasons Visual Section -->
+                                <div class="standardized-reasons-section" style="margin-bottom: 3rem;">
+                                    ${this.renderStandardizedReasonsVisual()}
+                                </div>
+
+                                <!-- Recent Lost Quotations Section -->
+                                <div class="recent-lost-section" style="margin-bottom: 3rem;">
+                                    <div class="section-divider" style="display: flex; align-items: center; margin-bottom: 2rem;">
+                                        <div style="flex: 1; height: 2px; background: linear-gradient(to right, var(--accent-orange), transparent);"></div>
+                                        <div style="padding: 0 2rem;">
+                                            <h5 style="margin: 0; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem;">
+                                                <i class="fa fa-clock" style="color: var(--accent-orange);"></i>
+                                                Recent Lost Quotations
+                                            </h5>
+                                        </div>
+                                        <div style="flex: 1; height: 2px; background: linear-gradient(to left, var(--accent-orange), transparent);"></div>
+                                    </div>
+
+                                    <p style="margin: 0 0 1.5rem 0; color: var(--text-secondary); font-size: 0.9rem; text-align: center;">Latest lost quotations with advanced filtering options</p>
+
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                        <div></div>
+                                        <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.showAllLostQuotes()">
+                                            <i class="fa fa-expand"></i>
+                                            View All ${lostQuotes.length}
+                                        </button>
+                                    </div>
+
+                                    <!-- Filter Section -->
+                                    <div class="filter-section" style="margin-bottom: 1rem; padding: 1rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                <i class="fa fa-filter" style="color: var(--accent-blue);"></i>
+                                                <span style="font-weight: 600; color: var(--text-primary);">Filter by Reason:</span>
+                                            </div>
+                                            <div style="flex: 1; max-width: 300px;">
+                                                <select id="lost-reason-filter" class="form-control" style="padding: 0.5rem; height: 44px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary);" onchange="frappe.sales_intelligence.filterLostQuotationsByReason()">
+                                                    <option value="">All Reasons</option>
+                                                    ${this.getDynamicLossReasons(lostQuotes).map(reason =>
+                                                        `<option value="${reason}">${reason}</option>`
+                                                    ).join('')}
+                                                </select>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
+                                                <span id="lost-filter-count">Showing ${lostQuotes.length} quotations</span>
+                                                <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('lost-reason-filter').value = ''; frappe.sales_intelligence.filterLostQuotationsByReason();" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                                    <i class="fa fa-times"></i> Clear
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="table-container" id="recent-lost-table-container">
+                                        ${this.renderTableWithControls('recent-lost-table',
+                                            lostQuotes
+                                                .sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date)), [
+                                            { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
+                                            { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                                            { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                                            { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                                            { key: 'custom_lost_reason', label: 'Reason', sortable: true, icon: 'fa-exclamation-triangle' },
+                                            { key: 'order_lost_reason', label: 'Detailed Reason', sortable: true, icon: 'fa-info-circle' },
+                                            { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' }
+                                        ])}
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- Pipeline Wise Lost Tab -->
+                            <div class="tab-pane" id="pipeline-wise-lost">
+                                <div class="tab-header">
+                                    <h4><i class="fa fa-layer-group"></i> Pipeline Wise Lost Analysis</h4>
+                                    <p class="tab-description">Detailed analysis of lost quotations by pipeline confidence levels</p>
+                                </div>
+
+                                ${this.renderPipelineWiseLostAnalysisTab()}
+
+                                <!-- Pipeline Details Table Container (initially hidden) -->
+                                <div id="pipeline-details-container" style="display: none; margin-top: 2rem;">
+                                    <div class="section-header" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                                        <h5 id="pipeline-details-title" class="section-title"></h5>
+                                        <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.hidePipelineDetails()">
+                                            <i class="fa fa-times"></i> Hide
+                                        </button>
+                                    </div>
+                                    <div id="pipeline-details-table"></div>
+                                </div>
+                            </div>
+
+                            <!-- Amount-wise Lost Tab -->
+                            <div class="tab-pane" id="amount-wise-lost">
+                                <div class="tab-header">
+                                    <h4><i class="fa fa-money-bill-wave"></i> Amount Wise Lost Analysis</h4>
+                                    <p class="tab-description">Analysis of lost quotations by value ranges</p>
+                                </div>
+                                ${this.renderAmountWiseLostAnalysisTab()}
+                            </div>
+
+                            <!-- Manager & Branch Analysis Tab -->
+                            <div class="tab-pane" id="manager-branch">
+                                <div class="tab-header">
+                                    <h4><i class="fa fa-users"></i> Analysis</h4>
+                                    <p class="tab-description">Analysis of lost quotations by account managers and branches</p>
+                                </div>
+
+                                <!-- Account Manager Analysis Table -->
+                                <div class="analysis-section" style="margin-bottom: 2rem;">
+                                    <!-- Filter Section -->
+                                    <div class="filter-section" style="margin-bottom: 1rem; padding: 1rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                <i class="fa fa-filter" style="color: var(--accent-blue);"></i>
+                                                <span style="font-weight: 600; color: var(--text-primary);">Filter by Account Manager:</span>
+                                            </div>
+                                            <div style="flex: 1; max-width: 300px;">
+                                                <select id="manager-filter" class="form-control" style="padding: 0.5rem; height: 44px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary);" onchange="frappe.sales_intelligence.filterManagerTable()">
+                                                    <option value="">All Account Managers</option>
+                                                    ${managerLosses.map(manager =>
+                                                        `<option value="${manager.manager}">${manager.manager}</option>`
+                                                    ).join('')}
+                                                </select>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
+                                                <span id="manager-filter-count">Showing ${managerLosses.length} managers</span>
+                                                <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('manager-filter').value = ''; frappe.sales_intelligence.filterManagerTable();" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                                    <i class="fa fa-times"></i> Clear
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="table-container" id="manager-table-container">
+                                        ${this.renderTableWithControls('manager-loss-table', managerLosses, [
+                                            { key: 'manager', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
+                                            { key: 'total_quotations', label: 'Total Quotations', sortable: true, icon: 'fa-list-ol' },
+                                            { key: 'won_count', label: 'Won Count', sortable: true, icon: 'fa-check-circle' },
+                                            { key: 'won_amount', label: 'Won Amount', sortable: true, type: 'currency', icon: 'fa-check-circle' },
+                                            { key: 'count', label: 'Lost Count', sortable: true, icon: 'fa-times-circle' },
+                                            { key: 'amount', label: 'Lost Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                                            { key: 'won_conversion', label: 'Won Conversion', sortable: true, type: 'conversion', icon: 'fa-check-circle' },
+                                            { key: 'lost_conversion', label: 'Lost Conversion', sortable: true, type: 'conversion', icon: 'fa-exclamation-triangle' }
+                                        ])}
+                                    </div>
+                                </div>
+
+                                <!-- Branch-wise Loss Analysis -->
+                                <div class="analysis-section">
+                                    <div class="section-header">
+                                        <h5 class="section-title">
+                                            <i class="fa fa-map-marker-alt"></i>
+                                            Branch-wise Loss Analysis
+                                        </h5>
+                                    </div>
+
+                                    <div class="table-container">
+                                        ${this.renderTableWithControls('branch-loss-table', branchLosses, [
+                                            { key: 'branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' },
+                                            { key: 'total_quotations', label: 'Total Quotations', sortable: true, icon: 'fa-list-ol' },
+                                            { key: 'count', label: 'Lost Count', sortable: true, icon: 'fa-times-circle' },
+                                            { key: 'amount', label: 'Lost Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                                            { key: 'won_conversion', label: 'Won Conversion', sortable: true, type: 'conversion', icon: 'fa-check-circle' },
+                                            { key: 'lost_conversion', label: 'Lost Conversion', sortable: true, type: 'conversion', icon: 'fa-exclamation-triangle' }
+                                        ])}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Activated Services Tab -->
+                            <div class="tab-pane" id="activated-services">
+                                <div class="tab-header">
+                                    <h4><i class="fa fa-cogs"></i> Activated Services Lost</h4>
+                                    <p class="tab-description">Analysis of lost quotations where services (Design Request, Permit, Site Visit) were activated</p>
+                                </div>
+
+                                <!-- Sub-tabs for different service types -->
+                                <div class="activated-services-container">
+                                    <!-- Service Type Sub-Tab Navigation -->
+                                    <div class="service-tab-navigation" style="margin-bottom: 2rem; width: 100%;">
+                                        <div class="service-tab-buttons" style="display: flex; width: 100%; border-bottom: 3px solid var(--border-color); background: rgba(52, 152, 219, 0.15); border-radius: 12px 12px 0 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                            <button class="service-tab-button active" data-tab="design-request" onclick="frappe.sales_intelligence.switchActivatedServiceTab('design-request')" style="flex: 1; min-width: 180px; padding: 1rem 1.25rem; background: var(--accent-blue); color: white; border: none; border-radius: 12px 0 0 0; font-weight: 600; font-size: 0.9rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                                <i class="fa fa-drafting-compass" style="font-size: 1rem;"></i>
+                                                <span>Design Request</span>
+                                            </button>
+                                            <button class="service-tab-button" data-tab="permit" onclick="frappe.sales_intelligence.switchActivatedServiceTab('permit')" style="flex: 1; min-width: 180px; padding: 1rem 1.25rem; background: rgba(52, 152, 219, 0.3); color: var(--text-primary); border: none; font-weight: 500; font-size: 0.9rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; border-left: 1px solid rgba(255,255,255,0.1);">
+                                                <i class="fa fa-file-alt" style="font-size: 1rem;"></i>
+                                                <span>Permit</span>
+                                            </button>
+                                            <button class="service-tab-button" data-tab="site-visit" onclick="frappe.sales_intelligence.switchActivatedServiceTab('site-visit')" style="flex: 1; min-width: 180px; padding: 1rem 1.25rem; background: rgba(52, 152, 219, 0.3); color: var(--text-primary); border: none; border-radius: 0 12px 0 0; font-weight: 500; font-size: 0.9rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; border-left: 1px solid rgba(255,255,255,0.1);">
+                                                <i class="fa fa-map-marker-alt" style="font-size: 1rem;"></i>
+                                                <span>Site Visit</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Service Type Sub-Tab Contents -->
+                                    <div class="service-tab-content">
+                                        <!-- Design Request Tab -->
+                                        <div class="service-tab-panel active" id="design-request-tab">
+                                            ${this.renderActivatedServiceContent('design-request')}
+                                        </div>
+
+                                        <!-- Permit Tab -->
+                                        <div class="service-tab-panel" id="permit-tab" style="display: none;">
+                                            ${this.renderActivatedServiceContent('permit')}
+                                        </div>
+
+                                        <!-- Site Visit Tab -->
+                                        <div class="service-tab-panel" id="site-visit-tab" style="display: none;">
+                                            ${this.renderActivatedServiceContent('site-visit')}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
                 </div>
-                
-                <!-- Branch-wise Loss Analysis -->
-                <div class="data-section">
-                    <div class="section-header">
-                        <h2 class="section-title">
-                            <i class="fa fa-map-marker-alt"></i>
-                            Branch-wise Loss Analysis
-                        </h2>
-                    </div>
-                    
-                    <div class="table-container">
-                        ${this.renderTableWithControls('branch-loss-table', branchLosses, [
-                            { key: 'custom_branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' },
-                            { key: 'count', label: 'Lost Count', sortable: true, icon: 'fa-list' },
-                            { key: 'amount', label: 'Lost Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' }
-                        ])}
+
+                <style>
+                    .reason-analysis-container {
+                        background: var(--card-bg);
+                        border: 1px solid var(--border-color);
+                        border-radius: var(--border-radius);
+                        padding: 1.5rem;
+                        margin-top: 1.5rem;
+                    }
+
+                    .reason-bars {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 1rem;
+                    }
+
+                    .reason-bar-item {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 0.5rem;
+                    }
+
+                    .reason-bar-item.no-losses {
+                        opacity: 0.6;
+                    }
+
+                    .reason-info {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        font-size: 0.875rem;
+                    }
+
+                    .reason-name {
+                        font-weight: 600;
+                        color: var(--text-primary);
+                        flex: 1;
+                    }
+
+                    .reason-stats {
+                        display: flex;
+                        gap: 0.75rem;
+                        align-items: center;
+                        font-size: 0.8rem;
+                    }
+
+                    .reason-stats .count {
+                        font-weight: 600;
+                        color: var(--accent-red);
+                    }
+
+                    .reason-stats .percentage {
+                        color: var(--text-muted);
+                    }
+
+                    .reason-stats .amount {
+                        font-weight: 600;
+                        color: var(--accent-orange);
+                    }
+
+                    .reason-bar {
+                        height: 12px;
+                        background: var(--card-bg);
+                        border: 1px solid var(--border-color);
+                        border-radius: 6px;
+                        overflow: hidden;
+                    }
+
+                    .reason-bar-fill {
+                        height: 100%;
+                        transition: width 0.3s ease;
+                        border-radius: 5px;
+                    }
+                </style>
+            </div>
+        `;
+    }
+
+    getStandardizedLossReasons() {
+        if (!this.data.lost_quotation_reasons || !this.data.lost_quotation_reasons.reasons) {
+            return [];
+        }
+
+        return this.data.lost_quotation_reasons.reasons
+            .map(reason => reason.order_lost_reason)
+            .filter(reason => reason)
+            .sort();
+    }
+
+    // Get unique reasons from actual table data for dynamic filtering
+    getDynamicLossReasons(lostQuotes) {
+        if (!lostQuotes || lostQuotes.length === 0) {
+            return [];
+        }
+
+        const reasons = new Set();
+
+        lostQuotes.forEach(quote => {
+            // Only add custom_lost_reason (the "Reason" column) if it exists and is not empty
+            if (quote.custom_lost_reason && quote.custom_lost_reason.trim()) {
+                reasons.add(quote.custom_lost_reason.trim());
+            }
+        });
+
+        // Convert Set to Array and sort
+        return Array.from(reasons).sort();
+    }
+
+    mapToStandardizedReason(quotationReason) {
+        if (!quotationReason || !this.data.lost_quotation_reasons || !this.data.lost_quotation_reasons.reasons) {
+            return 'Other';
+        }
+
+        const standardizedReasons = this.data.lost_quotation_reasons.reasons.map(r => r.order_lost_reason);
+
+        // Direct match
+        if (standardizedReasons.includes(quotationReason)) {
+            return quotationReason;
+        }
+
+        // Fuzzy matching for common variations
+        const lowerReason = quotationReason.toLowerCase();
+        for (const standardReason of standardizedReasons) {
+            const lowerStandard = standardReason.toLowerCase();
+            if (lowerReason.includes(lowerStandard) || lowerStandard.includes(lowerReason)) {
+                return standardReason;
+            }
+        }
+
+        return 'Other';
+    }
+
+    renderLostQuotationsAnalysisCards() {
+        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+
+        if (lostQuotes.length === 0) {
+            return `
+                <div class="stat-card" style="grid-column: 1 / -1;">
+                    <div class="stat-card-content" style="text-align: center; padding: 2rem;">
+                        <i class="fa fa-info-circle" style="font-size: 2rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
+                        <h3 style="color: var(--text-secondary); margin: 0;">No Lost Quotations Found</h3>
+                        <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">No quotations with 'Lost' status available for analysis</p>
                     </div>
                 </div>
-                
-                <!-- Account Manager Loss Analysis -->
-                <div class="data-section">
-                    <div class="section-header">
-                        <h2 class="section-title">
-                            <i class="fa fa-user-tie"></i>
-                            Account Manager Loss Analysis
-                        </h2>
-                    </div>
-                    
-                    <div class="table-container">
-                        ${this.renderTableWithControls('manager-loss-table', managerLosses, [
-                            { key: 'manager', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
-                            { key: 'count', label: 'Lost Count', sortable: true, icon: 'fa-list' },
-                            { key: 'amount', label: 'Lost Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' }
-                        ])}
+            `;
+        }
+
+        // Calculate customer analysis
+        const customerAnalysis = this.calculateLostQuotationsByCustomer(lostQuotes);
+
+        // Calculate sales person analysis
+        const salesPersonAnalysis = this.calculateLostQuotationsBySalesPerson(lostQuotes);
+
+        // Calculate sales team analysis
+        const salesTeamAnalysis = this.calculateLostQuotationsByTeam(lostQuotes);
+
+        return `
+            <!-- Top Customer with Lost Quotations -->
+            <div class="stat-card" onclick="frappe.sales_intelligence.showLostQuotationsDetail('customer', '${customerAnalysis.top.name}')"
+                 style="cursor: pointer; transition: all 0.3s ease;">
+                <div class="stat-card-header">
+                    <div class="stat-card-content">
+                        <h3 class="stat-card-title">
+                            <i class="fa fa-user-tie" style="color: var(--accent-red); margin-right: 0.5rem;"></i>
+                            Top Customer - Lost Quotations
+                        </h3>
+                        <p class="stat-card-value" style="color: var(--accent-red); font-size: 1.1rem; line-height: 1.3;">
+                            ${customerAnalysis.top.name}
+                        </p>
+                        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                                <i class="fa fa-list-ol" style="margin-right: 0.3rem;"></i>
+                                ${customerAnalysis.top.count} quotations
+                            </span>
+                            <span style="color: var(--accent-red); font-weight: 600; font-size: 0.875rem;">
+                                <i class="fa fa-calculator" style="margin-right: 0.3rem;"></i>
+                                ₹${customerAnalysis.top.sum.toLocaleString()}
+                            </span>
+                        </div>
                     </div>
                 </div>
-                
-                <!-- Recent Lost Quotations -->
-                <div class="data-section">
-                    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        <h2 class="section-title">
-                            <i class="fa fa-clock"></i>
-                            Recent Lost Quotations
-                        </h2>
-                        <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.showAllLostQuotes()">
-                            <i class="fa fa-expand"></i>
-                            View All ${lostQuotes.length}
-                        </button>
+                <span class="stat-card-action">
+                    <i class="fa fa-mouse-pointer"></i>
+                    Click to view details
+                </span>
+            </div>
+
+            <!-- Top Sales Person with Lost Quotations -->
+            <div class="stat-card" onclick="frappe.sales_intelligence.showLostQuotationsDetail('salesperson', '${salesPersonAnalysis.top.name}')"
+                 style="cursor: pointer; transition: all 0.3s ease;">
+                <div class="stat-card-header">
+                    <div class="stat-card-content">
+                        <h3 class="stat-card-title">
+                            <i class="fa fa-user" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
+                            Top Sales Person - Lost Quotations
+                        </h3>
+                        <p class="stat-card-value" style="color: var(--accent-orange); font-size: 1.1rem; line-height: 1.3;">
+                            ${salesPersonAnalysis.top.fullName || salesPersonAnalysis.top.name}
+                        </p>
+                        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                                <i class="fa fa-list-ol" style="margin-right: 0.3rem;"></i>
+                                ${salesPersonAnalysis.top.count} quotations
+                            </span>
+                            <span style="color: var(--accent-orange); font-weight: 600; font-size: 0.875rem;">
+                                <i class="fa fa-calculator" style="margin-right: 0.3rem;"></i>
+                                ₹${salesPersonAnalysis.top.sum.toLocaleString()}
+                            </span>
+                        </div>
                     </div>
-                    
-                    <div class="table-container">
-                        ${this.renderTableWithControls('recent-lost-table', 
-                            lostQuotes.sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date)).slice(0, 20), [
-                            { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
-                            { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
-                            { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
-                            { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
-                            { key: 'order_lost_reason', label: 'Reason', sortable: true, icon: 'fa-exclamation-triangle' },
-                            { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' }
-                        ])}
+                </div>
+                <span class="stat-card-action">
+                    <i class="fa fa-mouse-pointer"></i>
+                    Click to view details
+                </span>
+            </div>
+
+            <!-- Top Sales Team with Lost Quotations -->
+            <div class="stat-card" onclick="frappe.sales_intelligence.showLostQuotationsDetail('team', '${salesTeamAnalysis.top.name}')"
+                 style="cursor: pointer; transition: all 0.3s ease;">
+                <div class="stat-card-header">
+                    <div class="stat-card-content">
+                        <h3 class="stat-card-title">
+                            <i class="fa fa-users" style="color: var(--accent-purple); margin-right: 0.5rem;"></i>
+                            Top Sales Team - Lost Quotations
+                        </h3>
+                        <p class="stat-card-value" style="color: var(--accent-purple); font-size: 1.1rem; line-height: 1.3;">
+                            ${salesTeamAnalysis.top.name}
+                        </p>
+                        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                                <i class="fa fa-list-ol" style="margin-right: 0.3rem;"></i>
+                                ${salesTeamAnalysis.top.count} quotations
+                            </span>
+                            <span style="color: var(--accent-purple); font-weight: 600; font-size: 0.875rem;">
+                                <i class="fa fa-calculator" style="margin-right: 0.3rem;"></i>
+                                ₹${salesTeamAnalysis.top.sum.toLocaleString()}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <span class="stat-card-action">
+                    <i class="fa fa-mouse-pointer"></i>
+                    Click to view details
+                </span>
+            </div>
+        `;
+    }
+
+    calculateLostQuotationsByCustomer(lostQuotes) {
+        const customerStats = {};
+
+        lostQuotes.forEach(quote => {
+            const customer = quote.customer_name || quote.party_name || quote.customer || 'Unknown';
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+
+            if (!customerStats[customer]) {
+                customerStats[customer] = { name: customer, count: 0, sum: 0, quotations: [] };
+            }
+
+            customerStats[customer].count++;
+            customerStats[customer].sum += amount;
+            customerStats[customer].quotations.push(quote);
+        });
+
+        // Sort by count descending, then by sum
+        const sorted = Object.values(customerStats).sort((a, b) => {
+            if (b.count !== a.count) return b.count - a.count;
+            return b.sum - a.sum;
+        });
+
+        return {
+            top: sorted[0] || { name: 'No Data', count: 0, sum: 0 },
+            all: sorted
+        };
+    }
+
+    calculateLostQuotationsBySalesPerson(lostQuotes) {
+        const salesPersonStats = {};
+
+        lostQuotes.forEach(quote => {
+            const accountIncharge = quote.account_incharge || 'Unknown';
+            const fullName = quote.account_incharge_full_name || accountIncharge;
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+
+            if (!salesPersonStats[accountIncharge]) {
+                salesPersonStats[accountIncharge] = {
+                    name: accountIncharge,
+                    count: 0,
+                    sum: 0,
+                    quotations: [],
+                    fullName: fullName
+                };
+            }
+
+            salesPersonStats[accountIncharge].count++;
+            salesPersonStats[accountIncharge].sum += amount;
+            salesPersonStats[accountIncharge].quotations.push(quote);
+        });
+
+        // Sort by count descending, then by sum
+        const sorted = Object.values(salesPersonStats).sort((a, b) => {
+            if (b.count !== a.count) return b.count - a.count;
+            return b.sum - a.sum;
+        });
+
+        return {
+            top: sorted[0] || { name: 'No Data', count: 0, sum: 0, fullName: 'No Data' },
+            all: sorted
+        };
+    }
+
+    calculateLostQuotationsByTeam(lostQuotes) {
+        const teamFieldName = this.teamFieldName || 'custom_sales_team';
+        const teamStats = {};
+
+        lostQuotes.forEach(quote => {
+            const team = quote[teamFieldName] || 'Unassigned';
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+
+            if (!teamStats[team]) {
+                teamStats[team] = { name: team, count: 0, sum: 0, quotations: [] };
+            }
+
+            teamStats[team].count++;
+            teamStats[team].sum += amount;
+            teamStats[team].quotations.push(quote);
+        });
+
+        // Sort by count descending, then by sum
+        const sorted = Object.values(teamStats).sort((a, b) => {
+            if (b.count !== a.count) return b.count - a.count;
+            return b.sum - a.sum;
+        });
+
+        return {
+            top: sorted[0] || { name: 'No Data', count: 0, sum: 0 },
+            all: sorted
+        };
+    }
+
+    // Helper functions for the additional lost analysis cards
+    getTopLostCustomer(lostQuotes) {
+        const customerStats = {};
+
+        lostQuotes.forEach(quote => {
+            const customer = (quote.customer_name || quote.party_name || quote.customer || 'Unknown').trim();
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+
+            if (!customerStats[customer]) {
+                customerStats[customer] = { name: customer, count: 0, sum: 0 };
+            }
+
+            customerStats[customer].count++;
+            customerStats[customer].sum += amount;
+        });
+
+        // Debug: log the stats to console
+        console.log('Customer Stats for Lost Quotations:', customerStats);
+
+        const sorted = Object.values(customerStats).sort((a, b) => b.count - a.count);
+
+        // Debug: log the sorted result
+        console.log('Top 5 customers by lost count:', sorted.slice(0, 5));
+
+        return sorted[0] || { name: 'No Data', count: 0, sum: 0 };
+    }
+
+    getTopLostSalesPerson(lostQuotes) {
+        const salesPersonStats = {};
+
+        lostQuotes.forEach(quote => {
+            const accountIncharge = quote.account_incharge || 'Unknown';
+            const fullName = quote.account_incharge_full_name || accountIncharge;
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+
+            if (!salesPersonStats[accountIncharge]) {
+                salesPersonStats[accountIncharge] = {
+                    name: accountIncharge,
+                    fullName: fullName,
+                    count: 0,
+                    sum: 0
+                };
+            }
+
+            salesPersonStats[accountIncharge].count++;
+            salesPersonStats[accountIncharge].sum += amount;
+        });
+
+        const sorted = Object.values(salesPersonStats).sort((a, b) => b.count - a.count);
+
+        return sorted[0] || { name: 'No Data', fullName: 'No Data', count: 0, sum: 0 };
+    }
+
+    getTopLostTeam(lostQuotes) {
+        const teamFieldName = this.teamFieldName || 'custom_sales_team';
+        const teamStats = {};
+
+        lostQuotes.forEach(quote => {
+            const team = quote[teamFieldName] || 'Unassigned';
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+
+            if (!teamStats[team]) {
+                teamStats[team] = { name: team, count: 0, sum: 0 };
+            }
+
+            teamStats[team].count++;
+            teamStats[team].sum += amount;
+        });
+
+        const sorted = Object.values(teamStats).sort((a, b) => b.count - a.count);
+
+        return sorted[0] || { name: 'No Data', count: 0, sum: 0 };
+    }
+
+    // Render functions for Lost Analysis Sub-tabs
+    renderCustomerLostAnalysisTab() {
+        // Use same filtering logic as chart drawing
+        let lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        if (lostQuotes.length > 0) {
+            const lostWithDocstatus = lostQuotes.filter(q => q.docstatus === 1);
+            if (lostWithDocstatus.length > 0) {
+                lostQuotes = lostWithDocstatus;
+            }
+        }
+        const customerAnalysis = this.calculateCustomerLostStats(lostQuotes);
+
+        return `
+            <div class="customer-lost-analysis">
+                <!-- Tab Info Banner -->
+                <div class="tab-info-banner" style="background: linear-gradient(135deg, rgba(220, 38, 127, 0.15), rgba(220, 38, 127, 0.05)); border-left: 4px solid var(--accent-red); padding: 0.75rem 1.5rem; margin-bottom: 1.5rem; border-radius: 0 8px 8px 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <i class="fa fa-user-tie" style="color: var(--accent-red); font-size: 1.1rem;"></i>
+                            <span style="font-weight: 600; color: var(--text-primary);">Customer Wise Lost Analysis</span>
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">•</span>
+                            <span style="font-size: 0.875rem; color: var(--text-secondary);">Lost quotations count by customer</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">
+                            <i class="fa fa-filter"></i>
+                            <span>Status: Lost • DocStatus: 1</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer Bar Chart -->
+                <div class="chart-container" style="margin-bottom: 2rem; width: 100%;">
+                    <canvas id="customer-lost-chart" width="1200" height="600" style="width: 100%; height: 600px; background: rgba(0,0,0,0.8); border-radius: 8px; border: 2px solid rgba(255,255,255,0.1);"></canvas>
+                </div>
+
+                <!-- Customer Table -->
+                <div class="customer-lost-table" style="margin-top: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h5 style="margin: 0; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa fa-table" style="color: var(--accent-blue);"></i>
+                            Customer Lost Quotations Details
+                        </h5>
+                        <div class="customer-filter-controls" style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <label for="customer-search" style="font-weight: 500; color: var(--text-secondary); font-size: 0.875rem;">Search:</label>
+                                <input type="text" id="customer-search" class="form-control" placeholder="Search customers..."
+                                       style="width: 200px; font-size: 0.875rem;"
+                                       oninput="frappe.sales_intelligence.searchCustomerTable()">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <label for="customer-filter" style="font-weight: 500; color: var(--text-secondary); font-size: 0.875rem;">Filter:</label>
+                                <select id="customer-filter" class="form-control" style="width: 200px; font-size: 0.875rem;" onchange="frappe.sales_intelligence.applyCustomerFilter()">
+                                    <option value="all">All Customers</option>
+                                    ${customerAnalysis.map(customer => `
+                                        <option value="${customer.name}">${customer.name} (${customer.count})</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.clearCustomerFilter()" style="font-size: 0.875rem;">
+                                <i class="fa fa-times"></i> Clear All
+                            </button>
+                        </div>
+                    </div>
+                    ${customerAnalysis.length > 0 ? `
+                        <div class="table-responsive">
+                            <table id="customer-lost-table" class="table table-striped" style="background: var(--card-bg); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
+                                <thead style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)); border-bottom: 2px solid var(--border-color);">
+                                    <tr>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); border: none;">Customer Name</th>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--accent-red); border: none; text-align: center;">Lost Count</th>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--accent-red); border: none; text-align: center;">Lost Value</th>
+                                        <th style="padding: 1rem; font-weight: 600; color: var(--accent-blue); border: none; text-align: center;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${customerAnalysis.map((customer, index) => {
+                                        const rowBg = index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)';
+                                        return `
+                                        <tr data-customer="${customer.name}" data-search-text="${customer.name.toLowerCase()}" style="background: ${rowBg}; border-bottom: 1px solid var(--border-color);">
+                                            <td style="padding: 0.75rem 1rem; color: var(--text-primary); border: none; font-weight: 500;">
+                                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                    <div style="width: 4px; height: 20px; background: ${this.getChartColor(index)}; border-radius: 2px;"></div>
+                                                    ${customer.name}
+                                                </div>
+                                            </td>
+                                            <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                                                <span style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">
+                                                    ${customer.count}
+                                                </span>
+                                            </td>
+                                            <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                                                <span style="color: var(--accent-red); font-weight: 600;">
+                                                    AED ${this.formatCurrency(customer.sum)}
+                                                </span>
+                                            </td>
+                                            <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                                                <button class="btn btn-sm btn-primary" onclick="frappe.sales_intelligence.showCustomerLostDetails('${customer.name}')"
+                                                        style="font-size: 0.875rem; padding: 0.25rem 0.75rem;">
+                                                    <i class="fa fa-eye"></i> View Details
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    ` : `
+                        <div class="no-data-message" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 2rem; text-align: center;">
+                            <i class="fa fa-info-circle" style="font-size: 2rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
+                            <h4 style="margin: 0 0 0.5rem 0; color: var(--text-secondary);">No Lost Quotations Found</h4>
+                            <p style="margin: 0; color: var(--text-muted); font-size: 0.875rem;">
+                                No quotations with 'Lost' status found. Try adjusting your filters or check console for debugging info.
+                            </p>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    renderSalesPersonLostAnalysisTab() {
+        // Use same filtering logic as chart drawing
+        let lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        if (lostQuotes.length > 0) {
+            const lostWithDocstatus = lostQuotes.filter(q => q.docstatus === 1);
+            if (lostWithDocstatus.length > 0) {
+                lostQuotes = lostWithDocstatus;
+            }
+        }
+        const salesPersonAnalysis = this.calculateSalesPersonLostStats(lostQuotes);
+
+        return `
+            <div class="salesperson-lost-analysis">
+                <!-- Tab Info Banner -->
+                <div class="tab-info-banner" style="background: linear-gradient(135deg, rgba(251, 146, 60, 0.15), rgba(251, 146, 60, 0.05)); border-left: 4px solid var(--accent-orange); padding: 0.75rem 1.5rem; margin-bottom: 1.5rem; border-radius: 0 8px 8px 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <i class="fa fa-user" style="color: var(--accent-orange); font-size: 1.1rem;"></i>
+                            <span style="font-weight: 600; color: var(--text-primary);">Sales Person Wise Lost Analysis</span>
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">•</span>
+                            <span style="font-size: 0.875rem; color: var(--text-secondary);">Lost quotations count by sales person</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">
+                            <i class="fa fa-filter"></i>
+                            <span>Status: Lost • DocStatus: 1</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sales Person Bar Chart -->
+                <div class="chart-container" style="margin-bottom: 2rem; width: 100%;">
+                    <canvas id="salesperson-lost-chart" width="1200" height="600" style="width: 100%; height: 600px; background: rgba(0,0,0,0.8); border-radius: 8px; border: 2px solid rgba(255,255,255,0.1);"></canvas>
+                </div>
+
+                <!-- Sales Person Table -->
+                <div class="salesperson-lost-table" style="margin-top: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h5 style="margin: 0; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa fa-table" style="color: var(--accent-green);"></i>
+                            Sales Person Lost Quotations Details
+                        </h5>
+                        <div class="salesperson-filter-controls" style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <label for="salesperson-search" style="font-weight: 500; color: var(--text-secondary); font-size: 0.875rem;">Search:</label>
+                                <input type="text" id="salesperson-search" class="form-control" placeholder="Search sales persons..."
+                                       style="width: 200px; font-size: 0.875rem;"
+                                       oninput="frappe.sales_intelligence.searchSalesPersonTable()">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <label for="salesperson-filter" style="font-weight: 500; color: var(--text-secondary); font-size: 0.875rem;">Filter:</label>
+                                <select id="salesperson-filter" class="form-control" style="width: 200px; font-size: 0.875rem;" onchange="frappe.sales_intelligence.applySalesPersonFilter()">
+                                    <option value="all">All Sales Persons</option>
+                                    ${salesPersonAnalysis.map(person => `
+                                        <option value="${person.name}">${person.fullName || person.name} (${person.count})</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.clearSalesPersonFilter()" style="font-size: 0.875rem;">
+                                <i class="fa fa-times"></i> Clear All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="salesperson-lost-table" class="table table-striped" style="background: var(--card-bg); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
+                            <thead style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)); border-bottom: 2px solid var(--border-color);">
+                                <tr>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); border: none;">Sales Person</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--accent-red); border: none; text-align: center;">Lost Count</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--accent-red); border: none; text-align: center;">Lost Value</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--accent-blue); border: none; text-align: center;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${salesPersonAnalysis.map((person, index) => {
+                                    const rowBg = index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)';
+                                    return `
+                                    <tr data-salesperson="${person.name}" data-search-text="${(person.fullName || person.name).toLowerCase()}" style="background: ${rowBg}; border-bottom: 1px solid var(--border-color);">
+                                        <td style="padding: 0.75rem 1rem; color: var(--text-primary); border: none; font-weight: 500;">
+                                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                <div style="width: 4px; height: 20px; background: ${this.getChartColor(index)}; border-radius: 2px;"></div>
+                                                <i class="fa fa-user" style="margin-right: 0.5rem; color: var(--accent-green);"></i>
+                                                ${person.fullName || person.name}
+                                            </div>
+                                        </td>
+                                        <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                                            <span style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">
+                                                ${person.count}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                                            <span style="color: var(--accent-red); font-weight: 600;">
+                                                AED ${this.formatCurrency(person.sum)}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                                            <button class="btn btn-sm btn-primary" onclick="frappe.sales_intelligence.showSalesPersonLostDetails('${person.name}')"
+                                                    style="font-size: 0.875rem; padding: 0.25rem 0.75rem;">
+                                                <i class="fa fa-eye"></i> View Details
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         `;
+    }
+
+    renderSalesTeamLostAnalysisTab() {
+        // Use same filtering logic as chart drawing
+        let lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        if (lostQuotes.length > 0) {
+            const lostWithDocstatus = lostQuotes.filter(q => q.docstatus === 1);
+            if (lostWithDocstatus.length > 0) {
+                lostQuotes = lostWithDocstatus;
+            }
+        }
+        const salesTeamAnalysis = this.calculateSalesTeamLostStats(lostQuotes);
+
+        return `
+            <div class="salesteam-lost-analysis">
+                <!-- Tab Info Banner -->
+                <div class="tab-info-banner" style="background: linear-gradient(135deg, rgba(147, 51, 234, 0.15), rgba(147, 51, 234, 0.05)); border-left: 4px solid var(--accent-purple); padding: 0.75rem 1.5rem; margin-bottom: 1.5rem; border-radius: 0 8px 8px 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <i class="fa fa-users" style="color: var(--accent-purple); font-size: 1.1rem;"></i>
+                            <span style="font-weight: 600; color: var(--text-primary);">Sales Team Wise Lost Analysis</span>
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">•</span>
+                            <span style="font-size: 0.875rem; color: var(--text-secondary);">Lost quotations count by sales team</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">
+                            <i class="fa fa-filter"></i>
+                            <span>Status: Lost • DocStatus: 1</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sales Team Bar Chart -->
+                <div class="chart-container" style="margin-bottom: 2rem; width: 100%;">
+                    <canvas id="salesteam-lost-chart" width="1200" height="600" style="width: 100%; height: 600px; background: rgba(0,0,0,0.8); border-radius: 8px; border: 2px solid rgba(255,255,255,0.1);"></canvas>
+                </div>
+
+                <!-- Sales Team Table -->
+                <div class="salesteam-lost-table" style="margin-top: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h5 style="margin: 0; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa fa-table" style="color: var(--accent-purple);"></i>
+                            Sales Team Lost Quotations Details
+                        </h5>
+                        <div class="salesteam-filter-controls" style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <label for="salesteam-search" style="font-weight: 500; color: var(--text-secondary); font-size: 0.875rem;">Search:</label>
+                                <input type="text" id="salesteam-search" class="form-control" placeholder="Search sales teams..."
+                                       style="width: 200px; font-size: 0.875rem;"
+                                       oninput="frappe.sales_intelligence.searchSalesTeamTable()">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <label for="salesteam-filter" style="font-weight: 500; color: var(--text-secondary); font-size: 0.875rem;">Filter:</label>
+                                <select id="salesteam-filter" class="form-control" style="width: 200px; font-size: 0.875rem;" onchange="frappe.sales_intelligence.applySalesTeamFilter()">
+                                    <option value="all">All Sales Teams</option>
+                                    ${salesTeamAnalysis.map(team => `
+                                        <option value="${team.name}">${team.name} (${team.count})</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.clearSalesTeamFilter()" style="font-size: 0.875rem;">
+                                <i class="fa fa-times"></i> Clear All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="salesteam-lost-table" class="table table-striped" style="background: var(--card-bg); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
+                            <thead style="background: linear-gradient(135deg, rgba(147, 51, 234, 0.1), rgba(147, 51, 234, 0.05)); border-bottom: 2px solid var(--border-color);">
+                                <tr>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); border: none;">Sales Team</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--accent-red); border: none; text-align: center;">Lost Count</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--accent-red); border: none; text-align: center;">Lost Value</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--accent-blue); border: none; text-align: center;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${salesTeamAnalysis.map((team, index) => {
+                                    const rowBg = index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)';
+                                    return `
+                                    <tr data-salesteam="${team.name}" data-search-text="${team.name.toLowerCase()}" style="background: ${rowBg}; border-bottom: 1px solid var(--border-color);">
+                                        <td style="padding: 0.75rem 1rem; color: var(--text-primary); border: none; font-weight: 500;">
+                                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                <div style="width: 4px; height: 20px; background: ${this.getChartColor(index)}; border-radius: 2px;"></div>
+                                                <i class="fa fa-users" style="margin-right: 0.5rem; color: var(--accent-purple);"></i>
+                                                ${team.name}
+                                            </div>
+                                        </td>
+                                        <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                                            <span style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">
+                                                ${team.count}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                                            <span style="color: var(--accent-red); font-weight: 600;">
+                                                AED ${this.formatCurrency(team.sum)}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 0.75rem 1rem; text-align: center; border: none;">
+                                            <button class="btn btn-sm btn-primary" onclick="frappe.sales_intelligence.showSalesTeamLostDetails('${team.name}')"
+                                                    style="font-size: 0.875rem; padding: 0.25rem 0.75rem;">
+                                                <i class="fa fa-eye"></i> View Details
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Calculation functions for Lost Analysis
+    calculateCustomerLostStats(lostQuotes) {
+        const customerStats = {};
+
+        lostQuotes.forEach(quote => {
+            const customer = (quote.customer_name || quote.party_name || quote.customer || 'Unknown').trim();
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+
+            if (!customerStats[customer]) {
+                customerStats[customer] = { name: customer, count: 0, sum: 0, quotations: [] };
+            }
+
+            customerStats[customer].count++;
+            customerStats[customer].sum += amount;
+            customerStats[customer].quotations.push(quote);
+        });
+
+        return Object.values(customerStats).sort((a, b) => b.count - a.count);
+    }
+
+    calculateSalesPersonLostStats(lostQuotes) {
+        const salesPersonStats = {};
+
+        lostQuotes.forEach(quote => {
+            // Try multiple fields for sales person identification
+            const accountIncharge = quote.account_incharge || quote.sales_person || quote.owner || 'Unassigned';
+            const fullName = quote.account_incharge_full_name || quote.sales_person_name || accountIncharge;
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+
+            const key = accountIncharge.trim();
+            if (!salesPersonStats[key]) {
+                salesPersonStats[key] = {
+                    name: key,
+                    fullName: fullName,
+                    count: 0,
+                    sum: 0,
+                    quotations: []
+                };
+            }
+
+            salesPersonStats[key].count++;
+            salesPersonStats[key].sum += amount;
+            salesPersonStats[key].quotations.push(quote);
+        });
+
+        return Object.values(salesPersonStats)
+            .filter(person => person.name !== 'Unassigned' || person.count > 0)
+            .sort((a, b) => b.count - a.count);
+    }
+
+    calculateSalesTeamLostStats(lostQuotes) {
+        const teamFieldName = this.teamFieldName || 'custom_sales_team';
+        const teamStats = {};
+
+        lostQuotes.forEach(quote => {
+            // Try multiple fields for sales team identification
+            const team = quote[teamFieldName] || quote.sales_team || quote.team || 'Unassigned';
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+
+            const key = team.toString().trim();
+            if (!teamStats[key]) {
+                teamStats[key] = { name: key, count: 0, sum: 0, quotations: [] };
+            }
+
+            teamStats[key].count++;
+            teamStats[key].sum += amount;
+            teamStats[key].quotations.push(quote);
+        });
+
+        return Object.values(teamStats)
+            .filter(team => team.name !== 'Unassigned' || team.count > 0)
+            .sort((a, b) => b.count - a.count);
+    }
+
+    // Helper function for chart colors
+    getChartColor(index) {
+        const colors = [
+            '#EF4444', '#F97316', '#EAB308', '#22C55E', '#06B6D4',
+            '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'
+        ];
+        return colors[index % colors.length];
+    }
+
+    // Helper function to darken colors for gradient effect
+    darkenColor(color, percent) {
+        const num = parseInt(color.replace("#", ""), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) - amt;
+        const G = (num >> 8 & 0x00FF) - amt;
+        const B = (num & 0x0000FF) - amt;
+        return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+            (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+    }
+
+    calculateLostQuotationsByPipeline(lostQuotes) {
+        const pipelineStats = {
+            pipelineA: { count: 0, sum: 0, quotations: [] },
+            pipelineB: { count: 0, sum: 0, quotations: [] },
+            pipelineC: { count: 0, sum: 0, quotations: [] }
+        };
+
+        lostQuotes.forEach(quote => {
+            const workflowState = quote.workflow_state;
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+
+            if (workflowState === 'Pipeline A') {
+                pipelineStats.pipelineA.count++;
+                pipelineStats.pipelineA.sum += amount;
+                pipelineStats.pipelineA.quotations.push(quote);
+            } else if (workflowState === 'Pipeline B') {
+                pipelineStats.pipelineB.count++;
+                pipelineStats.pipelineB.sum += amount;
+                pipelineStats.pipelineB.quotations.push(quote);
+            } else if (workflowState === 'Pipeline C') {
+                pipelineStats.pipelineC.count++;
+                pipelineStats.pipelineC.sum += amount;
+                pipelineStats.pipelineC.quotations.push(quote);
+            }
+        });
+
+        return pipelineStats;
+    }
+
+    renderPipelineLostAnalysisCards() {
+        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        const pipelineAnalysis = this.calculateLostQuotationsByPipeline(lostQuotes);
+
+        if (lostQuotes.length === 0) {
+            return `
+                <div class="stat-card" style="grid-column: 1 / -1;">
+                    <div class="stat-card-content" style="text-align: center; padding: 2rem;">
+                        <i class="fa fa-info-circle" style="font-size: 2rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
+                        <h3 style="color: var(--text-secondary); margin: 0;">No Lost Quotations Found</h3>
+                        <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">No lost quotations available for pipeline analysis</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            ${pipelineAnalysis.pipelineA.count > 0 ? `
+            <div class="stat-card" onclick="frappe.sales_intelligence.showLostQuotationsDetail('pipeline', 'Pipeline A')"
+                 style="cursor: pointer; transition: all 0.3s ease;">
+                <div class="stat-card-header">
+                    <div class="stat-card-content">
+                        <h3 class="stat-card-title">
+                            <i class="fa fa-layer-group" style="color: var(--accent-red); margin-right: 0.5rem;"></i>
+                            Pipeline A - Lost Quotations
+                        </h3>
+                        <p class="stat-card-value" style="color: var(--accent-red); font-size: 1.1rem; line-height: 1.3;">
+                            Very High Confidence Pipeline
+                        </p>
+                        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                                <i class="fa fa-list-ol" style="margin-right: 0.3rem;"></i>
+                                ${pipelineAnalysis.pipelineA.count} quotations
+                            </span>
+                            <span style="color: var(--accent-red); font-weight: 600; font-size: 0.875rem;">
+                                <i class="fa fa-calculator" style="margin-right: 0.3rem;"></i>
+                                ₹${pipelineAnalysis.pipelineA.sum.toLocaleString()}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <span class="stat-card-action">
+                    <i class="fa fa-mouse-pointer"></i>
+                    Click to view details
+                </span>
+            </div>
+            ` : ''}
+
+            ${pipelineAnalysis.pipelineB.count > 0 ? `
+            <div class="stat-card" onclick="frappe.sales_intelligence.showLostQuotationsDetail('pipeline', 'Pipeline B')"
+                 style="cursor: pointer; transition: all 0.3s ease;">
+                <div class="stat-card-header">
+                    <div class="stat-card-content">
+                        <h3 class="stat-card-title">
+                            <i class="fa fa-layer-group" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
+                            Pipeline B - Lost Quotations
+                        </h3>
+                        <p class="stat-card-value" style="color: var(--accent-orange); font-size: 1.1rem; line-height: 1.3;">
+                            High Confidence Pipeline
+                        </p>
+                        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                                <i class="fa fa-list-ol" style="margin-right: 0.3rem;"></i>
+                                ${pipelineAnalysis.pipelineB.count} quotations
+                            </span>
+                            <span style="color: var(--accent-orange); font-weight: 600; font-size: 0.875rem;">
+                                <i class="fa fa-calculator" style="margin-right: 0.3rem;"></i>
+                                ₹${pipelineAnalysis.pipelineB.sum.toLocaleString()}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <span class="stat-card-action">
+                    <i class="fa fa-mouse-pointer"></i>
+                    Click to view details
+                </span>
+            </div>
+            ` : ''}
+
+            ${pipelineAnalysis.pipelineC.count > 0 ? `
+            <div class="stat-card" onclick="frappe.sales_intelligence.showLostQuotationsDetail('pipeline', 'Pipeline C')"
+                 style="cursor: pointer; transition: all 0.3s ease;">
+                <div class="stat-card-header">
+                    <div class="stat-card-content">
+                        <h3 class="stat-card-title">
+                            <i class="fa fa-layer-group" style="color: var(--accent-purple); margin-right: 0.5rem;"></i>
+                            Pipeline C - Lost Quotations
+                        </h3>
+                        <p class="stat-card-value" style="color: var(--accent-purple); font-size: 1.1rem; line-height: 1.3;">
+                            Medium Confidence Pipeline
+                        </p>
+                        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                            <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                                <i class="fa fa-list-ol" style="margin-right: 0.3rem;"></i>
+                                ${pipelineAnalysis.pipelineC.count} quotations
+                            </span>
+                            <span style="color: var(--accent-purple); font-weight: 600; font-size: 0.875rem;">
+                                <i class="fa fa-calculator" style="margin-right: 0.3rem;"></i>
+                                ₹${pipelineAnalysis.pipelineC.sum.toLocaleString()}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <span class="stat-card-action">
+                    <i class="fa fa-mouse-pointer"></i>
+                    Click to view details
+                </span>
+            </div>
+            ` : ''}
+
+            ${(pipelineAnalysis.pipelineA.count === 0 && pipelineAnalysis.pipelineB.count === 0 && pipelineAnalysis.pipelineC.count === 0) ? `
+            <div class="stat-card" style="grid-column: 1 / -1;">
+                <div class="stat-card-content" style="text-align: center; padding: 2rem;">
+                    <i class="fa fa-info-circle" style="font-size: 2rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-secondary); margin: 0;">No Pipeline-specific Lost Quotations</h3>
+                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">Lost quotations were not in any pipeline workflow states (A, B, or C)</p>
+                </div>
+            </div>
+            ` : ''}
+        `;
+    }
+
+    renderStandardizedReasonsVisual() {
+        // Get active reasons from Quotation Lost Reason document
+        const activeReasons = this.activeReasons || [];
+
+        if (activeReasons.length === 0) {
+            return `<div class="no-data-message">
+                <i class="fa fa-info-circle"></i>
+                <p>No active quotation lost reasons found. Please configure reasons in the Quotation Lost Reason document.</p>
+            </div>`;
+        }
+
+        // Process lost quotations directly from raw data
+        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+
+        // Initialize counts and values for all active reasons
+        const reasonCounts = {};
+        const reasonValues = {};
+
+        // Initialize with all active reasons (set to 0)
+        activeReasons.forEach(reasonDoc => {
+            reasonCounts[reasonDoc.name] = 0;
+            reasonValues[reasonDoc.name] = 0;
+        });
+
+        // Count quotations by matching against active reasons using custom_lost_reason field
+        lostQuotes.forEach(quote => {
+            // Use custom_lost_reason field to match against document names
+            const quoteLostReason = quote.custom_lost_reason;
+
+            if (quoteLostReason && reasonCounts.hasOwnProperty(quoteLostReason)) {
+                const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+                reasonCounts[quoteLostReason]++;
+                reasonValues[quoteLostReason] += amount;
+            }
+        });
+
+        const total_lost = lostQuotes.length;
+
+        // Create array of reason data for visual bars using active reasons
+        const reasonsTableData = activeReasons.map(reasonDoc => ({
+            reason: reasonDoc.order_lost_reason || reasonDoc.name,
+            reasonId: reasonDoc.name,
+            count: reasonCounts[reasonDoc.name] || 0,
+            amount: reasonValues[reasonDoc.name] || 0,
+            percentage: total_lost > 0 ? ((reasonCounts[reasonDoc.name] || 0) / total_lost * 100).toFixed(1) : 0
+        })).sort((a, b) => b.count - a.count);
+
+        // Create visual representation
+        const maxCount = Math.max(...reasonsTableData.map(r => r.count), 1); // Ensure at least 1 to avoid division by zero
+        const reasonBars = reasonsTableData.map(reason => `
+            <div class="reason-bar-item ${reason.count === 0 ? 'no-losses' : ''}">
+                <div class="reason-info">
+                    <span class="reason-name">${reason.reason}</span>
+                    <div class="reason-stats">
+                        <span class="count">${reason.count}</span>
+                        <span class="percentage">(${reason.percentage}%)</span>
+                        <span class="amount">AED ${this.formatCurrency(reason.amount)}</span>
+                    </div>
+                </div>
+                <div class="reason-bar">
+                    <div class="reason-bar-fill" style="width: ${reason.count > 0 ? (reason.count / maxCount * 100) : 0}%;
+                         background: ${reason.count > 0 ? 'linear-gradient(135deg, var(--accent-red), var(--accent-orange))' : 'var(--border-color)'};"></div>
+                </div>
+            </div>
+        `).join('');
+
+        // Calculate totals from active reasons data
+        const totalLostWithReasons = Object.values(reasonCounts).reduce((sum, count) => sum + count, 0);
+        const totalLostValue = Object.values(reasonValues).reduce((sum, val) => sum + val, 0);
+
+        return `
+            <!-- Summary Cards -->
+            <div class="stats-grid" style="margin-bottom: 2rem;">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-list" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
+                                Active Reasons
+                            </h3>
+                            <p class="stat-card-value">${activeReasons.length}</p>
+                            <p class="stat-card-amount">Configured Categories</p>
+                        </div>
+                        <div class="stat-card-icon primary">
+                            <i class="fa fa-list"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-exclamation-triangle" style="color: var(--accent-red); margin-right: 0.5rem;"></i>
+                                Categorized Lost
+                            </h3>
+                            <p class="stat-card-value">${totalLostWithReasons}</p>
+                            <p class="stat-card-amount">of ${total_lost} Total</p>
+                        </div>
+                        <div class="stat-card-icon danger">
+                            <i class="fa fa-exclamation-triangle"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-coins" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
+                                Categorized Value
+                            </h3>
+                            <p class="stat-card-value">AED ${this.formatCurrency(totalLostValue)}</p>
+                            <p class="stat-card-amount">Lost Revenue</p>
+                        </div>
+                        <div class="stat-card-icon warning">
+                            <i class="fa fa-coins"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visual Reason Bars -->
+            <div class="reason-analysis-container">
+                <div class="reason-bars">
+                    ${reasonBars}
+                </div>
+            </div>
+        `;
+    }
+
+    renderDetailedReasonsTable() {
+        // Process lost quotations directly from raw data
+        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        if (lostQuotes.length === 0) {
+            return `<div class="no-data-message">
+                <i class="fa fa-info-circle"></i>
+                <p>No lost quotations available for analysis</p>
+            </div>`;
+        }
+
+        // Process the data manually from lost quotations
+        const reasonCounts = {};
+        const reasonValues = {};
+
+        lostQuotes.forEach(quote => {
+            const reason = quote.order_lost_reason || 'Unspecified';
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+
+            reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+            reasonValues[reason] = (reasonValues[reason] || 0) + amount;
+        });
+
+        // Get unique reasons and create structured data
+        const uniqueReasons = Object.keys(reasonCounts);
+        const total_lost = lostQuotes.length;
+
+        // Create array of reason data for table
+        const reasonsTableData = uniqueReasons.map(reason => ({
+            reason: reason,
+            count: reasonCounts[reason] || 0,
+            amount: reasonValues[reason] || 0,
+            percentage: total_lost > 0 ? ((reasonCounts[reason] || 0) / total_lost * 100).toFixed(1) : 0
+        })).sort((a, b) => b.count - a.count);
+
+        return `
+            <div class="tab-header">
+                <h4><i class="fa fa-table"></i> Detailed Loss Reasons Table</h4>
+                <p class="tab-description">Comprehensive table view of all standardized loss reasons with detailed statistics</p>
+            </div>
+
+            <!-- Detailed Table -->
+            <div class="table-container" style="margin-top: 1.5rem;">
+                ${this.renderTableWithControls('standardized-loss-reasons-table', reasonsTableData, [
+                    { key: 'reason', label: 'Standardized Reason', sortable: true, icon: 'fa-exclamation-triangle' },
+                    { key: 'count', label: 'Count', sortable: true, icon: 'fa-list' },
+                    { key: 'percentage', label: 'Percentage', sortable: true, icon: 'fa-percentage', formatter: (value) => value + '%' },
+                    { key: 'amount', label: 'Lost Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' }
+                ])}
+            </div>
+        `;
+    }
+
+    renderPipelineLostAnalysisTab() {
+        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        const pipelineAnalysis = this.calculateLostQuotationsByPipeline(lostQuotes);
+
+        if (lostQuotes.length === 0) {
+            return `
+                <div class="tab-header">
+                    <h4><i class="fa fa-layer-group"></i> Pipeline-wise Lost Quotations Analysis</h4>
+                    <p class="tab-description">Analyze lost quotations by pipeline confidence levels</p>
+                </div>
+                <div class="no-data-message" style="text-align: center; padding: 2rem;">
+                    <i class="fa fa-info-circle" style="font-size: 2rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-secondary); margin: 0;">No Lost Quotations Found</h3>
+                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">No lost quotations available for pipeline analysis</p>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="tab-header">
+                <h4><i class="fa fa-layer-group"></i> Pipeline-wise Lost Quotations Analysis</h4>
+                <p class="tab-description">Track lost quotations across different pipeline confidence levels (A, B, C)</p>
+            </div>
+
+            <!-- Pipeline Analysis Cards -->
+            <div class="stats-grid" style="margin-top: 1.5rem;">
+                ${pipelineAnalysis.pipelineA.count > 0 ? `
+                <div class="stat-card" onclick="frappe.sales_intelligence.showLostQuotationsDetail('pipeline', 'Pipeline A')"
+                     style="cursor: pointer; transition: all 0.3s ease;">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-layer-group" style="color: var(--accent-red); margin-right: 0.5rem;"></i>
+                                Pipeline A - Lost Quotations
+                            </h3>
+                            <p class="stat-card-value" style="color: var(--accent-red); font-size: 1.1rem; line-height: 1.3;">
+                                Very High Confidence (90-100%)
+                            </p>
+                            <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                                <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                                    <i class="fa fa-list-ol" style="margin-right: 0.3rem;"></i>
+                                    ${pipelineAnalysis.pipelineA.count} quotations
+                                </span>
+                                <span style="color: var(--accent-red); font-weight: 600; font-size: 0.875rem;">
+                                    <i class="fa fa-calculator" style="margin-right: 0.3rem;"></i>
+                                    ₹${pipelineAnalysis.pipelineA.sum.toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="stat-card-action">
+                        <i class="fa fa-mouse-pointer"></i>
+                        Click to view details
+                    </span>
+                </div>
+                ` : ''}
+
+                ${pipelineAnalysis.pipelineB.count > 0 ? `
+                <div class="stat-card" onclick="frappe.sales_intelligence.showLostQuotationsDetail('pipeline', 'Pipeline B')"
+                     style="cursor: pointer; transition: all 0.3s ease;">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-layer-group" style="color: var(--accent-orange); margin-right: 0.5rem;"></i>
+                                Pipeline B - Lost Quotations
+                            </h3>
+                            <p class="stat-card-value" style="color: var(--accent-orange); font-size: 1.1rem; line-height: 1.3;">
+                                High Confidence (75-90%)
+                            </p>
+                            <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                                <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                                    <i class="fa fa-list-ol" style="margin-right: 0.3rem;"></i>
+                                    ${pipelineAnalysis.pipelineB.count} quotations
+                                </span>
+                                <span style="color: var(--accent-orange); font-weight: 600; font-size: 0.875rem;">
+                                    <i class="fa fa-calculator" style="margin-right: 0.3rem;"></i>
+                                    ₹${pipelineAnalysis.pipelineB.sum.toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="stat-card-action">
+                        <i class="fa fa-mouse-pointer"></i>
+                        Click to view details
+                    </span>
+                </div>
+                ` : ''}
+
+                ${pipelineAnalysis.pipelineC.count > 0 ? `
+                <div class="stat-card" onclick="frappe.sales_intelligence.showLostQuotationsDetail('pipeline', 'Pipeline C')"
+                     style="cursor: pointer; transition: all 0.3s ease;">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa fa-layer-group" style="color: var(--accent-purple); margin-right: 0.5rem;"></i>
+                                Pipeline C - Lost Quotations
+                            </h3>
+                            <p class="stat-card-value" style="color: var(--accent-purple); font-size: 1.1rem; line-height: 1.3;">
+                                Medium Confidence (50-75%)
+                            </p>
+                            <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                                <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                                    <i class="fa fa-list-ol" style="margin-right: 0.3rem;"></i>
+                                    ${pipelineAnalysis.pipelineC.count} quotations
+                                </span>
+                                <span style="color: var(--accent-purple); font-weight: 600; font-size: 0.875rem;">
+                                    <i class="fa fa-calculator" style="margin-right: 0.3rem;"></i>
+                                    ₹${pipelineAnalysis.pipelineC.sum.toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="stat-card-action">
+                        <i class="fa fa-mouse-pointer"></i>
+                        Click to view details
+                    </span>
+                </div>
+                ` : ''}
+
+                ${(pipelineAnalysis.pipelineA.count === 0 && pipelineAnalysis.pipelineB.count === 0 && pipelineAnalysis.pipelineC.count === 0) ? `
+                <div class="stat-card" style="grid-column: 1 / -1;">
+                    <div class="stat-card-content" style="text-align: center; padding: 2rem;">
+                        <i class="fa fa-info-circle" style="font-size: 2rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
+                        <h3 style="color: var(--text-secondary); margin: 0;">No Pipeline-specific Lost Quotations</h3>
+                        <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">Lost quotations were not in any pipeline workflow states (A, B, or C)</p>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    // Pipeline-specific render functions for individual tabs
+    renderPipelineALostAnalysisTab() {
+        return this.renderIndividualPipelineLostTab('A', 'Very High Confidence (90%+)', 'var(--accent-blue)', 'fa-star');
+    }
+
+    renderPipelineBLostAnalysisTab() {
+        return this.renderIndividualPipelineLostTab('B', 'High Confidence (75-90%)', 'var(--accent-orange)', 'fa-star-half-alt');
+    }
+
+    renderPipelineCLostAnalysisTab() {
+        return this.renderIndividualPipelineLostTab('C', 'Medium Confidence (50-75%)', 'var(--accent-purple)', 'fa-star');
+    }
+
+    renderIndividualPipelineLostTab(pipeline, description, color, icon) {
+        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+        const pipelineAnalysis = this.calculateLostQuotationsByPipeline(lostQuotes);
+
+        const pipelineKey = `pipeline${pipeline}`;
+        const pipelineData = pipelineAnalysis[pipelineKey] || { count: 0, sum: 0, quotations: [] };
+
+        // Filter quotations for this specific pipeline
+        let pipelineQuotes = [];
+        if (pipeline === 'A') {
+            pipelineQuotes = lostQuotes.filter(q =>
+                q.workflow_state === 'Pipeline A' ||
+                (q.custom_pipeline_confidence && q.custom_pipeline_confidence >= 90)
+            );
+        } else if (pipeline === 'B') {
+            pipelineQuotes = lostQuotes.filter(q =>
+                q.workflow_state === 'Pipeline B' ||
+                (q.custom_pipeline_confidence && q.custom_pipeline_confidence >= 75 && q.custom_pipeline_confidence < 90)
+            );
+        } else if (pipeline === 'C') {
+            pipelineQuotes = lostQuotes.filter(q =>
+                q.workflow_state === 'Pipeline C' ||
+                (q.custom_pipeline_confidence && q.custom_pipeline_confidence >= 50 && q.custom_pipeline_confidence < 75)
+            );
+        }
+
+        if (pipelineData.count === 0 && pipelineQuotes.length === 0) {
+            return `
+                <div class="tab-info-banner" style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05)); border-left: 4px solid var(--accent-green); padding: 0.75rem 1.5rem; margin-bottom: 1.5rem; border-radius: 0 8px 8px 0;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
+                        <i class="fa fa-check-circle" style="color: var(--accent-green); font-size: 1.5rem;"></i>
+                        <div>
+                            <h4 style="margin: 0; color: var(--text-primary); font-size: 1.1rem;">Great News!</h4>
+                            <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">No lost quotations found for Pipeline ${pipeline} (${description})</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="no-data-message" style="text-align: center; padding: 3rem;">
+                    <i class="${icon}" style="font-size: 3rem; color: ${color}; opacity: 0.3; margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-secondary); margin: 0;">No Pipeline ${pipeline} Lost Quotations</h3>
+                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">All Pipeline ${pipeline} quotations maintained their high confidence status</p>
+                </div>
+            `;
+        }
+
+        return `
+            <!-- Tab Info Banner -->
+            <div class="tab-info-banner" style="background: linear-gradient(135deg, ${color}15, ${color}05); border-left: 4px solid ${color}; padding: 0.75rem 1.5rem; margin-bottom: 1.5rem; border-radius: 0 8px 8px 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fa ${icon}" style="color: ${color}; font-size: 1.1rem;"></i>
+                        <span style="font-weight: 600; color: var(--text-primary);">Pipeline ${pipeline} Lost Analysis</span>
+                        <span style="color: var(--text-secondary); font-size: 0.875rem;">•</span>
+                        <span style="font-size: 0.875rem; color: var(--text-secondary);">${description}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">
+                        <i class="fa fa-chart-line"></i>
+                        <span>${pipelineData.count} Lost • AED ${this.formatCurrency(pipelineData.sum)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pipeline Summary Card -->
+            <div class="stats-grid" style="margin-bottom: 2rem; grid-template-columns: 1fr;">
+                <div class="stat-card" style="border-left: 4px solid ${color};">
+                    <div class="stat-card-header">
+                        <div class="stat-card-content">
+                            <h3 class="stat-card-title">
+                                <i class="fa ${icon}" style="color: ${color}; margin-right: 0.5rem;"></i>
+                                Pipeline ${pipeline} Lost Summary
+                            </h3>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem;">
+                                <div style="text-align: center;">
+                                    <p class="stat-card-value" style="color: ${color}; font-size: 1.5rem;">${pipelineData.count}</p>
+                                    <p class="stat-card-amount">Lost Quotations</p>
+                                </div>
+                                <div style="text-align: center;">
+                                    <p class="stat-card-value" style="color: var(--accent-red); font-size: 1.2rem;">AED ${this.formatCurrency(pipelineData.sum)}</p>
+                                    <p class="stat-card-amount">Total Lost Value</p>
+                                </div>
+                                <div style="text-align: center;">
+                                    <p class="stat-card-value" style="color: var(--text-primary); font-size: 1.2rem;">AED ${pipelineData.count > 0 ? this.formatCurrency(pipelineData.sum / pipelineData.count) : '0'}</p>
+                                    <p class="stat-card-amount">Average Value</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card-icon" style="background: ${color};">
+                            <i class="fa ${icon}"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pipeline Quotations Table -->
+            <div class="table-container" style="margin-top: 2rem;">
+                <div class="table-header" style="margin-bottom: 1rem; padding: 1rem; background: var(--card-bg); border-radius: 8px 8px 0 0; border: 1px solid var(--border-color); border-bottom: none;">
+                    <h5 style="margin: 0; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa fa-table" style="color: ${color};"></i>
+                        Pipeline ${pipeline} Lost Quotations Details
+                    </h5>
+                    <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">Detailed breakdown of all lost quotations in Pipeline ${pipeline}</p>
+                </div>
+                ${this.renderTableWithControls(`pipeline-${pipeline.toLowerCase()}-lost-table`, pipelineQuotes, [
+                    { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
+                    { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                    { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                    { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                    { key: 'workflow_state', label: 'Workflow State', sortable: true, icon: 'fa-tasks' },
+                    { key: 'custom_lost_reason', label: 'Reason', sortable: true, icon: 'fa-exclamation-triangle' },
+                    { key: 'order_lost_reason', label: 'Detailed Reason', sortable: true, icon: 'fa-info-circle' },
+                    { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' }
+                ])}
+            </div>
+        `;
+    }
+
+    renderAmountWiseLostAnalysisTab() {
+        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+
+        if (lostQuotes.length === 0) {
+            return `
+                <div class="no-data-message" style="text-align: center; padding: 2rem;">
+                    <i class="fa fa-info-circle" style="font-size: 2rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-secondary); margin: 0;">No Lost Quotations Found</h3>
+                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">No lost quotations available for amount-wise analysis</p>
+                </div>
+            `;
+        }
+
+        // Define amount ranges matching overview section
+        const ranges = [
+            { label: '0-10K', min: 0, max: 10000, icon: 'fa-coins', colorClass: 'info' },
+            { label: '10K-25K', min: 10000, max: 25000, icon: 'fa-coins', colorClass: 'success' },
+            { label: '25K-50K', min: 25000, max: 50000, icon: 'fa-money-bill', colorClass: 'warning' },
+            { label: '50K-100K', min: 50000, max: 100000, icon: 'fa-money-bill-alt', colorClass: 'danger' },
+            { label: '100K+', min: 100000, max: Infinity, icon: 'fa-money-bill-wave', colorClass: 'info' }
+        ];
+
+        // Categorize lost quotations by amount ranges
+        const amountAnalysis = ranges.map(range => {
+            const quotesInRange = lostQuotes.filter(quote => {
+                const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+                return amount >= range.min && amount < range.max;
+            });
+
+            const totalValue = quotesInRange.reduce((sum, quote) => {
+                return sum + (quote.base_grand_total || quote.grand_total || quote.total || 0);
+            }, 0);
+
+            return {
+                ...range,
+                count: quotesInRange.length,
+                totalValue: totalValue,
+                quotes: quotesInRange
+            };
+        });
+
+        // Create section with cards matching overview design
+        return `
+            <div class="data-section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fa fa-chart-bar"></i>
+                        Lost Quotations by Value Range
+                    </h2>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                        <i class="fa fa-exclamation-triangle"></i>
+                        <span>Lost quotations only</span>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    ${amountAnalysis.map((range, index) => {
+                        const colorMap = {
+                            'info': 'blue',
+                            'success': 'green',
+                            'warning': 'orange',
+                            'danger': 'red'
+                        };
+                        const colorName = colorMap[range.colorClass];
+                        return `
+                        <div class="stat-card" onclick="frappe.sales_intelligence.showAmountRangeDetails('${range.label}', ${range.min}, ${range.max})">
+                            <div class="stat-card-header">
+                                <div class="stat-card-content">
+                                    <h3 class="stat-card-title">
+                                        <i class="fa ${range.icon}" style="color: var(--accent-${colorName}); margin-right: 0.5rem;"></i>
+                                        AED ${range.label}
+                                    </h3>
+                                    <p class="stat-card-value">${range.count}</p>
+                                    <p class="stat-card-amount">AED ${this.formatCurrency(range.totalValue)}</p>
+                                </div>
+                                <div class="stat-card-icon ${range.colorClass}">
+                                    <i class="fa ${range.icon}"></i>
+                                </div>
+                            </div>
+                            <span class="click-indicator">
+                                <i class="fa fa-mouse-pointer"></i>
+                                View lost quotations
+                            </span>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+
+            ${amountAnalysis.every(range => range.count === 0) ? `
+                <div class="no-data-message" style="text-align: center; padding: 2rem; margin-top: 2rem;">
+                    <i class="fa fa-chart-bar" style="font-size: 2rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-secondary); margin: 0;">No Amount Distribution Found</h3>
+                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">All lost quotations have zero or no amount values</p>
+                </div>
+            ` : ''}
+        `;
+    }
+
+    renderPipelineWiseLostAnalysisTab() {
+        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+
+        if (lostQuotes.length === 0) {
+            return `
+                <div class="no-data-message" style="text-align: center; padding: 2rem;">
+                    <i class="fa fa-info-circle" style="font-size: 2rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-secondary); margin: 0;">No Lost Quotations Found</h3>
+                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">No lost quotations available for pipeline analysis</p>
+                </div>
+            `;
+        }
+
+        // Categorize lost quotations by pipeline workflow state
+        const pipelines = {
+            A: { quotes: [], value: 0 },
+            B: { quotes: [], value: 0 },
+            C: { quotes: [], value: 0 }
+        };
+
+        lostQuotes.forEach(quote => {
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+            const workflowState = quote.workflow_state || '';
+
+            // Check workflow state for pipeline categorization (more precise matching)
+            if (workflowState.includes('Pipeline A')) {
+                pipelines.A.quotes.push(quote);
+                pipelines.A.value += amount;
+            } else if (workflowState.includes('Pipeline B')) {
+                pipelines.B.quotes.push(quote);
+                pipelines.B.value += amount;
+            } else if (workflowState.includes('Pipeline C')) {
+                pipelines.C.quotes.push(quote);
+                pipelines.C.value += amount;
+            }
+        });
+
+        return `
+            <div class="pipeline-container">
+                <div class="pipeline-stages-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.25rem; padding: 0 1rem; margin-bottom: 2rem;">
+                    <!-- Pipeline A -->
+                    <div class="pipeline-stage-card pipeline-a ${pipelines.A.quotes.length === 0 ? 'empty' : ''}" onclick="frappe.sales_intelligence.showPipelineLostDetails('A')">
+                        <div class="stage-header">
+                            <div class="stage-info">
+                                <div class="stage-title">Pipeline A</div>
+                                <div class="stage-subtitle">Very High Confidence</div>
+                            </div>
+                            <div class="stage-probability">
+                                <div class="probability-badge probability-very-high">LOST</div>
+                            </div>
+                        </div>
+
+                        <div class="stage-metrics">
+                            <div class="metric-group">
+                                <div class="metric-value">${pipelines.A.quotes.length}</div>
+                                <div class="metric-label">Lost Quotations</div>
+                            </div>
+                            <div class="metric-group">
+                                <div class="metric-value">AED ${this.formatCurrency(pipelines.A.value)}</div>
+                                <div class="metric-label">Lost Value</div>
+                            </div>
+                        </div>
+
+                        <div class="stage-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill progress-a" style="width: 95%; background: var(--accent-red);"></div>
+                            </div>
+                            <div class="progress-text">High Confidence Lost</div>
+                        </div>
+
+                        ${pipelines.A.quotes.length > 0 ? '<div class="stage-click-hint"><i class="fa fa-mouse-pointer"></i> Click to view details</div>' : '<div class="stage-empty"><i class="fa fa-inbox"></i> No lost quotations in this pipeline</div>'}
+                    </div>
+
+                    <!-- Pipeline B -->
+                    <div class="pipeline-stage-card pipeline-b ${pipelines.B.quotes.length === 0 ? 'empty' : ''}" onclick="frappe.sales_intelligence.showPipelineLostDetails('B')">
+                        <div class="stage-header">
+                            <div class="stage-info">
+                                <div class="stage-title">Pipeline B</div>
+                                <div class="stage-subtitle">High Confidence</div>
+                            </div>
+                            <div class="stage-probability">
+                                <div class="probability-badge probability-high">LOST</div>
+                            </div>
+                        </div>
+
+                        <div class="stage-metrics">
+                            <div class="metric-group">
+                                <div class="metric-value">${pipelines.B.quotes.length}</div>
+                                <div class="metric-label">Lost Quotations</div>
+                            </div>
+                            <div class="metric-group">
+                                <div class="metric-value">AED ${this.formatCurrency(pipelines.B.value)}</div>
+                                <div class="metric-label">Lost Value</div>
+                            </div>
+                        </div>
+
+                        <div class="stage-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill progress-b" style="width: 82%; background: var(--accent-red);"></div>
+                            </div>
+                            <div class="progress-text">Medium Confidence Lost</div>
+                        </div>
+
+                        ${pipelines.B.quotes.length > 0 ? '<div class="stage-click-hint"><i class="fa fa-mouse-pointer"></i> Click to view details</div>' : '<div class="stage-empty"><i class="fa fa-inbox"></i> No lost quotations in this pipeline</div>'}
+                    </div>
+
+                    <!-- Pipeline C -->
+                    <div class="pipeline-stage-card pipeline-c ${pipelines.C.quotes.length === 0 ? 'empty' : ''}" onclick="frappe.sales_intelligence.showPipelineLostDetails('C')">
+                        <div class="stage-header">
+                            <div class="stage-info">
+                                <div class="stage-title">Pipeline C</div>
+                                <div class="stage-subtitle">Medium Confidence</div>
+                            </div>
+                            <div class="stage-probability">
+                                <div class="probability-badge probability-medium">LOST</div>
+                            </div>
+                        </div>
+
+                        <div class="stage-metrics">
+                            <div class="metric-group">
+                                <div class="metric-value">${pipelines.C.quotes.length}</div>
+                                <div class="metric-label">Lost Quotations</div>
+                            </div>
+                            <div class="metric-group">
+                                <div class="metric-value">AED ${this.formatCurrency(pipelines.C.value)}</div>
+                                <div class="metric-label">Lost Value</div>
+                            </div>
+                        </div>
+
+                        <div class="stage-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill progress-c" style="width: 62%; background: var(--accent-red);"></div>
+                            </div>
+                            <div class="progress-text">Lower Confidence Lost</div>
+                        </div>
+
+                        ${pipelines.C.quotes.length > 0 ? '<div class="stage-click-hint"><i class="fa fa-mouse-pointer"></i> Click to view details</div>' : '<div class="stage-empty"><i class="fa fa-inbox"></i> No lost quotations in this pipeline</div>'}
+                    </div>
+                </div>
+            </div>
+
+            ${Object.values(pipelines).every(pipeline => pipeline.quotes.length === 0) ?
+                '<div class="no-data-message" style="text-align: center; padding: 2rem; margin-top: 2rem;">' +
+                    '<i class="fa fa-layer-group" style="font-size: 2rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>' +
+                    '<h3 style="color: var(--text-secondary); margin: 0;">No Pipeline Distribution Found</h3>' +
+                    '<p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">All lost quotations have no pipeline status set</p>' +
+                '</div>' : ''}
+        `;
+    }
+
+    // Old function kept for reference - will be removed later
+    renderPipelineWiseLostAnalysisOLD() {
+        // Group lost quotations by workflow state (pipeline)
+        const pipelineStats = {
+            'Pipeline A': { count: 0, value: 0, quotes: [] },
+            'Pipeline B': { count: 0, value: 0, quotes: [] },
+            'Pipeline C': { count: 0, value: 0, quotes: [] },
+            'Other': { count: 0, value: 0, quotes: [] }
+        };
+
+        lostQuotes.forEach(quote => {
+            const workflowState = quote.workflow_state || 'Unknown';
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+
+            let pipeline = 'Other';
+            if (workflowState.includes('Pipeline A') || workflowState.includes('A')) {
+                pipeline = 'Pipeline A';
+            } else if (workflowState.includes('Pipeline B') || workflowState.includes('B')) {
+                pipeline = 'Pipeline B';
+            } else if (workflowState.includes('Pipeline C') || workflowState.includes('C')) {
+                pipeline = 'Pipeline C';
+            }
+
+            pipelineStats[pipeline].count++;
+            pipelineStats[pipeline].value += amount;
+            pipelineStats[pipeline].quotes.push(quote);
+        });
+
+        // Remove pipelines with no data
+        const activePipelines = Object.entries(pipelineStats).filter(([_, data]) => data.count > 0);
+
+        if (activePipelines.length === 0) {
+            return `
+                <div class="no-data-message" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    <i class="fa fa-search" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <h3>No Pipeline Data Found</h3>
+                    <p>Lost quotations don't have pipeline workflow state information</p>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="pipeline-lost-analysis">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                    <i class="fa fa-info-circle"></i>
+                    <span>Lost quotations grouped by pipeline workflow state - click on cards for detailed view</span>
+                </div>
+
+                <div class="pipeline-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                    ${activePipelines.map(([pipelineName, stats], index) => {
+                        const colors = {
+                            'Pipeline A': { bg: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.3)', accent: 'var(--accent-red)' },
+                            'Pipeline B': { bg: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.3)', accent: 'var(--accent-orange)' },
+                            'Pipeline C': { bg: 'rgba(168, 85, 247, 0.1)', border: 'rgba(168, 85, 247, 0.3)', accent: 'var(--accent-purple)' },
+                            'Other': { bg: 'rgba(107, 114, 128, 0.1)', border: 'rgba(107, 114, 128, 0.3)', accent: 'var(--text-secondary)' }
+                        };
+
+                        const color = colors[pipelineName] || colors['Other'];
+
+                        return `
+                            <div class="pipeline-lost-card" onclick="frappe.sales_intelligence.showPipelineLostDetails('${pipelineName}')"
+                                 style="background: ${color.bg}; border: 2px solid ${color.border}; border-radius: 12px; padding: 1.5rem; cursor: pointer; transition: all 0.3s ease; position: relative;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                                    <h4 style="margin: 0; color: ${color.accent}; font-size: 1.1rem; font-weight: 600;">
+                                        <i class="fa fa-project-diagram" style="margin-right: 0.5rem;"></i>
+                                        ${pipelineName}
+                                    </h4>
+                                    <span style="background: ${color.accent}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">
+                                        LOST
+                                    </span>
+                                </div>
+
+                                <div class="stats-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <div>
+                                        <div style="font-size: 2rem; font-weight: 700; color: ${color.accent};">${stats.count}</div>
+                                        <div style="font-size: 0.875rem; color: var(--text-secondary);">Lost Quotations</div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 1.2rem; font-weight: 600; color: ${color.accent};">
+                                            ₹${stats.value.toLocaleString()}
+                                        </div>
+                                        <div style="font-size: 0.875rem; color: var(--text-secondary);">Total Lost Value</div>
+                                    </div>
+                                </div>
+
+                                <div class="card-action" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: ${color.accent}; font-size: 0.875rem; font-weight: 600;">
+                                    <i class="fa fa-mouse-pointer"></i>
+                                    <span>Click to view detailed quotations</span>
+                                </div>
+
+                                <div class="hover-effect" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: ${color.bg}; opacity: 0; border-radius: 10px; transition: opacity 0.3s ease; pointer-events: none;"></div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    switchLossTab(tabName) {
+        // Remove active class from all tabs
+        $('.loss-tab-button').removeClass('active').css({
+            'color': 'var(--text-secondary)',
+            'border-bottom': '3px solid transparent'
+        });
+
+        // Hide all tab content
+        $('.loss-tab-content').hide();
+
+        // Show selected tab and update button style
+        if (tabName === 'reasons') {
+            $('#loss-reasons-tab').show();
+            $('.loss-tab-button:first').addClass('active').css({
+                'color': 'var(--text-primary)',
+                'border-bottom': '3px solid var(--accent-blue)'
+            });
+        } else if (tabName === 'pipeline') {
+            $('#pipeline-lost-tab').show();
+            $('.loss-tab-button:last').addClass('active').css({
+                'color': 'var(--text-primary)',
+                'border-bottom': '3px solid var(--accent-blue)'
+            });
+        }
+    }
+
+    showPipelineLostDetails(pipelineName) {
+        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+
+        // Filter quotes by pipeline
+        let filteredQuotes = [];
+
+        if (pipelineName === 'Pipeline A') {
+            filteredQuotes = lostQuotes.filter(q => {
+                const workflowState = q.workflow_state || '';
+                return workflowState.includes('Pipeline A') || workflowState.includes('A');
+            });
+        } else if (pipelineName === 'Pipeline B') {
+            filteredQuotes = lostQuotes.filter(q => {
+                const workflowState = q.workflow_state || '';
+                return workflowState.includes('Pipeline B') || workflowState.includes('B');
+            });
+        } else if (pipelineName === 'Pipeline C') {
+            filteredQuotes = lostQuotes.filter(q => {
+                const workflowState = q.workflow_state || '';
+                return workflowState.includes('Pipeline C') || workflowState.includes('C');
+            });
+        } else {
+            filteredQuotes = lostQuotes.filter(q => {
+                const workflowState = q.workflow_state || '';
+                return !workflowState.includes('Pipeline A') &&
+                       !workflowState.includes('Pipeline B') &&
+                       !workflowState.includes('Pipeline C') &&
+                       !workflowState.includes('A') &&
+                       !workflowState.includes('B') &&
+                       !workflowState.includes('C');
+            });
+        }
+
+        if (filteredQuotes.length === 0) {
+            frappe.msgprint(`No lost quotations found for ${pipelineName}`);
+            return;
+        }
+
+        // Calculate summary
+        const totalCount = filteredQuotes.length;
+        const totalValue = filteredQuotes.reduce((sum, quote) => {
+            const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+            return sum + amount;
+        }, 0);
+
+        const colors = {
+            'Pipeline A': 'var(--accent-red)',
+            'Pipeline B': 'var(--accent-orange)',
+            'Pipeline C': 'var(--accent-purple)',
+            'Other': 'var(--text-secondary)'
+        };
+
+        const pipelineColor = colors[pipelineName] || colors['Other'];
+
+        // Create modal content
+        const modalContent = `
+            <div class="pipeline-lost-modal">
+                <!-- Scrollable Content Container -->
+                <div style="max-height: 70vh; overflow-y: auto; padding-right: 1rem;">
+                    <div class="content-header" style="margin-bottom: 1.5rem;">
+                        <h4 style="margin: 0; color: var(--text-primary);">
+                            <i class="fa fa-project-diagram" style="color: ${pipelineColor}; margin-right: 0.5rem;"></i>
+                            ${pipelineName} - Lost Quotations
+                        </h4>
+                        <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary);">
+                            Quotations that reached ${pipelineName} workflow state but were eventually lost
+                        </p>
+                    </div>
+
+                    <!-- Summary Stats -->
+                    <div class="summary-stats" style="display: flex; gap: 2rem; margin-bottom: 1.5rem; padding: 1rem; background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa fa-list-ol" style="color: ${pipelineColor}; font-size: 1.2rem;"></i>
+                            <div>
+                                <div style="font-size: 1.5rem; font-weight: 700; color: ${pipelineColor};">${totalCount}</div>
+                                <div style="font-size: 0.875rem; color: var(--text-secondary);">Lost Quotations</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa fa-calculator" style="color: ${pipelineColor}; font-size: 1.2rem;"></i>
+                            <div>
+                                <div style="font-size: 1.5rem; font-weight: 700; color: ${pipelineColor};">₹${totalValue.toLocaleString()}</div>
+                                <div style="font-size: 0.875rem; color: var(--text-secondary);">Total Lost Value</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quotations Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped" style="margin: 0;">
+                            <thead style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)); border-bottom: 2px solid var(--border-color);">
+                                <tr>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--text-primary);">Quotation</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--text-primary);">Customer</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--text-primary);">Workflow State</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--text-primary);">Date</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--text-primary);">Grand Total</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--text-primary);">Loss Reason</th>
+                                    <th style="padding: 1rem; font-weight: 600; color: var(--text-primary); text-align: center;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${filteredQuotes.map((quote, index) => {
+                                    const amount = quote.base_grand_total || quote.grand_total || quote.total || 0;
+                                    const formattedAmount = amount ? `₹${amount.toLocaleString()}` : 'N/A';
+                                    const date = quote.transaction_date ?
+                                        frappe.datetime.str_to_user(quote.transaction_date) :
+                                        (quote.creation ? frappe.datetime.str_to_user(quote.creation) : 'N/A');
+                                    const customer = quote.customer_name || quote.party_name || quote.customer || 'N/A';
+                                    const workflowState = quote.workflow_state || 'Not specified';
+                                    const lossReason = quote.order_lost_reason || quote.custom_lost_reason || quote.lost_reason || 'Not specified';
+                                    const rowBg = index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)';
+
+                                    return `
+                                        <tr style="background: ${rowBg}; border-bottom: 1px solid var(--border-color);">
+                                            <td style="padding: 0.75rem 1rem; font-weight: 600; color: var(--accent-blue);">
+                                                ${quote.quotation || quote.name || 'N/A'}
+                                            </td>
+                                            <td style="padding: 0.75rem 1rem; color: var(--text-primary);">
+                                                ${customer}
+                                            </td>
+                                            <td style="padding: 0.75rem 1rem; color: ${pipelineColor}; font-weight: 600;">
+                                                ${workflowState}
+                                            </td>
+                                            <td style="padding: 0.75rem 1rem; color: var(--text-primary);">
+                                                ${date}
+                                            </td>
+                                            <td style="padding: 0.75rem 1rem; font-weight: 600; color: var(--accent-red);">
+                                                ${formattedAmount}
+                                            </td>
+                                            <td style="padding: 0.75rem 1rem; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
+                                                ${lossReason}
+                                            </td>
+                                            <td style="padding: 0.75rem 1rem; text-align: center;">
+                                                <button class="btn btn-sm btn-primary" onclick="frappe.sales_intelligence.openQuotation('${quote.quotation || quote.name}')" style="font-size: 0.875rem;">
+                                                    <i class="fa fa-external-link-alt"></i> View
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Additional Analysis -->
+                    <div class="additional-analysis" style="margin-top: 1.5rem; padding: 1rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                            <i class="fa fa-chart-line" style="color: var(--accent-blue);"></i>
+                            <h5 style="margin: 0; color: var(--text-primary);">${pipelineName} Insights</h5>
+                        </div>
+                        <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 200px;">
+                                <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Average Lost Value</div>
+                                <div style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">
+                                    ₹${totalCount > 0 ? Math.round(totalValue / totalCount).toLocaleString() : '0'}
+                                </div>
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Pipeline Stage</div>
+                                <div style="font-size: 1.1rem; font-weight: 600; color: ${pipelineColor};">
+                                    ${pipelineName}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Show modal
+        $('#drilldown-title').html(`<i class="fa fa-project-diagram"></i> ${pipelineName} Lost Analysis`);
+        $('#drilldown-content').html(modalContent);
+        $('#drilldownModal').modal('show');
     }
 
     renderStandardizedLossReasons() {
@@ -11286,18 +16915,18 @@ initializePipelineTimelineChart() {
 
         const { reasons, counts, values, total_lost } = this.data.lost_quotation_reasons;
 
-        // Create array of reason data for table
+        // Create array of reason data for table - show all enabled reasons (custom_disabled = 0)
         const reasonsTableData = reasons.map(reason => ({
             reason: reason.order_lost_reason,
             count: counts[reason.order_lost_reason] || 0,
             amount: values[reason.order_lost_reason] || 0,
             percentage: total_lost > 0 ? ((counts[reason.order_lost_reason] || 0) / total_lost * 100).toFixed(1) : 0
-        })).filter(r => r.count > 0).sort((a, b) => b.count - a.count);
+        })).sort((a, b) => b.count - a.count);
 
         // Create visual representation
-        const maxCount = Math.max(...reasonsTableData.map(r => r.count));
-        const reasonBars = reasonsTableData.slice(0, 10).map(reason => `
-            <div class="reason-bar-item">
+        const maxCount = Math.max(...reasonsTableData.map(r => r.count), 1); // Ensure at least 1 to avoid division by zero
+        const reasonBars = reasonsTableData.map(reason => `
+            <div class="reason-bar-item ${reason.count === 0 ? 'no-losses' : ''}">
                 <div class="reason-info">
                     <span class="reason-name">${reason.reason}</span>
                     <div class="reason-stats">
@@ -11307,7 +16936,8 @@ initializePipelineTimelineChart() {
                     </div>
                 </div>
                 <div class="reason-bar">
-                    <div class="reason-bar-fill" style="width: ${(reason.count / maxCount * 100)}%; background: linear-gradient(135deg, var(--accent-red), var(--accent-orange));"></div>
+                    <div class="reason-bar-fill" style="width: ${reason.count > 0 ? (reason.count / maxCount * 100) : 0}%;
+                         background: ${reason.count > 0 ? 'linear-gradient(135deg, var(--accent-red), var(--accent-orange))' : 'var(--border-color)'};"></div>
                 </div>
             </div>
         `).join('');
@@ -11320,10 +16950,10 @@ initializePipelineTimelineChart() {
                         <div class="stat-card-content">
                             <h3 class="stat-card-title">
                                 <i class="fa fa-list" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
-                                Standard Reasons
+                                Active Reasons
                             </h3>
-                            <p class="stat-card-value">${reasons.length}</p>
-                            <p class="stat-card-amount">Total Categories</p>
+                            <p class="stat-card-value">${activeReasons.length}</p>
+                            <p class="stat-card-amount">Configured Categories</p>
                         </div>
                         <div class="stat-card-icon primary">
                             <i class="fa fa-list"></i>
@@ -11364,14 +16994,40 @@ initializePipelineTimelineChart() {
                 </div>
             </div>
 
-            <!-- Visual Representation -->
-            <div class="reason-analysis-container" style="margin-bottom: 2rem;">
+            <!-- Loss Analysis with Tabs -->
+            <div class="loss-analysis-section" style="margin-bottom: 2rem;">
                 <h3 style="color: var(--text-primary); margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600;">
                     <i class="fa fa-chart-bar" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
-                    Top Loss Reasons (Visual)
+                    Top Loss Reasons Analysis
                 </h3>
-                <div class="reason-bars">
-                    ${reasonBars}
+
+                <!-- Tab Navigation -->
+                <div class="loss-tabs-navigation" style="margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color);">
+                    <button class="loss-tab-button active" onclick="frappe.sales_intelligence.switchLossTab('reasons')"
+                            style="padding: 0.75rem 1.5rem; border: none; background: none; color: var(--text-primary); font-weight: 600; cursor: pointer; border-bottom: 3px solid var(--accent-blue); margin-right: 1rem;">
+                        <i class="fa fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>Loss Reasons
+                    </button>
+                    <button class="loss-tab-button" onclick="frappe.sales_intelligence.switchLossTab('pipeline')"
+                            style="padding: 0.75rem 1.5rem; border: none; background: none; color: var(--text-secondary); font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; margin-right: 1rem;">
+                        <i class="fa fa-project-diagram" style="margin-right: 0.5rem;"></i>Pipeline-wise Lost
+                    </button>
+                </div>
+
+                <!-- Tab Content Container -->
+                <div id="loss-tab-content">
+                    <!-- Loss Reasons Tab (Default) -->
+                    <div id="loss-reasons-tab" class="loss-tab-content active">
+                        <div class="reason-analysis-container">
+                            <div class="reason-bars">
+                                ${reasonBars}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pipeline-wise Lost Tab -->
+                    <div id="pipeline-lost-tab" class="loss-tab-content" style="display: none;">
+                        ${this.renderPipelineWiseLostAnalysis()}
+                    </div>
                 </div>
             </div>
 
@@ -11463,8 +17119,1049 @@ initializePipelineTimelineChart() {
                     margin-bottom: 1rem;
                     color: var(--accent-blue);
                 }
+
+                .reason-bar-item.no-losses {
+                    opacity: 0.7;
+                }
+
+                .reason-bar-item.no-losses .reason-name {
+                    color: var(--text-muted);
+                    font-style: italic;
+                }
+
+                .reason-bar-item.no-losses .reason-stats .count {
+                    color: var(--text-muted);
+                }
             </style>
         `;
+    }
+
+    filterLostQuotationsByReason() {
+        const selectedReason = document.getElementById('lost-reason-filter').value;
+        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost');
+
+        // Filter quotes by selected dynamic reason (from actual table data)
+        let filteredQuotes = lostQuotes;
+        if (selectedReason && selectedReason !== '') {
+            filteredQuotes = lostQuotes.filter(q => {
+                // Only check custom_lost_reason (the "Reason" column)
+                const customReason = q.custom_lost_reason ? q.custom_lost_reason.trim() : '';
+                return customReason === selectedReason;
+            });
+        }
+
+        // Sort by date (most recent first) - show all filtered results
+        const displayQuotes = filteredQuotes
+            .sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date));
+
+        // Update the table
+        const tableContainer = document.getElementById('recent-lost-table-container');
+        if (tableContainer) {
+            tableContainer.innerHTML = this.renderTableWithControls('recent-lost-table', displayQuotes, [
+                { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
+                { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                { key: 'custom_lost_reason', label: 'Reason', sortable: true, icon: 'fa-exclamation-triangle' },
+                { key: 'order_lost_reason', label: 'Detailed Reason', sortable: true, icon: 'fa-info-circle' },
+                { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' }
+            ]);
+        }
+
+        // Update the count display
+        const countElement = document.getElementById('lost-filter-count');
+        if (countElement) {
+            const totalFiltered = filteredQuotes.length;
+            const displayCount = displayQuotes.length;
+            if (selectedReason) {
+                countElement.textContent = `Showing ${displayCount} of ${totalFiltered} quotations (filtered by: ${selectedReason})`;
+            } else {
+                countElement.textContent = `Showing ${displayCount} of ${totalFiltered} quotations`;
+            }
+        }
+    }
+
+    // Filter function for the modal lost quotations table
+    filterModalLostQuotationsByReason() {
+        const selectedReason = document.getElementById('modal-lost-reason-filter').value;
+        const allLostQuotes = this.data.quotations.filter(q => q.status === 'Lost');
+
+        // Filter quotes by selected dynamic reason (from actual table data)
+        let filteredQuotes = allLostQuotes;
+        if (selectedReason && selectedReason !== '') {
+            filteredQuotes = allLostQuotes.filter(q => {
+                // Only check custom_lost_reason (the "Reason" column)
+                const customReason = q.custom_lost_reason ? q.custom_lost_reason.trim() : '';
+                return customReason === selectedReason;
+            });
+        }
+
+        // Sort by date (most recent first) - show all filtered results
+        const displayQuotes = filteredQuotes
+            .sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date));
+
+        // Update the modal table
+        const modalTableContainer = document.getElementById('modal-lost-quotations-table-container');
+        if (modalTableContainer) {
+            modalTableContainer.innerHTML = this.renderTableWithControls('modal-lost-quotations-table', displayQuotes, [
+                { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
+                { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                { key: 'custom_lost_reason', label: 'Reason', sortable: true, icon: 'fa-exclamation-triangle' },
+                { key: 'order_lost_reason', label: 'Detailed Reason', sortable: true, icon: 'fa-info-circle' },
+                { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' }
+            ]);
+        }
+
+        // Update the modal count display
+        const modalCountElement = document.getElementById('modal-lost-filter-count');
+        if (modalCountElement) {
+            const totalAll = allLostQuotes.length;
+            const displayCount = displayQuotes.length;
+            if (selectedReason) {
+                modalCountElement.textContent = `Showing ${displayCount} of ${totalAll} quotations (filtered by: ${selectedReason})`;
+            } else {
+                modalCountElement.textContent = `Showing ${displayCount} of ${totalAll} quotations`;
+            }
+        }
+
+        // Update the modal title
+        const titleText = selectedReason ?
+            `All Lost Quotations - Filtered by: ${selectedReason} (${displayQuotes.length})` :
+            `All Lost Quotations (${displayQuotes.length})`;
+        $('#drilldown-title').html(`<i class="fa fa-times-circle"></i> ${titleText}`);
+    }
+
+    // Show pipeline lost details in inline table (exactly like Recent Lost Quotations)
+    showPipelineLostDetails(pipelineLetter) {
+        const lostQuotes = this.data.quotations.filter(q => q.status === 'Lost') || [];
+
+        // Map pipeline letter to workflow state and label
+        const pipelineConfig = {
+            'A': { label: 'Pipeline A', subtitle: 'Very High Confidence', workflowKeyword: 'Pipeline A' },
+            'B': { label: 'Pipeline B', subtitle: 'High Confidence', workflowKeyword: 'Pipeline B' },
+            'C': { label: 'Pipeline C', subtitle: 'Medium Confidence', workflowKeyword: 'Pipeline C' }
+        };
+
+        const config = pipelineConfig[pipelineLetter];
+        if (!config) return;
+
+        // Filter quotes by pipeline workflow state
+        const pipelineQuotes = lostQuotes.filter(quote => {
+            const workflowState = quote.workflow_state || '';
+            return workflowState.includes(config.workflowKeyword);
+        });
+
+        if (pipelineQuotes.length === 0) {
+            document.getElementById('pipeline-details-container').style.display = 'none';
+            return;
+        }
+
+        // Sort by date (most recent first)
+        const sortedQuotes = pipelineQuotes.sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date));
+
+        // Update title with same styling as Recent Lost Quotations
+        const titleElement = document.getElementById('pipeline-details-title');
+        titleElement.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 1rem;">
+                <div style="flex: 1; height: 2px; background: linear-gradient(to right, transparent, var(--accent-red));"></div>
+                <div>
+                    <h5 style="margin: 0; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem;">
+                        <i class="fa fa-layer-group" style="color: var(--accent-red);"></i>
+                        ${config.label} - Lost Quotations
+                    </h5>
+                </div>
+                <div style="flex: 1; height: 2px; background: linear-gradient(to left, var(--accent-red), transparent);"></div>
+            </div>
+            <p style="margin: 0 0 1.5rem 0; color: var(--text-secondary); font-size: 0.9rem; text-align: center;">${config.subtitle} - Latest lost quotations with filtering options</p>
+        `;
+
+        // Generate table section exactly like Recent Lost Quotations
+        const tableContainer = document.getElementById('pipeline-details-table');
+        tableContainer.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div></div>
+                <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.hidePipelineDetails()">
+                    <i class="fa fa-times"></i>
+                    Hide ${config.label}
+                </button>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="filter-section" style="margin-bottom: 1rem; padding: 1rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa fa-filter" style="color: var(--accent-blue);"></i>
+                        <span style="font-weight: 600; color: var(--text-primary);">Filter by Reason:</span>
+                    </div>
+                    <div style="flex: 1; max-width: 300px;">
+                        <select id="pipeline-reason-filter" class="form-control" style="padding: 0.5rem; height: 44px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary);" onchange="frappe.sales_intelligence.filterPipelineTableByReason()">
+                            <option value="">All Reasons</option>
+                            ${this.getDynamicLossReasons(sortedQuotes).map(reason =>
+                                `<option value="${reason}">${reason}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
+                        <span id="pipeline-filter-count">Showing ${sortedQuotes.length} quotations</span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('pipeline-reason-filter').value = ''; frappe.sales_intelligence.filterPipelineTableByReason();" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                            <i class="fa fa-times"></i> Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container" id="pipeline-table-content">
+                ${this.renderTableWithControls('pipeline-details-table-data', sortedQuotes, [
+                    { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
+                    { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                    { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                    { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                    { key: 'custom_lost_reason', label: 'Reason', sortable: true, icon: 'fa-exclamation-triangle' },
+                    { key: 'order_lost_reason', label: 'Detailed Reason', sortable: true, icon: 'fa-info-circle' },
+                    { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' }
+                ])}
+            </div>
+        `;
+
+        // Show the container
+        document.getElementById('pipeline-details-container').style.display = 'block';
+
+        // Store the current pipeline data for filtering
+        this.currentPipelineData = {
+            pipelineLabel: config.label,
+            pipelineLetter: pipelineLetter,
+            quotes: sortedQuotes
+        };
+
+        // Scroll to the table
+        document.getElementById('pipeline-details-container').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    hidePipelineDetails() {
+        document.getElementById('pipeline-details-container').style.display = 'none';
+    }
+
+    filterPipelineTableByReason() {
+        if (!this.currentPipelineData) return;
+
+        const selectedReason = document.getElementById('pipeline-reason-filter').value;
+        const allQuotes = this.currentPipelineData.quotes;
+
+        // Filter quotes by selected reason
+        let filteredQuotes = allQuotes;
+        if (selectedReason && selectedReason !== '') {
+            filteredQuotes = allQuotes.filter(q => {
+                // Only check custom_lost_reason (the "Reason" column)
+                const customReason = q.custom_lost_reason ? q.custom_lost_reason.trim() : '';
+                return customReason === selectedReason;
+            });
+        }
+
+        // Update the table
+        const tableContainer = document.getElementById('pipeline-table-content');
+        if (tableContainer) {
+            tableContainer.innerHTML = this.renderTableWithControls('pipeline-details-table-data', filteredQuotes, [
+                { key: 'quotation', label: 'Quotation #', sortable: true, icon: 'fa-file-alt' },
+                { key: 'party_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                { key: 'transaction_date', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+                { key: 'base_grand_total', label: 'Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                { key: 'custom_lost_reason', label: 'Reason', sortable: true, icon: 'fa-exclamation-triangle' },
+                { key: 'order_lost_reason', label: 'Detailed Reason', sortable: true, icon: 'fa-info-circle' },
+                { key: 'account_incharge_full_name', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' }
+            ]);
+        }
+
+        // Update the count display
+        const countElement = document.getElementById('pipeline-filter-count');
+        if (countElement) {
+            const totalAll = allQuotes.length;
+            const displayCount = filteredQuotes.length;
+            if (selectedReason) {
+                countElement.textContent = `Showing ${displayCount} of ${totalAll} quotations (filtered by: ${selectedReason})`;
+            } else {
+                countElement.textContent = `Showing ${displayCount} quotations`;
+            }
+        }
+
+        // Update the section title
+        const titleElement = document.getElementById('pipeline-details-title');
+        if (titleElement) {
+            const filterText = selectedReason ? ` - Filtered by: ${selectedReason}` : '';
+            titleElement.innerHTML = `
+                <i class="fa fa-layer-group" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
+                ${this.currentPipelineData.pipelineLabel} - Lost Quotations (${filteredQuotes.length})${filterText}
+            `;
+        }
+    }
+
+    // Filter function for the Account Manager table
+    filterManagerTable() {
+        const selectedManager = document.getElementById('manager-filter').value;
+
+        // Get original manager data (we need to store this when the page loads)
+        const allManagerData = this.originalManagerData || [];
+
+        // Filter managers by selected manager
+        let filteredManagers = allManagerData;
+        if (selectedManager && selectedManager !== '') {
+            filteredManagers = allManagerData.filter(manager => {
+                return manager.manager === selectedManager;
+            });
+        }
+
+        // Update the table
+        const tableContainer = document.getElementById('manager-table-container');
+        if (tableContainer) {
+            tableContainer.innerHTML = this.renderTableWithControls('manager-loss-table', filteredManagers, [
+                { key: 'manager', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
+                { key: 'total_quotations', label: 'Total Quotations', sortable: true, icon: 'fa-list-ol' },
+                { key: 'won_count', label: 'Won Count', sortable: true, icon: 'fa-check-circle' },
+                { key: 'won_amount', label: 'Won Amount', sortable: true, type: 'currency', icon: 'fa-check-circle' },
+                { key: 'count', label: 'Lost Count', sortable: true, icon: 'fa-times-circle' },
+                { key: 'amount', label: 'Lost Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                { key: 'won_conversion', label: 'Won Conversion', sortable: true, type: 'conversion', icon: 'fa-check-circle' },
+                { key: 'lost_conversion', label: 'Lost Conversion', sortable: true, type: 'conversion', icon: 'fa-exclamation-triangle' }
+            ]);
+        }
+
+        // Update the count display
+        const countElement = document.getElementById('manager-filter-count');
+        if (countElement) {
+            const totalAll = allManagerData.length;
+            const displayCount = filteredManagers.length;
+            if (selectedManager) {
+                countElement.textContent = `Showing ${displayCount} of ${totalAll} managers (filtered by: ${selectedManager})`;
+            } else {
+                countElement.textContent = `Showing ${displayCount} managers`;
+            }
+        }
+    }
+
+    // Function to render linked documents table
+    async renderLinkedDocumentsTable(docType) {
+        console.log('=== LINKED DOCUMENTS TABLE DEBUG ===');
+        console.log('Total quotations loaded:', this.data.quotations.length);
+        console.log('Date range:', this.filters.from_date, 'to', this.filters.to_date);
+
+        // Debug: Check data quality first
+        console.log('🔍 DATA QUALITY CHECK:');
+        console.log('- Total quotations in dataset:', this.data.quotations.length);
+        const undefinedInDataset = this.data.quotations.filter(q => q === undefined || q === null).length;
+        console.log('- Undefined/null items in dataset:', undefinedInDataset);
+
+        // Debug: Check all quotation statuses first
+        const allStatuses = [...new Set(this.data.quotations.map(q => q && q.status).filter(Boolean))];
+        console.log('All quotation statuses available:', allStatuses);
+
+        // Filter for lost quotations directly from original data
+        const lostQuotes = this.data.quotations.filter(q => q && q.status === 'Lost') || [];
+        console.log('Lost quotations found:', lostQuotes.length);
+        console.log('Lost quotations:', lostQuotes.map(q => ({name: q.name, status: q.status, creation: q.creation, opportunity: q.opportunity})));
+
+        // Create a detailed table of all lost quotations for easy viewing
+        console.log('📋 COMPLETE LIST OF ALL LOST QUOTATIONS:');
+        console.table(lostQuotes.map(q => ({
+            'Quotation': q.name,
+            'Customer': q.customer_name || q.party_name || q.customer || 'Unknown',
+            'Amount': q.base_grand_total || q.grand_total || 0,
+            'Creation Date': q.creation ? new Date(q.creation).toLocaleDateString() : 'Unknown',
+            'Account Manager': q.account_incharge || 'Unknown',
+            'Opportunity': q.opportunity || 'None',
+            'Lost Reason': q.custom_lost_reason || 'Not specified'
+        })));
+
+        // Also output a simple copy-pastable list
+        console.log('📝 QUOTATION NAMES ONLY (for easy copying):');
+        console.log(lostQuotes.map(q => q.name).join(', '));
+
+        if (lostQuotes.length === 0) {
+            console.log('❌ No lost quotations found! Checking alternative status values...');
+            // Check for other possible "lost" status values
+            const possibleLostStatuses = this.data.quotations.filter(q =>
+                q && q.status && q.status.toLowerCase().includes('lost')
+            );
+            console.log('Quotations with "lost" in status:', possibleLostStatuses.map(q => ({name: q.name, status: q.status})));
+
+            return `
+                <div class="no-data-message" style="text-align: center; padding: 2rem;">
+                    <i class="fa fa-info-circle" style="font-size: 2rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-secondary); margin: 0;">No Lost Quotations Found</h3>
+                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">No quotations with status "Lost" found in the current date range.</p>
+                    <div style="margin-top: 1rem; font-size: 0.875rem; color: var(--text-muted);">
+                        <p>Available statuses: ${allStatuses.join(', ')}</p>
+                        <p>Total quotations: ${this.data.quotations.length}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        let linkedQuotes = [];
+
+        // Get opportunity section data for lost quotations
+        let opportunityData = [];
+
+        try {
+            switch (docType) {
+                case 'design-request':
+                    linkedQuotes = await this.getQuotationsLinkedToDesignRequest(lostQuotes);
+                    // Also include design requests from opportunity section with lost quotations
+                    opportunityData = await this.getOpportunityDataForLostQuotes(lostQuotes, 'design_requests');
+                    break;
+                case 'permit':
+                    console.log('Processing permit linking for docType:', docType);
+                    linkedQuotes = await this.getQuotationsLinkedToPermit(lostQuotes);
+                    // Also include permits from opportunity section with lost quotations
+                    opportunityData = await this.getOpportunityDataForLostQuotes(lostQuotes, 'permits');
+                    break;
+                case 'site-visit':
+                    linkedQuotes = await this.getQuotationsLinkedToSiteVisit(lostQuotes);
+                    // Also include site visits from opportunity section with lost quotations
+                    opportunityData = await this.getOpportunityDataForLostQuotes(lostQuotes, 'site_visits');
+                    break;
+                default:
+                    linkedQuotes = [];
+            }
+        } catch (error) {
+            console.error('Error fetching linked quotations:', error);
+            linkedQuotes = [];
+        }
+
+        // Filter out any undefined values from the results
+        linkedQuotes = linkedQuotes.filter(q => q && q.name);
+        console.log('✅ Linked quotes result for', docType, ':', linkedQuotes.length);
+        console.log('✅ Opportunity data result for', docType, ':', opportunityData.length);
+
+        // Combine linked quotes and opportunity data
+        const combinedData = [...linkedQuotes, ...opportunityData];
+        console.log('Linked quotes details:', linkedQuotes.map(q => ({
+            name: q.name,
+            linked_document: q.linked_document,
+            linked_document_status: q.linked_document_status,
+            linked_opportunity: q.linked_opportunity
+        })));
+
+        if (combinedData.length === 0) {
+            const docTypeName = docType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+            return `
+                <div class="no-data-message" style="text-align: center; padding: 2rem;">
+                    <i class="fa fa-info-circle" style="font-size: 2rem; color: var(--text-secondary); margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-secondary); margin: 0;">No Linked Documents Found</h3>
+                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">No lost quotations found linked to ${docTypeName}</p>
+                    <div style="margin-top: 1rem; font-size: 0.875rem; color: var(--text-muted);">
+                        <p>Searched ${lostQuotes.length} lost quotations for ${docTypeName} links</p>
+                        <p>Also checked opportunity section data for additional ${docTypeName} entries</p>
+                        <p>Check console for detailed debugging information</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Calculate summary statistics
+        const totalCount = combinedData.length;
+        const totalValue = combinedData.reduce((sum, quote) => sum + (quote.base_grand_total || 0), 0);
+
+        return `
+            <div class="linked-docs-analysis">
+                <!-- Summary Cards -->
+                <div class="summary-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    <div class="summary-card" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; text-align: center;">
+                        <div style="font-size: 2rem; font-weight: bold; color: var(--accent-red); margin-bottom: 0.5rem;">
+                            <i class="fa fa-times-circle"></i> ${totalCount}
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 0.875rem;">Lost Quotations</div>
+                    </div>
+                    <div class="summary-card" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; text-align: center;">
+                        <div style="font-size: 1.25rem; font-weight: bold; color: var(--accent-orange); margin-bottom: 0.5rem;">
+                            AED ${this.formatCurrency(totalValue)}
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 0.875rem;">Total Lost Value</div>
+                    </div>
+                </div>
+
+                <!-- Combined Data Table (Linked Quotations + Opportunity Section Data) -->
+                <div class="table-container">
+                    ${this.renderTableWithControls('linked-docs-table-' + docType, combinedData, this.getTableColumnsForDocType(docType))}
+                </div>
+            </div>
+        `;
+    }
+
+    // Function to get table columns based on document type
+    getTableColumnsForDocType(docType) {
+        const baseColumns = [
+            { key: 'customer_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+            { key: 'creation', label: 'Date', sortable: true, type: 'date', icon: 'fa-calendar' },
+            { key: 'base_grand_total', label: 'Amount', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+            { key: 'account_incharge', label: 'Account Manager', sortable: true, icon: 'fa-user-tie' },
+            { key: 'custom_lost_reason', label: 'Lost Reason', sortable: true, icon: 'fa-exclamation-triangle' }
+        ];
+
+        // Add opportunity column for Design Request and Site Visit (they link via opportunity)
+        if (docType === 'design-request' || docType === 'site-visit') {
+            baseColumns.push(
+                { key: 'linked_opportunity', label: 'Opportunity', sortable: true, icon: 'fa-bullseye' }
+            );
+        }
+
+        // Add linked document columns for all types
+        baseColumns.push(
+            { key: 'linked_document', label: 'Linked Document', sortable: true, icon: 'fa-link' },
+            { key: 'document_quotation', label: 'Document Quotation', sortable: true, icon: 'fa-file-alt' },
+            { key: 'linked_document_status', label: 'Document Status', sortable: true, icon: 'fa-info-circle' },
+            { key: 'linked_document_creation', label: 'Document Created', sortable: true, type: 'date', icon: 'fa-calendar-plus' },
+            { key: 'linked_document_owner', label: 'Document Owner', sortable: true, icon: 'fa-user' },
+            { key: 'data_source', label: 'Data Source', sortable: true, icon: 'fa-database' }
+        );
+
+        return baseColumns;
+    }
+
+    // Function to get quotations linked to Design Request
+    async getQuotationsLinkedToDesignRequest(lostQuotes) {
+        try {
+            console.log('=== DESIGN REQUEST LINKING DEBUG (PERMIT-STYLE LOGIC) ===');
+            console.log('Current date filters:', this.filters.from_date, 'to', this.filters.to_date);
+            console.log('Lost quotes to check:', lostQuotes.length);
+            console.log('Lost quote names:', lostQuotes.map(q => q.name));
+
+            if (lostQuotes.length === 0) {
+                console.log('No lost quotations to check - returning empty array');
+                return [];
+            }
+
+            // Get design requests only for the specific lost quotations
+            const quotationNames = lostQuotes.map(q => q.name);
+            const designRequestResponse = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Design Request',
+                    fields: ['name', 'quotation', 'opportunity', 'workflow_state', 'creation', 'modified', 'owner', 'docstatus'],
+                    filters: {
+                        quotation: ['in', quotationNames]
+                    },
+                    limit_page_length: 0
+                }
+            });
+
+            const designRequests = designRequestResponse.message || [];
+            console.log('Design requests found for these quotations:', designRequests.length);
+            console.log('Design request details:', designRequests);
+
+            // Create map of quotation -> design request
+            const quotationToDesignRequest = {};
+            designRequests.forEach(dr => {
+                if (dr.quotation) {
+                    quotationToDesignRequest[dr.quotation] = dr;
+                }
+            });
+
+            console.log('Quotation to design request mapping:', quotationToDesignRequest);
+
+            // Filter lost quotes that have design requests
+            const linkedQuotes = lostQuotes.filter(quote => {
+                const hasDesignRequest = quotationToDesignRequest.hasOwnProperty(quote.name);
+                if (hasDesignRequest) {
+                    console.log('✓ Found design request for quotation:', quote.name, '-> design request:', quotationToDesignRequest[quote.name].name);
+                }
+                return hasDesignRequest;
+            });
+
+            console.log('Final result: Found', linkedQuotes.length, 'lost quotations with design requests');
+            console.log('=== END DESIGN REQUEST LINKING DEBUG ===');
+
+            // Add linked document info to each quote
+            return linkedQuotes.map(quote => {
+                const designRequest = quotationToDesignRequest[quote.name];
+                return {
+                    ...quote,
+                    linked_document: designRequest.name,
+                    document_quotation: quote.name, // The lost quotation itself
+                    linked_opportunity: designRequest.opportunity,
+                    linked_document_status: designRequest.workflow_state,
+                    linked_document_creation: designRequest.creation,
+                    linked_document_modified: designRequest.modified,
+                    linked_document_owner: designRequest.owner,
+                    linked_document_docstatus: designRequest.docstatus,
+                    data_source: 'direct_quotation_link'
+                };
+            });
+
+        } catch (error) {
+            console.error('Error fetching Design Request linked quotations:', error);
+            return [];
+        }
+    }
+
+    // Function to get quotations linked to Permit
+    async getQuotationsLinkedToPermit(lostQuotes) {
+        try {
+            console.log('=== PERMIT LINKING DEBUG ===');
+            console.log('Current date filters:', this.filters.from_date, 'to', this.filters.to_date);
+            console.log('Lost quotes to check:', lostQuotes.length);
+            console.log('Lost quote names:', lostQuotes.map(q => q.name));
+
+            if (lostQuotes.length === 0) {
+                console.log('No lost quotations to check - returning empty array');
+                return [];
+            }
+
+            // Get permits only for the specific lost quotations
+            const quotationNames = lostQuotes.map(q => q.name);
+            const permitResponse = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Permit Form',
+                    fields: ['name', 'quotation', 'workflow_state', 'creation', 'modified', 'owner', 'docstatus'],
+                    filters: {
+                        quotation: ['in', quotationNames]
+                    },
+                    limit_page_length: 0
+                }
+            });
+
+            const permits = permitResponse.message || [];
+            console.log('Permits found for these quotations:', permits.length);
+            console.log('Permit details:', permits);
+
+            // Create map of quotation -> permit
+            const quotationToPermit = {};
+            permits.forEach(permit => {
+                if (permit.quotation) {
+                    quotationToPermit[permit.quotation] = permit;
+                }
+            });
+
+            console.log('Quotation to permit mapping:', quotationToPermit);
+
+            // Filter lost quotes that have permits
+            const linkedQuotes = lostQuotes.filter(quote => {
+                const hasPermit = quotationToPermit.hasOwnProperty(quote.name);
+                if (hasPermit) {
+                    console.log('✓ Found permit for quotation:', quote.name, '-> permit:', quotationToPermit[quote.name].name);
+                }
+                return hasPermit;
+            });
+
+            console.log('Final result: Found', linkedQuotes.length, 'lost quotations with permits');
+            console.log('=== END PERMIT LINKING DEBUG ===');
+
+            // Add linked document info to each quote
+            return linkedQuotes.map(quote => {
+                const permit = quotationToPermit[quote.name];
+                return {
+                    ...quote,
+                    quotation: permit.quotation || quote.name, // Ensure quotation field is set
+                    linked_document: permit.name || 'Permit',
+                    // document_quotation: permit.quotation || 'N/A', // Quotation field from Permit
+                    linked_document_status: permit.workflow_state,
+                    linked_document_creation: permit.creation,
+                    linked_document_modified: permit.modified,
+                    linked_document_owner: permit.owner,
+                    linked_document_docstatus: permit.docstatus,
+                    data_source: 'linked_quotation'
+                };
+            });
+
+        } catch (error) {
+            console.error('Error fetching Permit linked quotations:', error);
+            // Fallback to empty array if error occurs
+            return [];
+        }
+    }
+
+    // Function to get quotations linked to Site Visit
+    async getQuotationsLinkedToSiteVisit(lostQuotes) {
+        try {
+            console.log('=== SITE VISIT LINKING DEBUG (PERMIT-STYLE LOGIC) ===');
+            console.log('Current date filters:', this.filters.from_date, 'to', this.filters.to_date);
+            console.log('Lost quotes to check:', lostQuotes.length);
+            console.log('Lost quote names:', lostQuotes.map(q => q.name));
+
+            if (lostQuotes.length === 0) {
+                console.log('No lost quotations to check - returning empty array');
+                return [];
+            }
+
+            // Get site visits only for the specific lost quotations (trying multiple doctype names)
+            const quotationNames = lostQuotes.map(q => q.name);
+            let siteVisits = [];
+            const possibleDoctypes = ['Site Visit', 'Site Visits', 'Project Site Visit'];
+
+            for (const doctype of possibleDoctypes) {
+                try {
+                    const siteVisitResponse = await frappe.call({
+                        method: 'frappe.client.get_list',
+                        args: {
+                            doctype: doctype,
+                            fields: ['name', 'quotation', 'opportunity', 'workflow_state', 'creation', 'modified', 'owner', 'docstatus'],
+                            filters: {
+                                quotation: ['in', quotationNames]
+                            },
+                            limit_page_length: 0
+                        }
+                    });
+                    if (siteVisitResponse.message && siteVisitResponse.message.length > 0) {
+                        siteVisits = siteVisitResponse.message;
+                        console.log('Found site visits in doctype:', doctype);
+                        break; // Found the correct doctype
+                    }
+                } catch (e) {
+                    // Continue to next doctype if this one doesn't exist
+                    continue;
+                }
+            }
+
+            console.log('Site visits found for these quotations:', siteVisits.length);
+            console.log('Site visit details:', siteVisits);
+
+            // Create map of quotation -> site visit
+            const quotationToSiteVisit = {};
+            siteVisits.forEach(sv => {
+                if (sv.quotation) {
+                    quotationToSiteVisit[sv.quotation] = sv;
+                }
+            });
+
+            console.log('Quotation to site visit mapping:', quotationToSiteVisit);
+
+            // Filter lost quotes that have site visits
+            const linkedQuotes = lostQuotes.filter(quote => {
+                const hasSiteVisit = quotationToSiteVisit.hasOwnProperty(quote.name);
+                if (hasSiteVisit) {
+                    console.log('✓ Found site visit for quotation:', quote.name, '-> site visit:', quotationToSiteVisit[quote.name].name);
+                }
+                return hasSiteVisit;
+            });
+
+            console.log('Final result: Found', linkedQuotes.length, 'lost quotations with site visits');
+            console.log('=== END SITE VISIT LINKING DEBUG ===');
+
+            // Add linked document info to each quote
+            return linkedQuotes.map(quote => {
+                const siteVisit = quotationToSiteVisit[quote.name];
+                return {
+                    ...quote,
+                    linked_document: siteVisit.name,
+                    document_quotation: quote.name, // The lost quotation itself
+                    linked_opportunity: siteVisit.opportunity,
+                    linked_document_status: siteVisit.workflow_state,
+                    linked_document_creation: siteVisit.creation,
+                    linked_document_modified: siteVisit.modified,
+                    linked_document_owner: siteVisit.owner,
+                    linked_document_docstatus: siteVisit.docstatus,
+                    data_source: 'direct_quotation_link'
+                };
+            });
+
+        } catch (error) {
+            console.error('Error fetching Site Visit linked quotations:', error);
+            return [];
+        }
+    }
+
+    // Function to switch between linked documents sub-tabs
+    async switchLinkedDocsTab(element, tabName) {
+        // Remove active class from all sub-tabs and panes in the linked documents section
+        element.closest('.linked-docs-tabs').querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        element.closest('.linked-docs-tabs').querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+        // Add active class to selected tab and pane
+        element.classList.add('active');
+        const targetPane = document.getElementById(tabName + '-tab');
+        if (targetPane) {
+            targetPane.classList.add('active');
+
+            // Show loading state
+            const contentDiv = targetPane.querySelector('[id$="-content"]');
+            if (contentDiv) {
+                contentDiv.innerHTML = `
+                    <div class="loading-message" style="text-align: center; padding: 2rem;">
+                        <i class="fa fa-spinner fa-spin" style="font-size: 2rem; color: var(--accent-blue); margin-bottom: 1rem;"></i>
+                        <h3 style="color: var(--text-secondary); margin: 0;">Loading...</h3>
+                        <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">Fetching linked quotations...</p>
+                    </div>
+                `;
+
+                // Refresh the content for the selected tab
+                try {
+                    const content = await this.renderLinkedDocumentsTable(tabName);
+                    contentDiv.innerHTML = content;
+                } catch (error) {
+                    console.error('Error rendering linked documents table:', error);
+                    contentDiv.innerHTML = `
+                        <div class="error-message" style="text-align: center; padding: 2rem;">
+                            <i class="fa fa-exclamation-triangle" style="font-size: 2rem; color: var(--accent-red); margin-bottom: 1rem;"></i>
+                            <h3 style="color: var(--text-secondary); margin: 0;">Error Loading Data</h3>
+                            <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">Failed to fetch linked quotations. Please try again.</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+    }
+
+    // Function to initialize linked documents content
+    async initializeLinkedDocumentsContent() {
+        // Only initialize if the linked documents tab exists and design request content is visible
+        const designRequestContent = document.getElementById('design-request-content');
+        if (designRequestContent && designRequestContent.innerHTML.includes('Loading...')) {
+            try {
+                const content = await this.renderLinkedDocumentsTable('design-request');
+                designRequestContent.innerHTML = content;
+            } catch (error) {
+                console.error('Error initializing design request content:', error);
+                designRequestContent.innerHTML = `
+                    <div class="error-message" style="text-align: center; padding: 2rem;">
+                        <i class="fa fa-exclamation-triangle" style="font-size: 2rem; color: var(--accent-red); margin-bottom: 1rem;"></i>
+                        <h3 style="color: var(--text-secondary); margin: 0;">Error Loading Data</h3>
+                        <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">Failed to fetch linked quotations. Please try again.</p>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    // Function to get opportunity section data for lost quotations
+    async getOpportunityDataForLostQuotes(lostQuotes, dataType) {
+        console.log(`=== OPPORTUNITY SECTION DATA FOR LOST QUOTES (${dataType.toUpperCase()}) ===`);
+
+        if (!this.data[dataType] || this.data[dataType].length === 0) {
+            console.log(`No ${dataType} data available in opportunity section`);
+            return [];
+        }
+
+        console.log(`Available ${dataType} in opportunity section:`, this.data[dataType].length);
+
+        // Get opportunity data from lost quotations
+        const lostQuotesWithOpportunity = lostQuotes.filter(q => q.opportunity && q.opportunity.trim() !== '');
+        console.log('Lost quotations with opportunity field:', lostQuotesWithOpportunity.length);
+
+        if (lostQuotesWithOpportunity.length === 0) {
+            console.log('No lost quotations have opportunity field populated');
+            return [];
+        }
+
+        // Get all unique opportunities from lost quotations
+        const lostOpportunities = new Set(lostQuotesWithOpportunity.map(q => q.opportunity));
+        console.log('Unique opportunities from lost quotations:', Array.from(lostOpportunities));
+
+        // Match opportunity section data with lost quotations
+        const matchedData = [];
+
+        this.data[dataType].forEach(item => {
+            let relatedOpportunity = null;
+
+            // Different matching logic based on data type
+            if (dataType === 'design_requests' || dataType === 'site_visits') {
+                // Design requests and site visits link via opportunity field
+                relatedOpportunity = item.opportunity;
+            } else if (dataType === 'permits') {
+                // Permits link directly via quotation field
+                const quotationMatch = lostQuotes.find(q => q.name === item.quotation);
+                if (quotationMatch) {
+                    relatedOpportunity = quotationMatch.opportunity;
+                }
+            }
+
+            // Check if this item is related to any lost quotation
+            if (relatedOpportunity && lostOpportunities.has(relatedOpportunity)) {
+                // Find the related lost quotation(s)
+                const relatedQuotations = lostQuotesWithOpportunity.filter(q => q.opportunity === relatedOpportunity);
+
+                relatedQuotations.forEach(quote => {
+                    // Create a combined entry that looks like a quotation but includes opportunity data
+                    const combinedEntry = {
+                        // Quotation data
+                        name: quote.name,
+                        quotation: quote.name,
+                        customer_name: quote.customer_name || quote.party_name || quote.customer,
+                        party_name: quote.party_name || quote.customer_name || quote.customer,
+                        customer: quote.customer || quote.customer_name || quote.party_name,
+                        creation: quote.creation,
+                        transaction_date: quote.transaction_date,
+                        base_grand_total: quote.base_grand_total || quote.grand_total || 0,
+                        account_incharge: quote.account_incharge,
+                        custom_lost_reason: quote.custom_lost_reason,
+                        order_lost_reason: quote.order_lost_reason,
+                        status: quote.status,
+                        workflow_state: quote.workflow_state,
+
+                        // Opportunity section data
+                        linked_document: item.name,
+                        document_quotation: item.quotation || 'N/A', // Quotation field from the document type
+                        linked_opportunity: relatedOpportunity,
+                        linked_document_status: item.status || item.workflow_state || 'Unknown',
+                        linked_document_creation: item.creation,
+                        linked_document_modified: item.modified,
+                        linked_document_owner: item.owner,
+                        linked_document_docstatus: item.docstatus,
+
+                        // Additional fields specific to each type
+                        ...(dataType === 'design_requests' && {
+                            design_request_branch: item.branch,
+                            design_request_customer: item.customer
+                        }),
+                        ...(dataType === 'site_visits' && {
+                            site_visit_branch: item.branch,
+                            site_visit_customer: item.customer
+                        }),
+                        ...(dataType === 'permits' && {
+                            permit_company: item.company,
+                            permit_customer: item.customer
+                        }),
+
+                        // Mark as opportunity section data
+                        data_source: 'opportunity_section'
+                    };
+
+                    matchedData.push(combinedEntry);
+                });
+            }
+        });
+
+        console.log(`Found ${matchedData.length} items from opportunity section ${dataType} matching lost quotations`);
+        console.log('Matched opportunity section data:', matchedData.map(item => ({
+            quotation: item.name,
+            linked_document: item.linked_document,
+            linked_opportunity: item.linked_opportunity,
+            status: item.linked_document_status
+        })));
+
+        return matchedData;
+    }
+
+    // Function to fetch user full names and add to opportunities
+    async addUserNamesToOpportunities() {
+        try {
+            // Get all unique email IDs from opportunities
+            const emailIds = new Set();
+            this.data.opportunities.forEach(opp => {
+                if (opp.assigned_to) {
+                    emailIds.add(opp.assigned_to);
+                }
+            });
+
+            if (emailIds.size === 0) {
+                console.log('No assigned_to emails found in opportunities');
+                return;
+            }
+
+            console.log('Fetching user names for emails:', Array.from(emailIds));
+
+            // Fetch user full names from email IDs
+            const userResponse = await frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'User',
+                    fields: ['name', 'email', 'full_name', 'first_name', 'last_name'],
+                    filters: {
+                        email: ['in', Array.from(emailIds)]
+                    },
+                    limit_page_length: 0
+                }
+            });
+
+            const users = userResponse.message || [];
+            console.log('Found users:', users);
+
+            // Create email to full name mapping
+            const emailToNameMap = {};
+            users.forEach(user => {
+                const fullName = user.full_name ||
+                                (user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : '') ||
+                                user.name ||
+                                user.email;
+                emailToNameMap[user.email] = fullName;
+            });
+
+            console.log('Email to name mapping:', emailToNameMap);
+
+            // Add full names to opportunities
+            this.data.opportunities.forEach(opp => {
+                if (opp.assigned_to) {
+                    opp.assigned_to_full_name = emailToNameMap[opp.assigned_to] || opp.assigned_to;
+                }
+            });
+
+            // Also update the opportunity stats data if it exists
+            if (this.data.opportunity_stats) {
+                if (this.data.opportunity_stats.quoted_opportunities) {
+                    this.data.opportunity_stats.quoted_opportunities.forEach(opp => {
+                        if (opp.assigned_to) {
+                            opp.assigned_to_full_name = emailToNameMap[opp.assigned_to] || opp.assigned_to;
+                        }
+                    });
+                }
+                if (this.data.opportunity_stats.not_quoted_opportunities) {
+                    this.data.opportunity_stats.not_quoted_opportunities.forEach(opp => {
+                        if (opp.assigned_to) {
+                            opp.assigned_to_full_name = emailToNameMap[opp.assigned_to] || opp.assigned_to;
+                        }
+                    });
+                }
+            }
+
+            console.log('Added full names to opportunities');
+
+        } catch (error) {
+            console.error('Error fetching user names:', error);
+        }
+    }
+
+    // Function to get unique assigned_to options for filter
+    getUniqueAssignedToOptions(quotedOpportunities) {
+        const assignedToSet = new Set();
+        quotedOpportunities.forEach(opp => {
+            const assignedTo = opp.assigned_to_full_name || opp.assigned_to_name || opp.assigned_to;
+            if (assignedTo) {
+                assignedToSet.add(assignedTo);
+            }
+        });
+        return Array.from(assignedToSet).sort();
+    }
+
+    // Function to filter quoted opportunities by assigned_to
+    filterQuotedOpportunitiesByAssignedTo() {
+        const selectedAssignedTo = document.getElementById('assigned-to-filter').value;
+        const tableContainer = document.getElementById('quoted-opportunities-table-container');
+
+        if (!tableContainer) return;
+
+        // Get original data from the opportunity stats
+        const originalData = this.data.opportunity_stats?.quoted_opportunities || [];
+
+        // Filter the data
+        let filteredData = originalData;
+        if (selectedAssignedTo) {
+            filteredData = originalData.filter(opp => {
+                const assignedTo = opp.assigned_to_full_name || opp.assigned_to_name || opp.assigned_to;
+                return assignedTo === selectedAssignedTo;
+            });
+        }
+
+        // Update the table
+        tableContainer.innerHTML = this.renderTableWithControls('quoted-opportunities', filteredData, [
+            { key: 'name', label: 'Opportunity', sortable: true, type: 'opportunity_link', icon: 'fa-lightbulb' },
+            { key: 'customer_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+            { key: 'opportunity_amount', label: 'Opp Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+            { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
+            { key: 'assigned_to_full_name', label: 'Assigned To', sortable: true, icon: 'fa-user' },
+            { key: 'quotations', label: 'Quotations', sortable: false, type: 'quotation_links', icon: 'fa-file-alt' }
+        ]);
+
+        // Update the count display
+        const countElement = document.getElementById('assigned-to-filter-count');
+        if (countElement) {
+            const totalCount = originalData.length;
+            const displayCount = filteredData.length;
+            if (selectedAssignedTo) {
+                countElement.textContent = `Showing ${displayCount} of ${totalCount} opportunities (filtered by: ${selectedAssignedTo})`;
+            } else {
+                countElement.textContent = `Showing ${displayCount} opportunities`;
+            }
+        }
     }
 
     async renderCancelledQuotationsSection() {
@@ -11484,7 +18181,7 @@ initializePipelineTimelineChart() {
         // Analyze by branch for cancelled but not amended quotations
         const branchCancelledMap = new Map();
         cancelledQuotes.forEach(quote => {
-            const branch = quote.custom_branch || 'Unknown';
+            const branch = quote.branch || 'Unknown';
             if (!branchCancelledMap.has(branch)) {
                 branchCancelledMap.set(branch, { count: 0, amount: 0 });
             }
@@ -11594,7 +18291,7 @@ initializePipelineTimelineChart() {
                         
                         <div class="table-container">
                             ${this.renderTableWithControls('branch-cancelled-table', branchCancelled, [
-                                { key: 'custom_branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' },
+                                { key: 'branch', label: 'Branch', sortable: true, icon: 'fa-map-marker-alt' },
                                 { key: 'count', label: 'Cancelled Count', sortable: true, icon: 'fa-list' },
                                 { key: 'amount', label: 'Cancelled Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' }
                             ])}
@@ -11853,13 +18550,41 @@ initializePipelineTimelineChart() {
                 <!-- Quoted Opportunities Table -->
                 <div class="modal-section">
                     <h6><i class="fa fa-check-circle"></i>Quoted Opportunities (with Quotation Links)</h6>
-                    ${this.renderTableWithControls('quoted-opportunities', opportunityStats.quoted_opportunities, [
-                        { key: 'name', label: 'Opportunity', sortable: true, type: 'opportunity_link', icon: 'fa-lightbulb' },
-                        { key: 'customer_name', label: 'Customer', sortable: true, icon: 'fa-building' },
-                        { key: 'opportunity_amount', label: 'Opp Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
-                        { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
-                        { key: 'quotations', label: 'Quotations', sortable: false, type: 'quotation_links', icon: 'fa-file-alt' }
-                    ])}
+
+                    <!-- Filter Section for Assigned To -->
+                    <div class="filter-section" style="margin-bottom: 1rem; padding: 1rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fa fa-filter" style="color: var(--accent-blue);"></i>
+                                <span style="font-weight: 600; color: var(--text-primary);">Filter by Assigned To:</span>
+                            </div>
+                            <div style="flex: 1; max-width: 300px;">
+                                <select id="assigned-to-filter" class="form-control" style="padding: 0.5rem; height: 44px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary);" onchange="frappe.sales_intelligence.filterQuotedOpportunitiesByAssignedTo()">
+                                    <option value="">All Assigned Users</option>
+                                    ${this.getUniqueAssignedToOptions(opportunityStats.quoted_opportunities).map(assignedTo =>
+                                        `<option value="${assignedTo}">${assignedTo || 'Unassigned'}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--text-secondary);">
+                                <span id="assigned-to-filter-count">Showing ${opportunityStats.quoted_opportunities.length} opportunities</span>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('assigned-to-filter').value = ''; frappe.sales_intelligence.filterQuotedOpportunitiesByAssignedTo();" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                    <i class="fa fa-times"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="quoted-opportunities-table-container">
+                        ${this.renderTableWithControls('quoted-opportunities', opportunityStats.quoted_opportunities, [
+                            { key: 'name', label: 'Opportunity', sortable: true, type: 'opportunity_link', icon: 'fa-lightbulb' },
+                            { key: 'customer_name', label: 'Customer', sortable: true, icon: 'fa-building' },
+                            { key: 'opportunity_amount', label: 'Opp Value', sortable: true, type: 'currency', icon: 'fa-money-bill-wave' },
+                            { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
+                            { key: 'assigned_to_full_name', label: 'Assigned To', sortable: true, icon: 'fa-user' },
+                            { key: 'quotations', label: 'Quotations', sortable: false, type: 'quotation_links', icon: 'fa-file-alt' }
+                        ])}
+                    </div>
                 </div>
                 ` : ''}
 
@@ -11972,10 +18697,33 @@ initializePipelineTimelineChart() {
 
     renderSiteVisitSection() {
         const siteVisits = this.data.site_visits || [];
-        
+
+        // Add quotation information to site visits
+        const siteVisitsWithQuotations = siteVisits.map(visit => {
+            // Use the same mechanism as Quoted Opportunities
+            const relatedQuotes = this.data.quotations.filter(quote =>
+                quote.opportunity === visit.opportunity
+            );
+
+            // Debug logging for site visits
+            if (visit.opportunity) {
+                console.log(`=== SITE VISIT DEBUG for ${visit.name} ===`);
+                console.log('Opportunity:', visit.opportunity);
+                console.log('Related quotes found:', relatedQuotes.length);
+                console.log('Related quotes:', relatedQuotes);
+            }
+
+            return {
+                ...visit,
+                quotations: relatedQuotes,
+                quotation_count: relatedQuotes.length,
+                quotation_customer: relatedQuotes.length > 0 ? relatedQuotes[0].customer : visit.customer
+            };
+        });
+
         // Group by status
         const statusGroups = {};
-        siteVisits.forEach(visit => {
+        siteVisitsWithQuotations.forEach(visit => {
             const status = visit.status || 'Draft';
             if (!statusGroups[status]) {
                 statusGroups[status] = [];
@@ -11983,9 +18731,32 @@ initializePipelineTimelineChart() {
             statusGroups[status].push(visit);
         });
         
-        console.log('Site Visit Status Groups:', statusGroups);
-        console.log('Total Site Visits:', siteVisits.length);
-        console.log('Sample Site Visit:', siteVisits[0]);
+        console.log('=== SITE VISIT DEBUG ===');
+        console.log('Total Site Visits:', siteVisitsWithQuotations.length);
+        console.log('Sample Site Visit (full data):', siteVisitsWithQuotations[0]);
+        console.log('Site Visit Fields:', siteVisitsWithQuotations[0] ? Object.keys(siteVisitsWithQuotations[0]) : 'No data');
+
+        // Debug quotation_name specifically
+        if (siteVisitsWithQuotations.length > 0) {
+            siteVisitsWithQuotations.slice(0, 3).forEach((visit, index) => {
+                console.log(`Site Visit ${index + 1} quotation_name:`, visit.quotation_name);
+                console.log(`Site Visit ${index + 1} opportunity:`, visit.opportunity);
+            });
+        }
+
+        // Show all possible opportunity-related fields
+        if (siteVisitsWithQuotations[0]) {
+            const sample = siteVisitsWithQuotations[0];
+            console.log('Checking for opportunity fields:');
+            console.log(siteVisitsWithQuotations)
+            Object.keys(sample).forEach(key => {
+                if (key.toLowerCase().includes('opportunity') || key.toLowerCase().includes('opp')) {
+                    console.log(`  ${key}: ${sample[key]}`);
+                }
+            });
+        }
+
+        console.log('Available Quotations:', this.data.quotations?.length || 0);
 
         const statusColors = {
             'Visited': 'var(--accent-green)',
@@ -12019,7 +18790,7 @@ initializePipelineTimelineChart() {
                                     <i class="fa fa-map-marker-alt" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
                                     Total Site Visits
                                 </h3>
-                                <p class="stat-card-value">${siteVisits.length}</p>
+                                <p class="stat-card-value">${siteVisitsWithQuotations.length}</p>
                                 <p class="stat-card-amount">All Site Visits</p>
                             </div>
                             <div class="stat-card-icon" style="background: var(--accent-blue);">
@@ -12062,15 +18833,16 @@ initializePipelineTimelineChart() {
                         <h6 style="margin: 0;"><i class="fa fa-list"></i>All Site Visits</h6>
                         <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.showAllSiteVisits()">
                             <i class="fa fa-expand"></i>
-                            View All ${siteVisits.length}
+                            View All ${siteVisitsWithQuotations.length}
                         </button>
                     </div>
-                    ${this.renderTableWithControls('all-site-visits', siteVisits, [
+                    ${this.renderTableWithControls('all-site-visits', siteVisitsWithQuotations, [
                         { key: 'name', label: 'Visit ID', sortable: true, type: 'site_visit_link', icon: 'fa-id-card' },
+                        { key: 'opportunity', label: 'Opportunity', sortable: true, icon: 'fa-handshake' },
+                        { key: 'quotations', label: 'Quotations', sortable: false, type: 'quotation_links', icon: 'fa-file-invoice' },
                         { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
                         { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
-                        { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' },
-                        { key: 'modified', label: 'Last Modified', sortable: true, type: 'date', icon: 'fa-clock' }
+                        { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' }
                     ])}
                 </div>
             </div>
@@ -12079,27 +18851,77 @@ initializePipelineTimelineChart() {
 
     renderDesignRequestSection() {
         const designRequests = this.data.design_requests || [];
-        
+
+        // Add quotation information to design requests
+        const designRequestsWithQuotations = designRequests.map(request => {
+            // Use the same mechanism as Quoted Opportunities
+            const relatedQuotes = this.data.quotations.filter(quote =>
+                quote.opportunity === request.opportunity
+            );
+
+            // Debug logging for design requests
+            if (request.opportunity) {
+                console.log(`=== DESIGN REQUEST DEBUG for ${request.name} ===`);
+                console.log('Opportunity:', request.opportunity);
+                console.log('Related quotes found:', relatedQuotes.length);
+                console.log('Related quotes:', relatedQuotes);
+            }
+
+            return {
+                ...request,
+                quotations: relatedQuotes,
+                quotation_count: relatedQuotes.length,
+                quotation_customer: relatedQuotes.length > 0 ? relatedQuotes[0].customer : request.customer
+            };
+        });
+
         // Group by status (if available)
         const statusGroups = {};
         let hasStatusField = false;
-        
-        designRequests.forEach(request => {
-            const status = request.workflow_state || 'Draft';
-            if (request.workflow_state) hasStatusField = true;
+
+        designRequestsWithQuotations.forEach(request => {
+            const status = request.status || 'Draft';
+            if (request.status) hasStatusField = true;
             if (!statusGroups[status]) {
                 statusGroups[status] = [];
             }
             statusGroups[status].push(request);
         });
         
-        console.log('Design Request Status Groups:', statusGroups);
-        console.log('Total Design Requests:', designRequests.length);
-        console.log('Sample Design Request:', designRequests[0]);
+        console.log('=== DESIGN REQUEST DEBUG ===');
+        console.log('Total Design Requests:', designRequestsWithQuotations.length);
+        console.log('Sample Design Request (full data):', designRequestsWithQuotations[0]);
+        console.log('Design Request Fields:', designRequestsWithQuotations[0] ? Object.keys(designRequestsWithQuotations[0]) : 'No data');
+
+        // Debug quotation_name specifically
+        if (designRequestsWithQuotations.length > 0) {
+            designRequestsWithQuotations.slice(0, 3).forEach((request, index) => {
+                console.log(`Design Request ${index + 1} quotation_name:`, request.quotation_name);
+                console.log(`Design Request ${index + 1} opportunity:`, request.opportunity);
+            });
+        }
+
+        // Show all possible opportunity-related fields
+        if (designRequestsWithQuotations[0]) {
+            const sample = designRequestsWithQuotations[0];
+            console.log("designRequestsWithQuotations")
+            console.log(designRequestsWithQuotations)
+            console.log('Checking for opportunity fields:');
+            Object.keys(sample).forEach(key => {
+                if (key.toLowerCase().includes('opportunity') || key.toLowerCase().includes('opp')) {
+                    console.log(`  ${key}: ${sample[key]}`);
+                }
+            });
+        }
+
+        console.log('Available Quotations:', this.data.quotations?.length || 0);
+        if (this.data.quotations && this.data.quotations[0]) {
+            console.log('Sample Quotation Fields:', Object.keys(this.data.quotations[0]));
+        }
 
         const statusColors = {
             'Cancelled': 'var(--accent-red)',
-            'Hold': 'var(--accent-gray)', 
+            'Hold': 'var(--accent-gray)',
             'Open': 'var(--accent-purple)',
             'Rejected': 'var(--accent-red)',
             'Under Rework': 'var(--accent-orange)',
@@ -12122,7 +18944,7 @@ initializePipelineTimelineChart() {
             'In Progress': 'fa-cogs',
             'On Hold': 'fa-pause-circle'
         };
-        
+
         return `
             <div class="data-section">
                 <!-- Status Overview Cards -->
@@ -12135,7 +18957,7 @@ initializePipelineTimelineChart() {
                                     <i class="fa fa-drafting-compass" style="color: var(--accent-purple); margin-right: 0.5rem;"></i>
                                     Total Design Requests
                                 </h3>
-                                <p class="stat-card-value">${designRequests.length}</p>
+                                <p class="stat-card-value">${designRequestsWithQuotations.length}</p>
                                 <p class="stat-card-amount">All Design Requests</p>
                             </div>
                             <div class="stat-card-icon" style="background: var(--accent-purple);">
@@ -12177,15 +18999,18 @@ initializePipelineTimelineChart() {
                         <h6 style="margin: 0;"><i class="fa fa-list"></i>All Design Requests</h6>
                         <button class="btn btn-sm btn-secondary" onclick="frappe.sales_intelligence.showAllDesignRequests()">
                             <i class="fa fa-expand"></i>
-                            View All ${designRequests.length}
+                            View All ${designRequestsWithQuotations.length}
                         </button>
                     </div>
-                    ${this.renderTableWithControls('all-design-requests', designRequests, [
+                    
+                    ${this.renderTableWithControls('all-design-requests', designRequestsWithQuotations, [
+
                         { key: 'name', label: 'Request ID', sortable: true, type: 'design_request_link', icon: 'fa-id-card' },
+                        { key: 'opportunity', label: 'Opportunity', sortable: true, icon: 'fa-handshake' },
+                        { key: 'quotations', label: 'Quotations', sortable: false, type: 'quotation_links', icon: 'fa-file-invoice' },
                         { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
-                        ...(hasStatusField ? [{ key: 'workflow_state', label: 'Workflow State', sortable: true, type: 'badge', icon: 'fa-cog' }] : []),
-                        { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' },
-                        { key: 'modified', label: 'Last Modified', sortable: true, type: 'date', icon: 'fa-clock' }
+                        ...(hasStatusField ? [{ key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' }] : []),
+                        { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' }
                     ])}
                 </div>
             </div>
@@ -12208,9 +19033,23 @@ initializePipelineTimelineChart() {
             workflowGroups[workflowState].push(permit);
         });
         
-        console.log('Permit Workflow Groups:', workflowGroups);
+        console.log('=== PERMIT DEBUG ===');
         console.log('Total Permits:', permits.length);
-        console.log('Sample Permit:', permits[0]);
+        console.log('Sample Permit (full data):', permits[0]);
+        console.log('Permit Fields:', permits[0] ? Object.keys(permits[0]) : 'No data');
+
+        // Show all possible quotation-related fields
+        if (permits[0]) {
+            const sample = permits[0];
+            console.log("bcdsjfhdfkjhkjefhlke")
+            console.log(permits)
+            console.log('Checking for quotation fields:');
+            Object.keys(sample).forEach(key => {
+                if (key.toLowerCase().includes('quotation') || key.toLowerCase().includes('quote')) {
+                    console.log(`  ${key}: ${sample[key]}`);
+                }
+            });
+        }
 
         const workflowColors = {
             'Approved': 'var(--accent-green)',
@@ -12293,10 +19132,10 @@ initializePipelineTimelineChart() {
                     </div>
                     ${this.renderTableWithControls('all-permits', permits, [
                         { key: 'name', label: 'Permit ID', sortable: true, type: 'permit_link', icon: 'fa-id-card' },
+                        { key: 'quotation', label: 'Quotation', sortable: true, icon: 'fa-file-invoice' },
                         { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
                         ...(hasWorkflowState ? [{ key: 'workflow_state', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' }] : []),
-                        { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' },
-                        { key: 'modified', label: 'Last Modified', sortable: true, type: 'date', icon: 'fa-clock' }
+                        { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' }
                     ])}
                 </div>
             </div>
@@ -13115,9 +19954,293 @@ initializePipelineTimelineChart() {
         $('#full-data-content').html(content);
         $('#fullDataModal').modal('show');
     }
+
+    renderActivatedServiceContent(serviceType) {
+        switch(serviceType) {
+            case 'design-request':
+                return this.renderLostDesignRequestSection();
+            case 'permit':
+                return this.renderLostPermitSection();
+            case 'site-visit':
+                return this.renderLostSiteVisitSection();
+            default:
+                return `
+                    <div class="empty-state" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <i class="fa fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                        <h5>Service Not Found</h5>
+                        <p>The requested service type is not available.</p>
+                    </div>
+                `;
+        }
+    }
+
+    getQuotationByOpportunity(opportunityName) {
+        console.log("ytfdfcvhjbknbmnvc")
+        console.log(opportunityName)
+        // Find all quotations that match the opportunity
+        const quotations = this.data.quotations || [];
+        const matchedQuotations = quotations.filter(quotation => quotation.opportunity === opportunityName);
+
+        if (matchedQuotations.length === 0 && opportunityName) {
+            console.log(`No quotations found for opportunity: ${opportunityName}`);
+            console.log('Available quotation opportunities:', quotations.map(q => q.opportunity).filter(o => o));
+            return null;
+        }
+
+        if (matchedQuotations.length > 0) {
+            console.log(`Found ${matchedQuotations.length} quotations for opportunity: ${opportunityName}`);
+
+            // Display each quotation's details
+            matchedQuotations.forEach((quotation, index) => {
+                console.log(`Quotation ${index + 1}:`, {
+                    name: quotation.name || quotation.quotation,
+                    customer: quotation.customer_name || quotation.party_name,
+                    amount: quotation.grand_total || quotation.base_grand_total,
+                    status: quotation.status,
+                    date: quotation.transaction_date || quotation.creation
+                });
+            });
+
+            // Extract and display quotation names
+            const quotationNames = matchedQuotations.map(q => q.name || q.quotation).filter(name => name);
+            console.log('Quotation names:', quotationNames);
+
+            // Also log them individually for clarity
+            quotationNames.forEach((name, index) => {
+                console.log(`Quotation ${index + 1} name: ${name}`);
+            });
+        }
+
+        return matchedQuotations;
+    }
+
+    getQuotationNamesByOpportunity(opportunityName) {
+        // Get comma-separated quotation names for an opportunity
+        const matchedQuotations = this.getQuotationByOpportunity(opportunityName);
+
+        if (!matchedQuotations || matchedQuotations.length === 0) {
+            return '';
+        }
+
+        return matchedQuotations.map(q => q.name).join(', ');
+    }
+
+    // New functions for Lost Quotations Activated Services section
+    renderLostDesignRequestSection() {
+        const designRequests = this.data.design_requests || [];
+
+        // Filter design requests that have lost quotations
+        const lostQuotations = this.data.quotations.filter(quote =>
+            quote.status === 'Lost' || quote.docstatus < 2
+        );
+
+        const designRequestsWithLostQuotations = designRequests.map(request => {
+            // Find quotations for this design request's opportunity that are lost
+            const relatedLostQuotes = lostQuotations.filter(quote =>
+                quote.opportunity === request.opportunity
+            );
+
+            return {
+                ...request,
+                quotations: relatedLostQuotes,
+                quotation_count: relatedLostQuotes.length,
+                quotation_customer: relatedLostQuotes.length > 0 ? relatedLostQuotes[0].customer : request.customer
+            };
+        }).filter(request => request.quotation_count > 0); // Only show requests with lost quotations
+
+        console.log('=== LOST DESIGN REQUEST DEBUG ===');
+        console.log('Total Design Requests:', designRequests.length);
+        console.log('Lost Quotations:', lostQuotations.length);
+        console.log('Design Requests with Lost Quotations:', designRequestsWithLostQuotations.length);
+
+        if (designRequestsWithLostQuotations.length === 0) {
+            return `
+                <div class="empty-state" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                    <i class="fa fa-drafting-compass" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <h5>No Lost Design Requests</h5>
+                    <p>No design requests found with lost quotations in the current period.</p>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="lost-design-requests-content">
+                <div class="stats-summary" style="margin-bottom: 2rem;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-drafting-compass" style="color: var(--accent-purple); margin-right: 0.5rem;"></i>
+                                    Design Requests with Lost Quotations
+                                </h3>
+                                <p class="stat-card-value">${designRequestsWithLostQuotations.length}</p>
+                                <p class="stat-card-amount">Out of ${designRequests.length} Total</p>
+                            </div>
+                            <div class="stat-card-icon" style="background: var(--accent-purple);">
+                                <i class="fa fa-paint-brush"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <h6><i class="fa fa-list"></i>Design Requests with Lost Quotations</h6>
+                    ${this.renderTableWithControls('lost-design-requests', designRequestsWithLostQuotations, [
+                        { key: 'name', label: 'Request ID', sortable: true, type: 'design_request_link', icon: 'fa-id-card' },
+                        { key: 'opportunity', label: 'Opportunity', sortable: true, icon: 'fa-handshake' },
+                        { key: 'quotations', label: 'Lost Quotations', sortable: false, type: 'quotation_links', icon: 'fa-file-invoice' },
+                        { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
+                        { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
+                        { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' }
+                    ])}
+                </div>
+            </div>
+        `;
+    }
+
+    renderLostSiteVisitSection() {
+        const siteVisits = this.data.site_visits || [];
+
+        // Filter site visits that have lost quotations
+        const lostQuotations = this.data.quotations.filter(quote =>
+            quote.status === 'Lost' || quote.docstatus < 2
+        );
+
+        const siteVisitsWithLostQuotations = siteVisits.map(visit => {
+            // Find quotations for this site visit's opportunity that are lost
+            const relatedLostQuotes = lostQuotations.filter(quote =>
+                quote.opportunity === visit.opportunity
+            );
+
+            return {
+                ...visit,
+                quotations: relatedLostQuotes,
+                quotation_count: relatedLostQuotes.length,
+                quotation_customer: relatedLostQuotes.length > 0 ? relatedLostQuotes[0].customer : visit.customer
+            };
+        }).filter(visit => visit.quotation_count > 0); // Only show visits with lost quotations
+
+        console.log('=== LOST SITE VISIT DEBUG ===');
+        console.log('Total Site Visits:', siteVisits.length);
+        console.log('Lost Quotations:', lostQuotations.length);
+        console.log('Site Visits with Lost Quotations:', siteVisitsWithLostQuotations.length);
+
+        if (siteVisitsWithLostQuotations.length === 0) {
+            return `
+                <div class="empty-state" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                    <i class="fa fa-map-marker-alt" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <h5>No Lost Site Visits</h5>
+                    <p>No site visits found with lost quotations in the current period.</p>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="lost-site-visits-content">
+                <div class="stats-summary" style="margin-bottom: 2rem;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-map-marker-alt" style="color: var(--accent-blue); margin-right: 0.5rem;"></i>
+                                    Site Visits with Lost Quotations
+                                </h3>
+                                <p class="stat-card-value">${siteVisitsWithLostQuotations.length}</p>
+                                <p class="stat-card-amount">Out of ${siteVisits.length} Total</p>
+                            </div>
+                            <div class="stat-card-icon" style="background: var(--accent-blue);">
+                                <i class="fa fa-map-marker-alt"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <h6><i class="fa fa-list"></i>Site Visits with Lost Quotations</h6>
+                    ${this.renderTableWithControls('lost-site-visits', siteVisitsWithLostQuotations, [
+                        { key: 'name', label: 'Visit ID', sortable: true, type: 'site_visit_link', icon: 'fa-id-card' },
+                        { key: 'opportunity', label: 'Opportunity', sortable: true, icon: 'fa-handshake' },
+                        { key: 'quotations', label: 'Lost Quotations', sortable: false, type: 'quotation_links', icon: 'fa-file-invoice' },
+                        { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
+                        { key: 'status', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
+                        { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' }
+                    ])}
+                </div>
+            </div>
+        `;
+    }
+
+    renderLostPermitSection() {
+        const permits = this.data.permits || [];
+
+        // Filter permits that have lost quotations
+        const lostQuotations = this.data.quotations.filter(quote =>
+            quote.status === 'Lost' || quote.docstatus < 2
+        );
+
+        const permitsWithLostQuotations = permits.map(permit => {
+            // Find quotations for this permit's opportunity that are lost
+            const relatedLostQuotes = lostQuotations.filter(quote =>
+                quote.opportunity === permit.opportunity
+            );
+
+            return {
+                ...permit,
+                quotations: relatedLostQuotes,
+                quotation_count: relatedLostQuotes.length,
+                quotation_customer: relatedLostQuotes.length > 0 ? relatedLostQuotes[0].customer : permit.customer
+            };
+        }).filter(permit => permit.quotation_count > 0); // Only show permits with lost quotations
+
+        console.log('=== LOST PERMIT DEBUG ===');
+        console.log('Total Permits:', permits.length);
+        console.log('Lost Quotations:', lostQuotations.length);
+        console.log('Permits with Lost Quotations:', permitsWithLostQuotations.length);
+
+        if (permitsWithLostQuotations.length === 0) {
+            return `
+                <div class="empty-state" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                    <i class="fa fa-file-alt" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <h5>No Lost Permits</h5>
+                    <p>No permits found with lost quotations in the current period.</p>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="lost-permits-content">
+                <div class="stats-summary" style="margin-bottom: 2rem;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-content">
+                                <h3 class="stat-card-title">
+                                    <i class="fa fa-file-alt" style="color: var(--accent-green); margin-right: 0.5rem;"></i>
+                                    Permits with Lost Quotations
+                                </h3>
+                                <p class="stat-card-value">${permitsWithLostQuotations.length}</p>
+                                <p class="stat-card-amount">Out of ${permits.length} Total</p>
+                            </div>
+                            <div class="stat-card-icon" style="background: var(--accent-green);">
+                                <i class="fa fa-file-signature"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <h6><i class="fa fa-list"></i>Permits with Lost Quotations</h6>
+                    ${this.renderTableWithControls('lost-permits', permitsWithLostQuotations, [
+                        { key: 'name', label: 'Permit ID', sortable: true, type: 'permit_link', icon: 'fa-id-card' },
+                        { key: 'opportunity', label: 'Opportunity', sortable: true, icon: 'fa-handshake' },
+                        { key: 'quotations', label: 'Lost Quotations', sortable: false, type: 'quotation_links', icon: 'fa-file-invoice' },
+                        { key: 'customer', label: 'Customer', sortable: true, icon: 'fa-building' },
+                        { key: 'workflow_state', label: 'Status', sortable: true, type: 'badge', icon: 'fa-flag' },
+                        { key: 'creation', label: 'Created Date', sortable: true, type: 'date', icon: 'fa-calendar' }
+                    ])}
+                </div>
+            </div>
+        `;
+    }
+
 }
 
-// Initialize when page loads
-frappe.ready(() => {
-    console.log('Enhanced Sales Intelligence Dashboard loaded successfully');
-});
