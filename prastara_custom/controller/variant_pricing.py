@@ -7183,7 +7183,7 @@ def get_period_wise_quotation_report(from_date, to_date, company=None, branch=No
                 q.custom_account_incharge,
                 q.owner,
                 q.company,
-                q.branch,
+                q.custom_branch,
                 q.total_qty,
                 q.base_net_total,
                 q.base_total_taxes_and_charges,

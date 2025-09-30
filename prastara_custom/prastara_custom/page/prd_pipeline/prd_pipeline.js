@@ -4581,7 +4581,7 @@ async loadData() {
         filters.branch = ['like', '%pras%'];
         
         // Try to get status field, fallback to basic fields if not permitted
-        let fields = ['name', 'customer', 'branch', 'creation', 'modified', 'opportunity'];
+        let fields = ['name', 'customer', 'custom_branch', 'creation', 'modified', 'opportunity'];
 
         // Try to add status field, but handle gracefully if not permitted
         try {
@@ -4589,14 +4589,14 @@ async loadData() {
                 method: 'frappe.client.get_list',
                 args: {
                     doctype: 'Site Visit',
-                    fields: ['name', 'customer', 'branch', 'status', 'creation', 'modified', 'opportunity'],
+                    fields: ['name', 'customer', 'custom_branch', 'status', 'creation', 'modified', 'opportunity'],
                     filters: filters,
                     limit_page_length: 1,  // Changed from limit
                     order_by: 'creation desc'
                 }
             });
             // If successful, use full field list including status
-            fields = ['name', 'customer', 'branch', 'status', 'creation', 'modified', 'opportunity'];
+            fields = ['name', 'customer', 'custom_branch', 'status', 'creation', 'modified', 'opportunity'];
         } catch (error) {
             console.log('Status field not available for Site Visit, using basic fields');
         }
@@ -4651,7 +4651,7 @@ async loadData() {
         filters.branch = ['like', '%prastara%'];
         
         // Try to get status field, fallback to basic fields if not permitted
-        let fields = ['name', 'customer', 'branch', 'creation', 'modified', 'opportunity'];
+        let fields = ['name', 'customer', 'custom_branch', 'creation', 'modified', 'opportunity'];
 
         // Try to add status field, but handle gracefully if not permitted
         try {
@@ -4659,14 +4659,14 @@ async loadData() {
                 method: 'frappe.client.get_list',
                 args: {
                     doctype: 'Design Request',
-                    fields: ['name', 'customer', 'branch', 'status', 'creation', 'owner', 'opportunity'],
+                    fields: ['name', 'customer', 'custom_branch', 'status', 'creation', 'owner', 'opportunity'],
                     filters: filters,
                     limit_page_length: 1,  // Changed from limit
                     order_by: 'creation desc'
                 }
             });
             // If successful, use full field list including status
-            fields = ['name', 'customer', 'branch', 'status', 'creation', 'owner', 'opportunity'];
+            fields = ['name', 'customer', 'custom_branch', 'status', 'creation', 'owner', 'opportunity'];
         } catch (error) {
             console.log('Status field not available for Design Request, using basic fields');
         }
