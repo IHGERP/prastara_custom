@@ -4429,7 +4429,7 @@ async loadData() {
         });
 
         const response = await frappe.call({
-            method: 'qcshr.controller.api.get_ldw_quotation_report',
+            method: 'prastara_custom.controller.variant_pricing.get_ldw_quotation_report',
             args: {
                 from_date: this.filters.from_date,
                 to_date: this.filters.to_date,
@@ -4540,7 +4540,7 @@ async loadData() {
             this.showLoading();
             
             const response = await frappe.call({
-                method: 'qcshr.controller.api.get_cancelled_quotations',
+                method: 'prastara_custom.controller.variant_pricing.get_cancelled_quotations',
                 args: {
                     from_date: this.filters.from_date,
                     to_date: this.filters.to_date,
@@ -4767,7 +4767,7 @@ async loadData() {
     async loadOpportunityData() {
         try {
             const response = await frappe.call({
-                method: 'qcshr.controller.api.get_opportunity_report',
+                method: 'prastara_custom.controller.variant_pricing.get_opportunity_report',
                 args: {
                     from_date: this.filters.from_date,
                     to_date: this.filters.to_date,

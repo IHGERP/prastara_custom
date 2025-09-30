@@ -7633,6 +7633,7 @@ def get_opportunity_report(from_date, to_date, company=None, branch=None, accoun
                 o.company,
                 o.assigned_branch,
                 o.creation,
+                 o.custom_assigned_to,
                 o.owner,
                 COALESCE(u1.full_name, o.opportunity_owner) as opportunity_owner_full_name,
                 COALESCE(u2.full_name, o.owner) as owner_full_name
