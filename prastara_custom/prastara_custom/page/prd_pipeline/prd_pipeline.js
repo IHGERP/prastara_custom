@@ -4578,7 +4578,7 @@ async loadData() {
         }
         
         // Add branch filter for Metroplus
-        filters.branch = ['like', '%pras%'];
+        filters.custom_branch = ['like', '%pras%'];
         
         // Try to get status field, fallback to basic fields if not permitted
         let fields = ['name', 'customer', 'custom_branch', 'creation', 'modified', 'opportunity'];
@@ -4648,7 +4648,7 @@ async loadData() {
         }
         
         // Add branch filter for Metro
-        filters.branch = ['like', '%prastara%'];
+        filters.custom_branch = ['like', '%prastara%'];
         
         // Try to get status field, fallback to basic fields if not permitted
         let fields = ['name', 'customer', 'custom_branch', 'creation', 'modified', 'opportunity'];
