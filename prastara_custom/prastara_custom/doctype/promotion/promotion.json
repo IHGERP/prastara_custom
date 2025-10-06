@@ -1,0 +1,197 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:PR-{employee_name}",
+ "creation": "2024-01-18 10:31:29.690014",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "date",
+  "type_of_promotions",
+  "column_break_dlk1m",
+  "attachment",
+  "claim_person_section",
+  "employee_name",
+  "name1",
+  "emp_email_id",
+  "contact_number",
+  "column_break_ypsmb",
+  "project",
+  "reason_for_claim",
+  "beneficiary_section",
+  "claim_party",
+  "party",
+  "party_name",
+  "column_break_glmzb",
+  "branch",
+  "email_id",
+  "information_section",
+  "information",
+  "payable_section",
+  "amount"
+ ],
+ "fields": [
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "type_of_promotions",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type Of Promotions",
+   "options": "\nRefund For Employee\nRefund For Vendor\nRefund For Contractor\nRefund For Customer\nSales Promotion\nProduct Promotion\nTask Promotion\nGoogle Review Promotion\nBest Employee\nSales Incentive - Spot Payment\nRefereral Profit for Employee\nStaff Appreciation Bonus",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_dlk1m",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "attachment",
+   "fieldtype": "Attach",
+   "label": "Attachment"
+  },
+  {
+   "fieldname": "claim_person_section",
+   "fieldtype": "Section Break",
+   "label": "Claim Person"
+  },
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Link",
+   "label": "Employee Name",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "employee_name.employee_name",
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "label": "Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee_name.user_id",
+   "fieldname": "emp_email_id",
+   "fieldtype": "Data",
+   "label": "Email Id",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee_name.company_mobile_number",
+   "fieldname": "contact_number",
+   "fieldtype": "Data",
+   "label": "Contact Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ypsmb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project"
+  },
+  {
+   "fieldname": "reason_for_claim",
+   "fieldtype": "Small Text",
+   "label": "Reason For Claim"
+  },
+  {
+   "fieldname": "beneficiary_section",
+   "fieldtype": "Section Break",
+   "label": "Beneficiary"
+  },
+  {
+   "fieldname": "claim_party",
+   "fieldtype": "Link",
+   "label": "Beneficiary Voucher",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "party",
+   "fieldtype": "Dynamic Link",
+   "label": "Party",
+   "options": "claim_party"
+  },
+  {
+   "fieldname": "party_name",
+   "fieldtype": "Data",
+   "label": "Party Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_glmzb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "email_id",
+   "fieldtype": "Data",
+   "label": "Email Id"
+  },
+  {
+   "fieldname": "information_section",
+   "fieldtype": "Section Break",
+   "label": "Information"
+  },
+  {
+   "fieldname": "information",
+   "fieldtype": "Table",
+   "label": "Information",
+   "options": "Promotion Information"
+  },
+  {
+   "fieldname": "payable_section",
+   "fieldtype": "Section Break",
+   "label": "Payable"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Float",
+   "label": "Amount"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [
+  {
+   "link_doctype": "Payment Entry",
+   "link_fieldname": "custom_promotion"
+  }
+ ],
+ "modified": "2025-10-06 16:36:27.348718",
+ "modified_by": "Administrator",
+ "module": "Prastara Custom",
+ "name": "Promotion",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
