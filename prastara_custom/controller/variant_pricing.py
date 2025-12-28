@@ -5889,6 +5889,64 @@ from frappe import _
 from datetime import timedelta  
 import json
 
+@frappe.whitelist()
+def get_sales_order_basic(sales_order_name):
+    """
+    Get ONLY basic sales order information for fast initial loading.
+    This method is optimized for speed and fetches minimal data.
+    """
+    try:
+        # Get only essential order fields (FAST!)
+        order = frappe.db.get_value(
+            "Sales Order",
+            sales_order_name,
+            [
+                "name", "customer", "customer_name", "transaction_date",
+                "delivery_date", "grand_total", "status", "per_billed",
+                "per_delivered", "project", "custom_project_description",
+                "advance_paid", "total_qty", "company", "currency"
+            ],
+            as_dict=True
+        )
+
+        if not order:
+            return {
+                "status": "error",
+                "message": "Sales Order not found"
+            }
+
+        # Get item count (fast query)
+        item_count = frappe.db.count("Sales Order Item", {"parent": sales_order_name})
+
+        # Get basic financial summary (single query)
+        financial_summary = frappe.db.sql("""
+            SELECT
+                COALESCE(SUM(si.outstanding_amount), 0) as total_outstanding,
+                COALESCE(SUM(si.grand_total), 0) as total_invoiced
+            FROM `tabSales Invoice` si
+            JOIN `tabSales Invoice Item` sii ON sii.parent = si.name
+            WHERE sii.sales_order = %s AND si.docstatus = 1
+        """, sales_order_name, as_dict=True)
+
+        order['item_count'] = item_count
+        order['total_outstanding'] = financial_summary[0].get('total_outstanding', 0) if financial_summary else 0
+        order['total_invoiced'] = financial_summary[0].get('total_invoiced', 0) if financial_summary else 0
+        order['remaining_amount'] = order['grand_total'] - order.get('advance_paid', 0)
+
+        return {
+            "status": "success",
+            "data": {
+                "order": order
+            }
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error in get_sales_order_basic: {str(e)}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
 @frappe.whitelist(allow_guest=True)
 def get_sales_order_details(sales_order_name):
     """
@@ -6001,13 +6059,26 @@ def get_sales_order_details(sales_order_name):
         
         # Get permit details directly linked to the sales order
         permits = frappe.db.sql("""
-            SELECT 
-                name
+            SELECT
+                name,
+                creation,
+                modified
             FROM `tabPermit Form`
-            WHERE sales_order = %s 
+            WHERE sales_order = %s
             ORDER BY creation
         """, sales_order_name, as_dict=True)
-        
+
+        # Get design request details directly linked to the sales order
+        design_requests = frappe.db.sql("""
+            SELECT
+                name,
+                creation,
+                modified
+            FROM `tabDesign Request`
+            WHERE sales_order = %s
+            ORDER BY creation
+        """, sales_order_name, as_dict=True)
+
         # Get opportunity details and related documents (Site Visit, Design Request)
         opportunities = []
         for quotation in quotations:
@@ -6133,12 +6204,51 @@ def get_sales_order_details(sales_order_name):
         for inv in advance_invoices:
             paid_amount = flt(inv.get("paid_amount"), 0)
             grand_total = flt(inv.get("grand_total"), 0)
-            
+
             inv["paid_amount"] = paid_amount
             inv["is_paid"] = paid_amount >= grand_total
             inv["outstanding_amount"] = grand_total - paid_amount
-        
-        # 6) Calculate project financial details (Profit and Loss) - UPDATED WITH P&L STATEMENT
+
+        # 6) Get BOMs created from the project
+        boms = []
+        if order.project:
+            boms = frappe.db.sql("""
+                SELECT
+                    name,
+                    item,
+                    item_name,
+                    quantity,
+                    is_active,
+                    is_default,
+                    creation,
+                    modified
+                FROM `tabBOM`
+                WHERE project = %s
+                ORDER BY creation DESC
+            """, order.project, as_dict=True)
+
+        # 7) Get Purchase Orders against the project
+        purchase_orders = []
+        if order.project:
+            purchase_orders = frappe.db.sql("""
+                SELECT DISTINCT
+                    po.name,
+                    po.supplier,
+                    po.supplier_name,
+                    po.transaction_date,
+                    po.schedule_date,
+                    po.grand_total,
+                    po.status,
+                    po.per_received,
+                    po.per_billed,
+                    po.advance_paid
+                FROM `tabPurchase Order` po
+                JOIN `tabPurchase Order Item` poi ON poi.parent = po.name
+                WHERE poi.project = %s AND po.docstatus = 1
+                ORDER BY po.transaction_date DESC
+            """, order.project, as_dict=True)
+
+        # 8) Calculate project financial details (Profit and Loss) - UPDATED WITH P&L STATEMENT
         financial_details = {
             "total_sales_amount": 0,
             "total_expense": 0,
@@ -6477,13 +6587,16 @@ def get_sales_order_details(sales_order_name):
                 "payment_entries": payments,
                 "quotations": quotations,
                 "permits": permits,
+                "design_requests": design_requests,
                 "opportunities": opportunities,
                 "project_details": project_details,
                 "tasks": tasks,
                 "payment_schedule": payment_schedule,
                 "material_requests": material_requests,
                 "advance_invoices": advance_invoices,
-                "financial_details": financial_details
+                "financial_details": financial_details,
+                "boms": boms,
+                "purchase_orders": purchase_orders
             }
         }
         
@@ -6501,6 +6614,7 @@ def get_sales_order_details(sales_order_name):
                 "payment_entries": [],
                 "quotations": [],
                 "permits": [],
+                "design_requests": [],
                 "opportunities": [],
                 "project_details": {},
                 "tasks": [],
@@ -6714,11 +6828,189 @@ def draft_get_sales_order_list_prd(
         }
 
 
+@frappe.whitelist(allow_guest=True)
+def get_sales_order_no_project_list_prd(
+    search=None,
+    customer=None,
+    sales_person=None,
+    branch=None,
+    delivery_date_from=None,
+    delivery_date_to=None,
+    date_from=None,
+    date_to=None,
+    status=None,
+    delivery_filter=None,
+    is_internal_customer=None,
+    sort_by="delivery_date",
+    sort_order="ASC",
+    company=None
+):
+    """
+    Get list of sales orders that are NOT tagged with a project.
+    Similar to draft_get_sales_order_list_prd but filters for orders without project.
+    """
+    try:
+        current_date = getdate(today())
 
+        # Validate inputs
+        sort_by = sort_by if sort_by in ['name', 'customer', 'sales_person', 'transaction_date', 'delivery_date', 'grand_total', 'per_billed', 'per_delivered'] else 'delivery_date'
+        sort_order = sort_order.upper() if sort_order.upper() in ['ASC', 'DESC'] else 'ASC'
 
-import frappe
-from frappe import _
-from frappe.utils import getdate
+        # Build SQL conditions
+        conditions = ["so.docstatus = 1"]  # Only submitted sales orders
+        conditions.append("(so.project IS NULL OR so.project = '')")  # No project tagged
+        params = []
+
+        if search:
+            search = f"%{search}%"
+            conditions.append("(so.name LIKE %s OR so.customer LIKE %s OR COALESCE(st.sales_person, 'Unassigned') LIKE %s)")
+            params.extend([search, search, search])
+
+        if customer:
+            conditions.append("so.customer = %s")
+            params.append(customer)
+
+        if is_internal_customer is not None:
+            conditions.append("so.is_internal_customer = %s")
+            params.append(1 if is_internal_customer else 0)
+
+        if sales_person:
+            if sales_person == 'Unassigned':
+                conditions.append("st.sales_person IS NULL")
+            else:
+                conditions.append("st.sales_person = %s")
+                params.append(sales_person)
+
+        if branch:
+            conditions.append("so.branch = %s")
+            params.append(branch)
+
+        if delivery_date_from:
+            conditions.append("so.delivery_date >= %s")
+            params.append(getdate(delivery_date_from))
+        if delivery_date_to:
+            conditions.append("so.delivery_date <= %s")
+            params.append(getdate(delivery_date_to))
+
+        if date_from:
+            conditions.append("so.transaction_date >= %s")
+            params.append(getdate(date_from))
+        if date_to:
+            conditions.append("so.transaction_date <= %s")
+            params.append(getdate(date_to))
+
+        if delivery_filter:
+            if delivery_filter == 'today':
+                conditions.append("so.delivery_date = %s")
+                params.append(current_date)
+            elif delivery_filter == 'yesterday':
+                conditions.append("so.delivery_date = %s")
+                params.append(add_days(current_date, -1))
+            elif delivery_filter == 'this_month':
+                conditions.append("so.delivery_date BETWEEN %s AND %s")
+                params.extend([get_first_day(current_date), get_last_day(current_date)])
+            elif delivery_filter == 'due':
+                conditions.append("so.delivery_date <= %s")
+                params.append(current_date)
+            elif delivery_filter == 'next_month':
+                next_month = add_months(current_date, 1)
+                conditions.append("so.delivery_date BETWEEN %s AND %s")
+                params.extend([get_first_day(next_month), get_last_day(next_month)])
+
+        if status:
+            if isinstance(status, str):
+                conditions.append("so.status = %s")
+                params.append(status)
+            elif isinstance(status, list):
+                placeholders = ','.join(['%s'] * len(status))
+                conditions.append(f"so.status IN ({placeholders})")
+                params.extend(status)
+
+        # Add company filter
+        if company:
+            conditions.append("so.company = %s")
+            params.append(company)
+
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+
+        sales_orders_query = f"""
+            SELECT
+                so.name as sales_order_number,
+                so.company,
+                so.branch,
+                so.customer,
+                COALESCE(st.sales_person, 'Unassigned') as sales_person,
+                COALESCE(sp.parent_sales_person, '') as parent_sales_person,
+                COALESCE(e.image, '') as sales_person_image,
+                so.grand_total,
+                so.per_billed as percent_amount_billed,
+                so.per_delivered as percent_amount_delivered,
+                so.status,
+                so.project,
+                so.custom_project_description,
+                (so.grand_total * (100 - COALESCE(so.per_billed, 0)) / 100) as balance_to_bill_amount,
+                so.transaction_date as date,
+                so.delivery_date,
+                so.is_internal_customer
+            FROM `tabSales Order` so
+            LEFT JOIN `tabSales Team` st ON st.parent = so.name AND st.parenttype = 'Sales Order'
+            LEFT JOIN `tabSales Person` sp ON sp.name = st.sales_person
+            LEFT JOIN `tabEmployee` e ON e.name = sp.employee
+            WHERE {where_clause}
+            ORDER BY
+                CASE WHEN '{sort_by}' = 'sales_person' THEN COALESCE(st.sales_person, 'Unassigned') END {sort_order},
+                CASE WHEN '{sort_by}' = 'name' THEN so.name END {sort_order},
+                CASE WHEN '{sort_by}' = 'customer' THEN so.customer END {sort_order},
+                CASE WHEN '{sort_by}' = 'transaction_date' THEN so.transaction_date END {sort_order},
+                CASE WHEN '{sort_by}' = 'delivery_date' THEN so.delivery_date END {sort_order},
+                CASE WHEN '{sort_by}' = 'grand_total' THEN so.grand_total END {sort_order},
+                CASE WHEN '{sort_by}' = 'per_billed' THEN so.per_billed END {sort_order},
+                CASE WHEN '{sort_by}' = 'per_delivered' THEN so.per_delivered END {sort_order}
+        """
+
+        sales_orders = frappe.db.sql(sales_orders_query, params, as_dict=True)
+
+        for order in sales_orders:
+            if order.date:
+                order['formatted_date'] = frappe.utils.formatdate(order.date)
+            if order.delivery_date:
+                order['formatted_delivery_date'] = frappe.utils.formatdate(order.delivery_date)
+
+        return {
+            "status": "success",
+            "data": {
+                "orders": sales_orders,
+                "filters_applied": {
+                    "search": search,
+                    "customer": customer,
+                    "sales_person": sales_person,
+                    "branch": branch,
+                    "delivery_date_from": delivery_date_from,
+                    "delivery_date_to": delivery_date_to,
+                    "date_from": date_from,
+                    "date_to": date_to,
+                    "delivery_filter": delivery_filter,
+                    "company": company
+                },
+                "sort_info": {
+                    "sort_by": sort_by,
+                    "sort_order": sort_order
+                }
+            }
+        }
+
+    except Exception as e:
+        frappe.log_error(f"No Project Sales Order List API Error: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"An error occurred while fetching no-project sales order list: {str(e)}",
+            "data": {
+                "orders": [],
+                "filters_applied": {},
+                "sort_info": {}
+            }
+        }
+
 
 @frappe.whitelist()
 def get_financial_report(start_date='2025-01-01', end_date='2025-06-30', company=None, cost_center=None, report_type='detailed'):
@@ -8041,3 +8333,95 @@ def get_ldw_quotation_report(from_date, to_date, company=None, branch=None, acco
             'is_limited': False,
             'error': str(e)
         }
+
+
+@frappe.whitelist()
+def search_sales_orders_and_projects(query):
+    """
+    Search for sales orders and projects with suggestions
+    Returns matching sales orders and projects based on search query
+
+    Parameters:
+    - query: str, The search query string
+
+    Returns: dict, JSON response with search results
+    """
+    try:
+        if not query or len(query) < 2:
+            return {
+                "status": "success",
+                "data": {
+                    "sales_orders": [],
+                    "projects": []
+                }
+            }
+
+        search_pattern = f"%{query}%"
+
+        # Search Sales Orders
+        sales_orders = frappe.db.sql("""
+            SELECT
+                so.name,
+                so.customer,
+                so.customer_name,
+                so.project,
+                so.custom_project_description,
+                so.transaction_date,
+                so.delivery_date,
+                so.grand_total,
+                so.status,
+                so.per_billed,
+                so.per_delivered
+            FROM `tabSales Order` so
+            WHERE so.docstatus = 1
+            AND (
+                so.name LIKE %s
+                OR so.customer LIKE %s
+                OR so.customer_name LIKE %s
+                OR so.project LIKE %s
+                OR so.custom_project_description LIKE %s
+            )
+            ORDER BY so.modified DESC
+            LIMIT 20
+        """, (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern), as_dict=True)
+
+        # Search Projects
+        projects = frappe.db.sql("""
+            SELECT
+                p.name,
+                p.project_name,
+                p.customer,
+                p.status,
+                p.percent_complete,
+                p.expected_start_date,
+                p.expected_end_date,
+                p.custom_project_owner_name
+            FROM `tabProject` p
+            WHERE
+                p.name LIKE %s
+                OR p.project_name LIKE %s
+                OR p.customer LIKE %s
+                OR p.custom_project_owner_name LIKE %s
+            ORDER BY p.modified DESC
+            LIMIT 20
+        """, (search_pattern, search_pattern, search_pattern, search_pattern), as_dict=True)
+
+        return {
+            "status": "success",
+            "data": {
+                "sales_orders": sales_orders,
+                "projects": projects
+            }
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Search API Error: {str(e)}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "data": {
+                "sales_orders": [],
+                "projects": []
+            }
+        }
+

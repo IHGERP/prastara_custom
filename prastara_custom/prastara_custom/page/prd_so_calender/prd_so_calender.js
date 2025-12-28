@@ -270,8 +270,7 @@ class UltraModernSalesOrderDashboard {
             }
 
 .header-stats {
-
-    display: flex;
+    display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: var(--space-4);
     margin-top: var(--space-4);
@@ -1596,6 +1595,40 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
                 box-shadow: var(--shadow-lg);
             }
 
+            /* Quick Search Button Styles */
+            #quick-search-btn {
+                position: relative;
+                overflow: hidden;
+                cursor: pointer;
+            }
+
+            #quick-search-btn::before {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 0;
+                height: 0;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.2);
+                transform: translate(-50%, -50%);
+                transition: width 0.6s, height 0.6s;
+            }
+
+            #quick-search-btn:hover::before {
+                width: 300px;
+                height: 300px;
+            }
+
+            #quick-search-btn:active {
+                transform: translateY(0) scale(0.98);
+            }
+
+            #quick-search-btn kbd {
+                font-family: inherit;
+                font-weight: 600;
+            }
+
             .btn-secondary {
                 background: var(--surface);
                 color: var(--text);
@@ -1823,13 +1856,20 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
             <div class="search-suggestions" id="search-suggestions"></div>
         </div>
         
+        <!-- Quick Search Button -->
+        <button class="btn btn-primary" id="quick-search-btn" style="background: linear-gradient(135deg, var(--primary) 0%, var(--success) 100%); border: none; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px var(--primary-glass); transition: all 0.2s; margin-right: var(--space-3);">
+            <i class="fa fa-search"></i>
+            Quick Search
+            <kbd style="background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px;">⌘K</kbd>
+        </button>
+
         <!-- Add Customer Type Filter Dropdown -->
         <select class="filter-control1" id="customer-type-filter" style="min-width: 140px;height: 40px; margin-right: var(--space-4);">
             <option value="">All Customers</option>
             <option value="internal">Internal Only</option>
             <option value="external">External Only</option>
         </select>
-        
+
         <button class="btn btn-secondary" id="advanced-search-btn">
             <i class="fa fa-sliders"></i>
             Advanced Search
@@ -1886,17 +1926,36 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
 
     setupKeyboardShortcuts() {
         $(document).on('keydown', (e) => {
-            // Cmd/Ctrl + K for search focus
+            // Cmd/Ctrl + K for quick search modal
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault();
-                $('#global-search').focus();
+                this.showQuickSearchModal();
             }
-            
+
             // Escape to close modals
             if (e.key === 'Escape') {
                 $('.modal-backdrop').hide();
                 $('#search-suggestions').hide();
             }
+        });
+
+        // Quick Search button click handler
+        $(document).on('click', '#quick-search-btn', (e) => {
+            e.preventDefault();
+            this.showQuickSearchModal();
+        });
+
+        // Add hover effect to quick search button
+        $(document).on('mouseenter', '#quick-search-btn', function() {
+            $(this).css({
+                'transform': 'translateY(-2px)',
+                'box-shadow': '0 6px 16px rgba(59, 130, 246, 0.4)'
+            });
+        }).on('mouseleave', '#quick-search-btn', function() {
+            $(this).css({
+                'transform': 'translateY(0)',
+                'box-shadow': '0 4px 12px rgba(59, 130, 246, 0.3)'
+            });
         });
     }
 
@@ -1918,18 +1977,17 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
                     </div>
                 </div>
                 <button class="fab" id="fab">
-                    <i class="fa fa-plus"></i>
+                    <i class="fa fa-ellipsis-v"></i>
                 </button>
             </div>
         `;
-        
+
         $(fabHtml).appendTo('body');
-        
+
         $('#fab').on('click', function() {
-            $(this).find('i').toggleClass('fa-plus fa-times');
             $('#fab-menu').toggleClass('active');
         });
-        
+
         $('.fab-menu-item').on('click', (e) => {
             const action = $(e.currentTarget).data('action');
             this.handleFabAction(action);
@@ -1950,6 +2008,668 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
                 this.showSettingsModal();
                 break;
         }
+    }
+
+    showQuickSearchModal() {
+        const self = this;
+        let selectedIndex = -1;
+        let currentResults = { salesOrders: [], projects: [] };
+        let currentFilter = 'all'; // 'all', 'orders', 'projects'
+
+        // Get search history
+        const getSearchHistory = () => {
+            try {
+                return JSON.parse(localStorage.getItem('prd_search_history') || '[]');
+            } catch (e) {
+                return [];
+            }
+        };
+
+        // Save to search history
+        const saveToHistory = (query) => {
+            let history = getSearchHistory();
+            history = [query, ...history.filter(q => q !== query)].slice(0, 10);
+            localStorage.setItem('prd_search_history', JSON.stringify(history));
+        };
+
+        // Get recent items
+        const getRecentItems = () => {
+            try {
+                return JSON.parse(localStorage.getItem('prd_recent_items') || '[]');
+            } catch (e) {
+                return [];
+            }
+        };
+
+        // Save recent item
+        const saveRecentItem = (item) => {
+            let recent = getRecentItems();
+            recent = [item, ...recent.filter(r => r.id !== item.id)].slice(0, 5);
+            localStorage.setItem('prd_recent_items', JSON.stringify(recent));
+        };
+
+        // Highlight matching text
+        const highlightText = (text, query) => {
+            if (!text || !query) return text || '';
+            const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return String(text).replace(regex, '<mark style="background: #ffd60a; padding: 0 2px; border-radius: 2px; font-weight: 600;">$1</mark>');
+        };
+
+        // Remove any existing panel
+        $('#quick-search-panel').remove();
+        $('#quick-search-overlay').remove();
+
+        const panel = $(`
+            <!-- Overlay -->
+            <div id="quick-search-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); z-index: 9998; opacity: 0; transition: opacity 0.3s;"></div>
+
+            <!-- Slide-out Panel -->
+            <div id="quick-search-panel" style="position: fixed; top: 0; right: -600px; width: 600px; max-width: 90vw; height: 100vh; background: white; box-shadow: -4px 0 24px rgba(0, 0, 0, 0.2); z-index: 9999; transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column;">
+                    <!-- Header -->
+                    <div style="background: linear-gradient(135deg, var(--primary) 0%, var(--success) 100%); padding: 20px 24px; position: relative;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fa fa-search" style="color: white; font-size: 18px;"></i>
+                                </div>
+                                <div>
+                                    <h3 style="color: white; margin: 0; font-size: 20px; font-weight: 700;">Quick Search</h3>
+                                    <div style="color: rgba(255,255,255,0.8); font-size: 12px; margin-top: 2px;">Search orders, projects, and customers</div>
+                                </div>
+                            </div>
+                            <button class="modal-close" style="background: rgba(255,255,255,0.15); border: none; color: white; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">&times;</button>
+                        </div>
+
+                        <!-- Search Input -->
+                        <div style="position: relative;">
+                            <i class="fa fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 16px; z-index: 1;"></i>
+                            <input
+                                type="text"
+                                id="quick-search-input"
+                                placeholder="Type to search... (min 2 characters)"
+                                style="width: 100%; padding: 13px 16px 13px 44px; font-size: 15px; border: 2px solid rgba(255,255,255,0.2); border-radius: 12px; background: rgba(255,255,255,0.95); transition: all 0.2s; outline: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"
+                                autofocus
+                            />
+                            <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: flex; gap: 6px; align-items: center;">
+                                <kbd style="background: rgba(0,0,0,0.1); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; color: var(--text-muted);">↑↓</kbd>
+                                <kbd style="background: rgba(0,0,0,0.1); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; color: var(--text-muted);">↵</kbd>
+                                <kbd style="background: rgba(0,0,0,0.1); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; color: var(--text-muted);">ESC</kbd>
+                            </div>
+                        </div>
+
+                        <!-- Filter Tabs -->
+                        <div style="display: flex; gap: 8px; margin-top: 12px;" id="search-filter-tabs">
+                            <button class="filter-tab active" data-filter="all" style="flex: 1; padding: 8px 16px; background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(10px);">
+                                <i class="fa fa-th-large" style="margin-right: 6px;"></i>All
+                            </button>
+                            <button class="filter-tab" data-filter="orders" style="flex: 1; padding: 8px 16px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                                <i class="fa fa-file-text" style="margin-right: 6px;"></i>Orders
+                            </button>
+                            <button class="filter-tab" data-filter="projects" style="flex: 1; padding: 8px 16px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                                <i class="fa fa-folder" style="margin-right: 6px;"></i>Projects
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Results Container -->
+                    <div style="flex: 1; overflow-y: auto; background: #f8fafc;" id="quick-search-results">
+                        ${this.renderInitialSearchState(getSearchHistory(), getRecentItems())}
+                    </div>
+            </div>
+
+            <style>
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-30px) scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
+                }
+
+                #quick-search-modal .modal-close:hover {
+                    background: rgba(255,255,255,0.25);
+                    transform: rotate(90deg);
+                }
+
+                #quick-search-input:focus {
+                    border-color: rgba(255,255,255,0.4);
+                    box-shadow: 0 0 0 4px rgba(255,255,255,0.15);
+                }
+
+                .filter-tab:hover {
+                    background: rgba(255,255,255,0.2) !important;
+                    border-color: rgba(255,255,255,0.4) !important;
+                }
+
+                .filter-tab.active {
+                    background: rgba(255,255,255,0.25) !important;
+                    border-color: rgba(255,255,255,0.4) !important;
+                    color: white !important;
+                }
+
+                .search-result-item {
+                    cursor: pointer;
+                    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+                    border: 2px solid transparent;
+                }
+
+                .search-result-item:hover {
+                    transform: translateX(4px);
+                    background: white !important;
+                    border-color: var(--primary) !important;
+                    box-shadow: 0 4px 12px var(--primary-glass) !important;
+                }
+
+                .search-result-item.selected {
+                    background: var(--primary-glass) !important;
+                    border-color: var(--primary) !important;
+                    box-shadow: 0 4px 12px var(--primary-glass) !important;
+                }
+
+                .history-item:hover {
+                    background: var(--surface-alt);
+                    transform: translateX(4px);
+                }
+
+                #quick-search-results::-webkit-scrollbar {
+                    width: 8px;
+                }
+
+                #quick-search-results::-webkit-scrollbar-track {
+                    background: var(--border);
+                }
+
+                #quick-search-results::-webkit-scrollbar-thumb {
+                    background: var(--text-muted);
+                    border-radius: 4px;
+                }
+
+                #quick-search-results::-webkit-scrollbar-thumb:hover {
+                    background: var(--text);
+                }
+            </style>
+        `);
+
+        $('body').append(panel);
+
+        const closePanel = () => {
+            $('#quick-search-panel').css('right', '-600px');
+            $('#quick-search-overlay').css('opacity', '0');
+            setTimeout(() => {
+                $('#quick-search-panel').remove();
+                $('#quick-search-overlay').remove();
+            }, 300);
+        };
+
+        // Show panel with animation
+        setTimeout(() => {
+            $('#quick-search-panel').css('right', '0');
+            $('#quick-search-overlay').css('opacity', '1');
+        }, 10);
+
+        // Close panel when clicking X button
+        $('.modal-close').on('click', (e) => {
+            e.preventDefault();
+            closePanel();
+        });
+
+        // Close panel when clicking overlay
+        $('#quick-search-overlay').on('click', closePanel);
+
+        // Filter tab handling
+        $('.filter-tab').on('click', function(e) {
+            $('.filter-tab').removeClass('active').css({
+                background: 'rgba(255,255,255,0.1)',
+                borderColor: 'rgba(255,255,255,0.2)',
+                color: 'rgba(255,255,255,0.8)'
+            });
+            $(this).addClass('active').css({
+                background: 'rgba(255,255,255,0.25)',
+                borderColor: 'rgba(255,255,255,0.4)',
+                color: 'white'
+            });
+            currentFilter = $(this).data('filter');
+            selectedIndex = -1;
+
+            // Re-render with filter
+            if (currentResults.salesOrders.length > 0 || currentResults.projects.length > 0) {
+                self.renderQuickSearchResults(currentResults, null, $('#quick-search-input').val(), currentFilter);
+            }
+        });
+
+        // Search functionality
+        const searchInput = $('#quick-search-input');
+        const resultsContainer = $('#quick-search-results');
+
+        // Keyboard navigation
+        searchInput.on('keydown', (e) => {
+            const items = $('.search-result-item:visible');
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                updateSelection(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                updateSelection(items);
+            } else if (e.key === 'Enter' && selectedIndex >= 0) {
+                e.preventDefault();
+                $(items[selectedIndex]).click();
+            }
+        });
+
+        const updateSelection = (items) => {
+            items.removeClass('selected');
+            if (selectedIndex >= 0 && selectedIndex < items.length) {
+                const selected = $(items[selectedIndex]);
+                selected.addClass('selected');
+
+                // Scroll into view
+                const container = resultsContainer;
+                const itemTop = selected.position().top;
+                const containerHeight = container.height();
+
+                if (itemTop < 0) {
+                    container.scrollTop(container.scrollTop() + itemTop - 20);
+                } else if (itemTop + selected.outerHeight() > containerHeight) {
+                    container.scrollTop(container.scrollTop() + (itemTop + selected.outerHeight() - containerHeight) + 20);
+                }
+            }
+        };
+
+        let searchTimeout;
+        searchInput.on('input', () => {
+            clearTimeout(searchTimeout);
+            const query = searchInput.val().trim();
+            selectedIndex = -1;
+
+            if (query.length < 2) {
+                resultsContainer.html(this.renderInitialSearchState(getSearchHistory(), getRecentItems()));
+                return;
+            }
+
+            resultsContainer.html(`
+                <div style="text-align: center; padding: 60px 24px;">
+                    <div style="width: 60px; height: 60px; margin: 0 auto 20px; border: 3px solid #e0e7ff; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+                    <div style="font-size: 16px; font-weight: 600; color: #1e293b;">Searching...</div>
+                    <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Finding matching results</div>
+                </div>
+                <style>
+                    @keyframes spin {
+                        to { transform: rotate(360deg); }
+                    }
+                </style>
+            `);
+
+            searchTimeout = setTimeout(() => {
+                saveToHistory(query);
+                frappe.call({
+                    method: 'prastara_custom.controller.variant_pricing.search_sales_orders_and_projects',
+                    args: { query: query },
+                    callback: (r) => {
+                        if (r.message && r.message.status === 'success') {
+                            currentResults = {
+                                salesOrders: r.message.data.sales_orders || [],
+                                projects: r.message.data.projects || []
+                            };
+                            self.renderQuickSearchResults(currentResults, null, query, currentFilter);
+                        } else {
+                            resultsContainer.html(`
+                                <div style="text-align: center; padding: 60px 24px;">
+                                    <div style="width: 80px; height: 80px; margin: 0 auto 20px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fa fa-exclamation-triangle" style="font-size: 32px; color: #dc2626;"></i>
+                                    </div>
+                                    <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 8px;">Search Error</div>
+                                    <div style="font-size: 14px; color: #64748b;">Unable to perform search. Please try again.</div>
+                                </div>
+                            `);
+                        }
+                    }
+                });
+            }, 300);
+        });
+
+        // Handle history item clicks
+        resultsContainer.on('click', '.history-item', function() {
+            const query = $(this).text().trim();
+            searchInput.val(query).trigger('input');
+        });
+
+        // Handle ESC key to close panel
+        $(document).on('keydown.quicksearch', (e) => {
+            if (e.key === 'Escape') {
+                closePanel();
+                $(document).off('keydown.quicksearch');
+            }
+        });
+
+        // Focus on search input
+        setTimeout(() => {
+            searchInput.focus();
+        }, 350);
+    }
+
+    renderInitialSearchState(history, recent) {
+        let html = '<div style="padding: 24px;">';
+
+        // Recent searches
+        if (history && history.length > 0) {
+            html += `
+                <div style="margin-bottom: 24px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <i class="fa fa-history" style="color: #64748b; font-size: 14px;"></i>
+                        <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Recent Searches</h4>
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${history.map(q => `
+                            <div class="history-item" style="padding: 8px 14px; background: white; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 13px; color: #475569; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa fa-search" style="font-size: 11px; color: #94a3b8;"></i>
+                                ${q}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Tips
+        html += `
+            <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 20px; border-radius: 12px; border: 1px solid #bae6fd;">
+                <div style="display: flex; gap: 16px; align-items: start;">
+                    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <i class="fa fa-lightbulb-o" style="font-size: 24px; color: white;"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 700; color: #0c4a6e;">Search Tips</h4>
+                        <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #075985; line-height: 1.8;">
+                            <li>Search by <strong>Order ID</strong>, <strong>Project Name</strong>, or <strong>Customer Name</strong></li>
+                            <li>Use <strong>↑ ↓</strong> arrow keys to navigate results</li>
+                            <li>Press <strong>Enter</strong> to open selected item</li>
+                            <li>Use filter tabs to narrow your search</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        html += '</div>';
+        return html;
+    }
+
+    renderQuickSearchResults(data, modal, query = '', filter = 'all') {
+        const self = this;
+        const salesOrders = data.salesOrders || data.sales_orders || [];
+        const projects = data.projects || [];
+
+        // Highlight matching text
+        const highlightText = (text, query) => {
+            if (!text || !query) return text || '';
+            const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return String(text).replace(regex, '<mark style="background: #ffd60a; padding: 0 2px; border-radius: 2px; font-weight: 600;">$1</mark>');
+        };
+        const resultsContainer = $('#quick-search-results');
+
+        console.log('=== renderQuickSearchResults called ===');
+        console.log('Sales Orders:', salesOrders.length);
+        console.log('Projects:', projects.length);
+        console.log('Results Container:', resultsContainer.length);
+
+        // Apply filter
+        const filteredSalesOrders = (filter === 'all' || filter === 'orders') ? salesOrders : [];
+        const filteredProjects = (filter === 'all' || filter === 'projects') ? projects : [];
+
+        if (filteredSalesOrders.length === 0 && filteredProjects.length === 0) {
+            resultsContainer.html(`
+                <div style="text-align: center; padding: 60px 24px;">
+                    <div style="width: 80px; height: 80px; margin: 0 auto 20px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa fa-search" style="font-size: 36px; color: #94a3b8;"></i>
+                    </div>
+                    <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 8px;">No Results Found</div>
+                    <div style="font-size: 14px; color: #64748b; margin-bottom: 20px;">Try searching with different keywords or adjust your filters</div>
+                    <div style="display: inline-flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
+                        <div style="padding: 6px 12px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; font-size: 12px; color: #0369a1;">
+                            <i class="fa fa-lightbulb-o" style="margin-right: 4px;"></i>
+                            Try broader terms
+                        </div>
+                        <div style="padding: 6px 12px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; font-size: 12px; color: #0369a1;">
+                            <i class="fa fa-filter" style="margin-right: 4px;"></i>
+                            Check "All" filter
+                        </div>
+                    </div>
+                </div>
+            `);
+            return;
+        }
+
+        let html = '<div style="padding: 16px;">';
+
+        if (filteredSalesOrders.length > 0) {
+            html += `
+                <div style="margin-bottom: ${filteredProjects.length > 0 ? '24px' : '0'};">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 8px 12px; background: #eff6ff; border-radius: 8px; border-left: 3px solid #3b82f6;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);">
+                                <i class="fa fa-file-text" style="color: white; font-size: 14px;"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 700; color: #1e40af; font-size: 14px;">Sales Orders</div>
+                                <div style="font-size: 11px; color: #60a5fa;">${filteredSalesOrders.length} result${filteredSalesOrders.length > 1 ? 's' : ''}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: grid; gap: 10px;">
+                        ${filteredSalesOrders.map(so => `
+                            <div class="search-result-item" style="padding: 14px; background: white; border-radius: 10px; border: 2px solid transparent; box-shadow: 0 1px 3px rgba(0,0,0,0.08);" data-order="${so.name}">
+                                <div style="display: flex; justify-content: space-between; align-items: start; gap: 12px;">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-weight: 700; color: var(--text); font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                                            <span>${highlightText(so.name, query)}</span>
+                                            <span style="display: inline-block; padding: 2px 8px; background: ${so.status === 'Completed' ? 'rgba(16, 185, 129, 0.1)' : so.status === 'Draft' ? 'rgba(245, 158, 11, 0.1)' : 'var(--primary-glass)'}; color: ${so.status === 'Completed' ? 'var(--success)' : so.status === 'Draft' ? 'var(--warning)' : 'var(--primary)'}; border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;">
+                                                ${so.status}
+                                            </span>
+                                        </div>
+                                        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 6px;">
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <i class="fa fa-user" style="font-size: 11px; color: var(--text-muted);"></i>
+                                                <span style="font-size: 12px; color: var(--text-secondary);">${highlightText(so.customer_name, query)}</span>
+                                            </div>
+                                            ${so.project ? `
+                                                <div style="display: flex; align-items: center; gap: 6px;">
+                                                    <i class="fa fa-folder" style="font-size: 11px; color: var(--text-muted);"></i>
+                                                    <span style="font-size: 12px; color: var(--text-secondary);">${highlightText(so.project, query)}</span>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <i class="fa fa-money" style="font-size: 11px; color: #10b981;"></i>
+                                                <span style="font-size: 13px; font-weight: 700; color: #10b981;">${frappe.format(so.grand_total, {fieldtype: 'Currency'})}</span>
+                                            </div>
+                                            ${so.transaction_date ? `
+                                                <div style="font-size: 11px; color: #94a3b8;">
+                                                    <i class="fa fa-calendar" style="margin-right: 4px;"></i>
+                                                    ${frappe.datetime.str_to_user(so.transaction_date)}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                    <div style="flex-shrink: 0; width: 28px; height: 28px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fa fa-chevron-right" style="color: #94a3b8; font-size: 12px;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        if (filteredProjects.length > 0) {
+            html += `
+                <div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 8px 12px; background: #f0fdf4; border-radius: 8px; border-left: 3px solid #10b981;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);">
+                                <i class="fa fa-folder" style="color: white; font-size: 14px;"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 700; color: #065f46; font-size: 14px;">Projects</div>
+                                <div style="font-size: 11px; color: #34d399;">${filteredProjects.length} result${filteredProjects.length > 1 ? 's' : ''}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: grid; gap: 10px;">
+                        ${filteredProjects.map(project => `
+                            <div class="search-result-item" style="padding: 14px; background: white; border-radius: 10px; border: 2px solid transparent; box-shadow: 0 1px 3px rgba(0,0,0,0.08);" data-project="${project.name}">
+                                <div style="display: flex; justify-content: space-between; align-items: start; gap: 12px;">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-weight: 700; color: #0f172a; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                                            <span>${highlightText(project.name, query)}</span>
+                                            <span style="display: inline-block; padding: 2px 8px; background: ${project.status === 'Completed' ? '#dcfce7' : project.status === 'Open' ? '#dbeafe' : '#fef9c3'}; color: ${project.status === 'Completed' ? '#166534' : project.status === 'Open' ? '#1e40af' : '#854d0e'}; border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;">
+                                                ${project.status}
+                                            </span>
+                                        </div>
+                                        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 6px;">
+                                            ${project.project_name ? `
+                                                <div style="display: flex; align-items: center; gap: 6px;">
+                                                    <i class="fa fa-tag" style="font-size: 11px; color: #64748b;"></i>
+                                                    <span style="font-size: 12px; color: #475569;">${highlightText(project.project_name, query)}</span>
+                                                </div>
+                                            ` : ''}
+                                            ${project.customer ? `
+                                                <div style="display: flex; align-items: center; gap: 6px;">
+                                                    <i class="fa fa-user" style="font-size: 11px; color: #64748b;"></i>
+                                                    <span style="font-size: 12px; color: #475569;">${highlightText(project.customer, query)}</span>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <div style="display: flex; align-items: center; gap: 8px; flex: 1; max-width: 150px;">
+                                                <div style="flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+                                                    <div style="width: ${project.percent_complete || 0}%; height: 100%; background: linear-gradient(90deg, #10b981 0%, #059669 100%); transition: width 0.3s;"></div>
+                                                </div>
+                                                <span style="font-size: 11px; font-weight: 700; color: #10b981; min-width: 35px;">${project.percent_complete || 0}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="flex-shrink: 0; width: 28px; height: 28px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fa fa-external-link" style="color: #94a3b8; font-size: 11px;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        html += '</div>';
+        resultsContainer.html(html);
+
+        console.log('=== Adding click handlers ===');
+        console.log('HTML set, length:', html.length);
+        console.log('Sales order cards found:', resultsContainer.find('[data-order]').length);
+        console.log('Project cards found:', resultsContainer.find('[data-project]').length);
+
+        // Add click handlers for sales orders and projects (self is already declared at method start)
+
+        // Sales Order click handler - attach directly to the parent
+        resultsContainer.off('click', '[data-order]'); // Remove any existing handlers
+        resultsContainer.on('click', '[data-order]', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const orderName = $(this).data('order');
+
+            console.log('=== Sales Order Clicked ===');
+            console.log('Order Name:', orderName);
+            console.log('Self exists:', !!self);
+            console.log('showOrderDetails exists:', typeof self.showOrderDetails);
+
+            // Close search panel and open detail modal
+            $('#quick-search-panel').css('right', '-600px');
+            $('#quick-search-overlay').css('opacity', '0');
+
+            setTimeout(() => {
+                $('#quick-search-panel').remove();
+                $('#quick-search-overlay').remove();
+                $(document).off('keydown.quicksearch');
+
+                // Show order details
+                try {
+                    console.log('Attempting to show order details...');
+                    self.showOrderDetails(orderName);
+                    console.log('showOrderDetails called successfully');
+                } catch (err) {
+                    console.error('Error calling showOrderDetails:', err);
+                }
+            }, 300);
+        });
+
+        // Project click handler - attach directly to the parent
+        resultsContainer.off('click', '[data-project]'); // Remove any existing handlers
+        resultsContainer.on('click', '[data-project]', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const projectName = $(this).data('project');
+
+            console.log('=== Project Clicked ===');
+            console.log('Project Name:', projectName);
+
+            // Try to find sales order associated with this project
+            frappe.call({
+                method: 'frappe.client.get_list',
+                args: {
+                    doctype: 'Sales Order',
+                    filters: {
+                        project: projectName,
+                        docstatus: 1
+                    },
+                    fields: ['name'],
+                    limit: 1
+                },
+                callback: (r) => {
+                    if (r.message && r.message.length > 0) {
+                        // If sales order found, show its details
+                        const soName = r.message[0].name;
+                        console.log('Found SO for project:', soName);
+
+                        $('#quick-search-panel').css('right', '-600px');
+                        $('#quick-search-overlay').css('opacity', '0');
+
+                        setTimeout(() => {
+                            $('#quick-search-panel').remove();
+                            $('#quick-search-overlay').remove();
+                            $(document).off('keydown.quicksearch');
+
+                            // Show order details
+                            try {
+                                self.showOrderDetails(soName);
+                                console.log('Showed order details for SO:', soName);
+                            } catch (err) {
+                                console.error('Error showing order details:', err);
+                            }
+                        }, 300);
+                    } else {
+                        // Otherwise, open project in new tab
+                        console.log('No SO found, opening project page');
+                        $('#quick-search-panel').css('right', '-600px');
+                        $('#quick-search-overlay').css('opacity', '0');
+
+                        setTimeout(() => {
+                            $('#quick-search-panel').remove();
+                            $('#quick-search-overlay').remove();
+                            $(document).off('keydown.quicksearch');
+                        }, 300);
+
+                        window.open('/app/project/' + projectName, '_blank');
+                    }
+                }
+            });
+        });
     }
 
     showToast(message, type = 'info', title = '') {
@@ -2254,20 +2974,28 @@ showSearchSuggestions(query) {
             { id: 'sales-person', icon: 'fa-user-tie', label: 'Sales Team', badge: '' },
             { id: 'customer', icon: 'fa-building', label: 'Customers', badge: '' },
             { id: 'calendar', icon: 'fa-calendar-alt', label: 'Calendar', badge: '' },
-            { id: 'draft-orders', icon: 'fa-list-ul', label: 'Draft Orders', badge: '' }
+            { id: 'draft-orders', icon: 'fa-list-ul', label: 'Draft Orders', badge: '' },
+            { id: 'no-project-orders', icon: 'fa-folder-open', label: 'No Project', badge: '' }
         ];
 
-            
+
     // Fetch draft order count
     this.fetchDraftOrderCount().then(count => {
         const draftView = views.find(view => view.id === 'draft-orders');
         if (draftView) {
             draftView.badge = count > 0 ? `(${count})` : '';
         }
-        
-        let html = '';
-        views.forEach((view, index) => {
-            html += `
+
+        // Fetch no-project order count
+        this.fetchNoProjectOrderCount().then(noProjectCount => {
+            const noProjectView = views.find(view => view.id === 'no-project-orders');
+            if (noProjectView) {
+                noProjectView.badge = noProjectCount > 0 ? `(${noProjectCount})` : '';
+            }
+
+            let html = '';
+            views.forEach((view, index) => {
+                html += `
                 <button class="view-pill ${index === 0 ? 'active' : ''}" data-view="${view.id}">
                     <i class="fa ${view.icon}"></i>
                     <span>${view.label}</span>
@@ -2276,14 +3004,15 @@ showSearchSuggestions(query) {
             `;
         });
         
-        $('#view-pills').html(html);
-        
-        $('.view-pill').on('click', (e) => {
-            const view = $(e.currentTarget).data('view');
-            this.switchView(view);
+            $('#view-pills').html(html);
+
+            $('.view-pill').on('click', (e) => {
+                const view = $(e.currentTarget).data('view');
+                this.switchView(view);
+            });
         });
     });
-        
+
     }
 
 
@@ -2330,6 +3059,29 @@ fetchDraftOrderCount() {
             },
             error: (err) => {
                 this.showToast('Failed to fetch draft order count', 'error');
+                resolve(0);
+            }
+        });
+    });
+}
+
+// New method to fetch no-project order count
+fetchNoProjectOrderCount() {
+    return new Promise((resolve, reject) => {
+        frappe.call({
+            method: 'prastara_custom.controller.variant_pricing.get_sales_order_no_project_list_prd',
+            args: {
+                company: 'PRASTARA DECORATION DESIGN L.L.C'
+            },
+            callback: (r) => {
+                if (r.message && r.message.status === 'success') {
+                    resolve(r.message.data.orders.length);
+                } else {
+                    resolve(0);
+                }
+            },
+            error: (err) => {
+                this.showToast('Failed to fetch no-project order count', 'error');
                 resolve(0);
             }
         });
@@ -2609,6 +3361,9 @@ showValueRangeOrders(range) {
                 break;
             case 'draft-orders':
                 this.renderDraftOrdersTable();
+                break;
+            case 'no-project-orders':
+                this.renderNoProjectOrdersTable();
                 break;
         }
     }
@@ -4073,7 +4828,7 @@ renderDraftOrdersTable() {
                             ${order.project ? `
                                 <div>
                                     <div style="font-weight: 600; font-size: 0.85rem;">${order.project}</div>
-                                    ${order.custom_project_description ? `<div style="font-size: 0.7rem; color: var(--text-muted);" title="${order.custom_project_description}">${order.custom_project_description.length > 20 ? order.custom_project_description.substring(0, 20) + '...' : order.custom_project_description}</div>` : ''}
+                                    ${order.custom_project_description ? `<div style="font-size: 0.75rem; color: var(--text-muted);" title="${order.custom_project_description}">${order.custom_project_description.length > 20 ? order.custom_project_description.substring(0, 20) + '...' : order.custom_project_description}</div>` : ''}
                                 </div>
                             ` : `<span style="color: var(--text-muted); font-size: 0.8rem;">No Project</span>`}
                         </td>
@@ -4194,6 +4949,185 @@ exportDraftOrders(orders) {
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
     link.setAttribute('download', 'draft_orders_export.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// Render No Project Orders Table
+renderNoProjectOrdersTable() {
+    this.fetchNoProjectOrderCount().then(count => {
+        this.content_area.html(`
+            <div class="table-modern-container" style="box-shadow: none; margin: 0;">
+                <div class="table-toolbar" style="padding: var(--space-4); background:#33544a; border-radius: var(--radius-lg); margin-bottom: var(--space-4); display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: var(--space-4);">
+                        <span style="font-weight: 600; color: white;">${count} Order${count === 1 ? '' : 's'} Without Project</span>
+                        <div class="table-search-box">
+                            <i class="fa fa-search table-search-icon" style="color: white;"></i>
+                            <input type="text" class="table-search-input" placeholder="Search orders by order #, customer..." id="no-project-orders-search" style="background: rgba(255, 255, 255, 0.1); color: white; border-color: rgba(255, 255, 255, 0.3);">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="export-no-project-orders" style="padding: var(--space-2) var(--space-4); background: white; color: #33544a; border-color: white;">
+                        <i class="fa fa-download"></i> Export
+                    </button>
+                </div>
+                <div class="table-body">
+                    <table class="data-table" id="no-project-orders-table">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Sales Person</th>
+                                <th>Delivery Date</th>
+                                <th>Grand Total</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="6" style="text-align: center; padding: var(--space-6);">
+                                <i class="fa fa-spinner fa-spin" style="font-size: 1.5rem; color: var(--text-muted);"></i>
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `);
+
+        // Fetch and render no-project orders
+        this.fetchNoProjectOrders().then(orders => {
+            if (!orders.length) {
+                this.content_area.find('#no-project-orders-table tbody').html(`
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
+                            <i class="fa fa-inbox" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
+                            <div>No orders without project found</div>
+                        </td>
+                    </tr>
+                `);
+            } else {
+                const html = orders.map(order => `
+                    <tr data-order="${order.name}" style="cursor: pointer;">
+                        <td><strong style="color: var(--primary);">${order.name}</strong></td>
+                        <td>${order.customer}</td>
+                        <td>${order.sales_person || 'Unassigned'}</td>
+                        <td>
+                            ${order.delivery_date ? `
+                                <div style="display: flex; align-items: center; gap: var(--space-2);">
+                                    <span>${frappe.datetime.str_to_user(order.delivery_date)}</span>
+                                    ${this.getDueBadge(order.due_status, order.due_days_text)}
+                                </div>
+                            ` : '<span style="color: var(--text-muted);">No Date</span>'}
+                        </td>
+                        <td><strong>${frappe.format(order.grand_total || 0, {fieldtype: 'Currency'})}</strong></td>
+                        <td><span class="status-badge status-${order.status.toLowerCase().replace(' ', '-')}">${order.status}</span></td>
+                    </tr>
+                `).join('');
+
+                this.content_area.find('#no-project-orders-table tbody').html(html);
+
+                // Setup search functionality
+                this.setupTableSearch('#no-project-orders-search', '#no-project-orders-table', ['name', 'customer', 'sales_person']);
+
+                // Setup row click handlers
+                this.content_area.find('tbody tr[data-order]').on('click', (e) => {
+                    const orderName = $(e.currentTarget).data('order');
+                    this.showOrderDetails(orderName);
+                });
+
+                // Setup export button handler
+                $('#export-no-project-orders').on('click', () => {
+                    this.exportNoProjectOrders(orders);
+                });
+            }
+        });
+    });
+}
+
+// Fetch No Project Orders
+fetchNoProjectOrders() {
+    return new Promise((resolve, reject) => {
+        // Fallback date difference calculation
+        const calculateDateDiff = (date1, date2) => {
+            const d1 = new Date(date1);
+            const d2 = new Date(date2);
+            const diffTime = d1 - d2;
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        };
+
+        // Fallback getdate function
+        const parseDate = (dateStr) => {
+            return dateStr ? new Date(dateStr) : new Date();
+        };
+
+        // Fallback today function
+        const getToday = () => {
+            const today = new Date();
+            return today.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+        };
+
+        frappe.call({
+            method: 'prastara_custom.controller.variant_pricing.get_sales_order_no_project_list_prd',
+            args: {
+                company: 'PRASTARA DECORATION DESIGN L.L.C'
+            },
+            callback: (r) => {
+                if (r.message && r.message.status === 'success') {
+                    const orders = r.message.data.orders.map(order => {
+                        // Use frappe.utils.getdate if available, else fallback
+                        const deliveryDate = order.delivery_date ? (frappe.utils.getdate ? frappe.utils.getdate(order.delivery_date) : parseDate(order.delivery_date)) : null;
+                        // Use frappe.utils.today if available, else fallback
+                        const todayDate = frappe.utils.today ? (frappe.utils.getdate ? frappe.utils.getdate(frappe.utils.today()) : parseDate(getToday())) : parseDate(getToday());
+
+                        // Calculate due days using frappe.utils.date_diff or fallback
+                        const dueDays = deliveryDate ? (frappe.utils.date_diff ? frappe.utils.date_diff(deliveryDate, todayDate) : calculateDateDiff(deliveryDate, todayDate)) : 999999;
+
+                        return {
+                            ...order,
+                            name: order.sales_order_number,
+                            due_days: dueDays,
+                            due_days_text: deliveryDate ? this.formatDueDays(dueDays) : 'No delivery date',
+                            due_status: deliveryDate ? this.getDueStatus(dueDays) : 'none',
+                            formatted_transaction_date: order.formatted_date,
+                            formatted_delivery_date: order.formatted_delivery_date
+                        };
+                    });
+                    resolve(orders);
+                } else {
+                    this.showToast('Failed to load no-project orders', 'error');
+                    resolve([]);
+                }
+            },
+            error: (err) => {
+                this.showToast('Failed to load no-project orders: ' + err.message, 'error');
+                resolve([]);
+            }
+        });
+    });
+}
+
+// Export No Project Orders as CSV
+exportNoProjectOrders(orders) {
+    const headers = ['Order #', 'Customer', 'Sales Person', 'Delivery Date', 'Grand Total', 'Status'];
+    const rows = orders.map(order => [
+        order.name,
+        order.customer,
+        order.sales_person || 'Unassigned',
+        order.delivery_date ? frappe.datetime.str_to_user(order.delivery_date) : 'No Date',
+        frappe.format(order.grand_total || 0, {fieldtype: 'Currency'}),
+        order.status
+    ]);
+
+    let csvContent = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csvContent += row.map(cell => `"${cell.toString().replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'no_project_orders_export.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -4633,7 +5567,7 @@ renderCalendarGrid(year, month) {
                                 ${order.project ? `
                                     <div>
                                         <div style="font-weight: 600; font-size: 0.85rem;">${order.project}</div>
-                                        ${order.custom_project_description ? `<div style="font-size: 0.7rem; color: var(--text-muted);" title="${order.custom_project_description}">${order.custom_project_description.length > 20 ? order.custom_project_description.substring(0, 20) + '...' : order.custom_project_description}</div>` : ''}
+                                        ${order.custom_project_description ? `<div style="font-size: 0.75rem; color: var(--text-muted);" title="${order.custom_project_description}">${order.custom_project_description.length > 20 ? order.custom_project_description.substring(0, 20) + '...' : order.custom_project_description}</div>` : ''}
                                     </div>
                                 ` : `<span style="color: var(--text-muted); font-size: 0.8rem;">No Project</span>`}
                             </td>
@@ -4686,14 +5620,152 @@ renderCalendarGrid(year, month) {
     showOrderDetails(orderName) {
         this.detail_modal.find('.modal-title').text(`Order Details: ${orderName}`);
         this.detail_modal.find('.modal-body').html(`
-            <div class="skeleton">
-                <div class="skeleton-title"></div>
-                <div class="skeleton-text"></div>
-                <div class="skeleton-text"></div>
+            <div style="text-align: center; padding: 40px;">
+                <div style="width: 50px; height: 50px; margin: 0 auto 16px; border: 3px solid #e0e7ff; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+                <div style="font-size: 16px; font-weight: 600; color: #1e293b;">Loading Order Details...</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">Please wait</div>
             </div>
+            <style>
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+            </style>
         `);
         this.detail_modal.fadeIn(300);
-        
+
+        // Store order name for lazy loading
+        this.currentOrderName = orderName;
+        this.orderDataCache = {};
+
+        // Load only basic order data first (FAST!)
+        frappe.call({
+            method: 'prastara_custom.controller.variant_pricing.get_sales_order_basic',
+            args: { sales_order_name: orderName },
+            callback: (r) => {
+                if (r.message && r.message.status === 'success') {
+                    this.orderDataCache.basic = r.message.data;
+                    this.renderOrderDetailsModalFast(r.message.data);
+                } else {
+                    this.detail_modal.find('.modal-body').html(this.renderEmptyState('Failed to load order details', ''));
+                }
+            },
+            error: () => {
+                this.detail_modal.find('.modal-body').html(this.renderEmptyState('Error loading order details', ''));
+            }
+        });
+    }
+
+    // Fast rendering with basic data only
+    renderOrderDetailsModalFast(data) {
+        const order = data.order || {};
+
+        const html = `
+            <div style="padding: 24px; max-height: 70vh; overflow-y: auto;">
+                <!-- Quick Overview Card -->
+                <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 24px; border-radius: 12px; color: white; margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+                        <div>
+                            <div style="font-size: 14px; opacity: 0.9; margin-bottom: 4px;">Sales Order</div>
+                            <div style="font-size: 24px; font-weight: 700;">${order.name}</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600;">
+                            ${order.status}
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-top: 20px;">
+                        <div>
+                            <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px;">Customer</div>
+                            <div style="font-size: 16px; font-weight: 600;">${order.customer_name}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px;">Total Amount</div>
+                            <div style="font-size: 16px; font-weight: 600;">${frappe.format(order.grand_total, {fieldtype: 'Currency'})}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px;">Items</div>
+                            <div style="font-size: 16px; font-weight: 600;">${order.item_count || 0}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Metrics -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div style="padding: 20px; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 8px;">
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Billing Progress</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #3b82f6;">${order.per_billed || 0}%</div>
+                        <div style="width: 100%; height: 6px; background: #e0e7ff; border-radius: 3px; margin-top: 8px; overflow: hidden;">
+                            <div style="width: ${order.per_billed || 0}%; height: 100%; background: #3b82f6;"></div>
+                        </div>
+                    </div>
+                    <div style="padding: 20px; background: #f0fdf4; border-left: 4px solid #10b981; border-radius: 8px;">
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Delivery Progress</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #10b981;">${order.per_delivered || 0}%</div>
+                        <div style="width: 100%; height: 6px; background: #d1fae5; border-radius: 3px; margin-top: 8px; overflow: hidden;">
+                            <div style="width: ${order.per_delivered || 0}%; height: 100%; background: #10b981;"></div>
+                        </div>
+                    </div>
+                    <div style="padding: 20px; background: #fef9c3; border-left: 4px solid #f59e0b; border-radius: 8px;">
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Outstanding</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">${frappe.format(order.total_outstanding || 0, {fieldtype: 'Currency'})}</div>
+                        <div style="font-size: 12px; color: #92400e; margin-top: 4px;">Pending payment</div>
+                    </div>
+                </div>
+
+                <!-- Order Info -->
+                <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb;">
+                    <h4 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #1e293b;">Order Information</h4>
+                    <div style="display: grid; gap: 12px;">
+                        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+                            <span style="color: #64748b; font-size: 14px;">Order Date</span>
+                            <span style="font-weight: 600; color: #1e293b; font-size: 14px;">${frappe.datetime.str_to_user(order.transaction_date)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+                            <span style="color: #64748b; font-size: 14px;">Delivery Date</span>
+                            <span style="font-weight: 600; color: #1e293b; font-size: 14px;">${frappe.datetime.str_to_user(order.delivery_date)}</span>
+                        </div>
+                        ${order.project ? `
+                        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+                            <span style="color: #64748b; font-size: 14px;">Project</span>
+                            <span style="font-weight: 600; color: #1e293b; font-size: 14px;">${order.project}</span>
+                        </div>
+                        ` : ''}
+                        <div style="display: flex; justify-content: space-between; padding: 10px 0;">
+                            <span style="color: #64748b; font-size: 14px;">Company</span>
+                            <span style="font-weight: 600; color: #1e293b; font-size: 14px;">${order.company}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="frappe.set_route('Form', 'Sales Order', '${order.name}')">
+                        <i class="fa fa-external-link"></i> Open in Form View
+                    </button>
+                    <button class="btn btn-secondary load-full-details">
+                        <i class="fa fa-download"></i> Load All Details
+                    </button>
+                </div>
+            </div>
+        `;
+
+        this.detail_modal.find('.modal-body').html(html);
+
+        // Handle load full details button
+        this.detail_modal.find('.load-full-details').on('click', () => {
+            this.loadFullOrderDetails(order.name);
+        });
+    }
+
+    // Load full details (old method)
+    loadFullOrderDetails(orderName) {
+        this.detail_modal.find('.modal-body').html(`
+            <div style="text-align: center; padding: 40px;">
+                <div style="width: 50px; height: 50px; margin: 0 auto 16px; border: 3px solid #e0e7ff; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+                <div style="font-size: 16px; font-weight: 600; color: #1e293b;">Loading Full Details...</div>
+                <div style="font-size: 14px; color: #64748b; margin-top: 8px;">This may take a moment</div>
+            </div>
+        `);
+
         frappe.call({
             method: 'prastara_custom.controller.variant_pricing.get_sales_order_details',
             args: { sales_order_name: orderName },
@@ -4701,11 +5773,8 @@ renderCalendarGrid(year, month) {
                 if (r.message && r.message.status === 'success') {
                     this.renderOrderDetailsModal(r.message.data);
                 } else {
-                    this.detail_modal.find('.modal-body').html(this.renderEmptyState('Failed to load order details', ''));
+                    this.detail_modal.find('.modal-body').html(this.renderEmptyState('Failed to load full details', ''));
                 }
-            },
-            error: () => {
-                this.detail_modal.find('.modal-body').html(this.renderEmptyState('Error loading order details', ''));
             }
         });
     }
@@ -4721,6 +5790,7 @@ renderOrderDetailsModal(data) {
     const payments = data.payment_entries || [];
     const quotations = data.quotations || [];
     const permits = data.permits || [];
+    const designRequests = data.design_requests || [];
     const opportunities = data.opportunities || [];
     const projectDetails = data.project_details || {};
     const tasks = data.tasks || [];
@@ -4728,13 +5798,16 @@ renderOrderDetailsModal(data) {
     const materialRequests = data.material_requests || [];
     const advanceInvoices = data.advance_invoices || [];
     const financialDetails = data.financial_details || {};
-    
+    const boms = data.boms || [];
+    const purchaseOrders = data.purchase_orders || [];
+
     // Generate insights based on data
     const insights = this.generateOrderInsights(data);
-    
+    const summaryCards = this.generateSmartSummary(data);
+
     const html = `
         <div style="display: flex; flex-direction: column; gap: var(--space-4); max-height: 80vh; overflow-y: auto;">
-            
+
             <!-- Insights Panel -->
             ${insights.length > 0 ? `
                 <div class="insights-panel">
@@ -4752,7 +5825,79 @@ renderOrderDetailsModal(data) {
                     </div>
                 </div>
             ` : ''}
-            
+
+            <!-- Smart Summary Section -->
+            ${summaryCards.length > 0 ? `
+                <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa fa-chart-bar" style="color: white; font-size: 18px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #1e293b;">Quick Summary</h3>
+                            <p style="margin: 0; font-size: 13px; color: #64748b;">Key metrics and status overview</p>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                        ${summaryCards.map(card => `
+                            <div style="background: linear-gradient(135deg, ${card.color}15 0%, ${card.color}05 100%); padding: 16px; border-radius: 10px; border: 1px solid ${card.color}30;">
+                                <!-- Card Header -->
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                                    <div style="width: 36px; height: 36px; background: ${card.color}; border-radius: 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px ${card.color}40;">
+                                        <i class="fa ${card.icon}" style="color: white; font-size: 16px;"></i>
+                                    </div>
+                                    <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: #1e293b;">${card.title}</h4>
+                                </div>
+
+                                <!-- Stats Grid -->
+                                <div style="display: grid; grid-template-columns: repeat(${card.stats.length}, 1fr); gap: 12px; margin-bottom: ${card.amount || card.progress || card.details ? '12px' : '0'};">
+                                    ${card.stats.map(stat => `
+                                        <div style="text-align: center; padding: 8px; background: ${stat.highlight ? '#fef3c7' : 'white'}; border-radius: 6px; ${stat.highlight ? 'border: 1px solid #fbbf24;' : ''}">
+                                            <div style="font-size: 11px; color: #64748b; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">${stat.label}</div>
+                                            <div style="font-size: 18px; font-weight: 700; color: ${stat.color};">${stat.value}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+
+                                <!-- Amount (if present) -->
+                                ${card.amount ? `
+                                    <div style="padding: 10px; background: ${card.amount.color}15; border-left: 3px solid ${card.amount.color}; border-radius: 6px; margin-bottom: 8px;">
+                                        <div style="font-size: 11px; color: #64748b; margin-bottom: 2px;">${card.amount.label}</div>
+                                        <div style="font-size: 16px; font-weight: 700; color: ${card.amount.color};">${card.amount.value}</div>
+                                    </div>
+                                ` : ''}
+
+                                <!-- Progress Bar (if present) -->
+                                ${card.progress ? `
+                                    <div>
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                            <span style="font-size: 11px; color: #64748b;">${card.progress.label}</span>
+                                            <span style="font-size: 11px; font-weight: 600; color: ${card.color};">${card.progress.percent}%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                                            <div style="width: ${card.progress.percent}%; height: 100%; background: linear-gradient(90deg, ${card.color} 0%, ${card.color}dd 100%); transition: width 0.3s;"></div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+
+                                <!-- Details (if present) -->
+                                ${card.details && card.details.length > 0 ? `
+                                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+                                        ${card.details.slice(0, 3).map(detail => `
+                                            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px;">
+                                                <span style="color: #64748b;">${detail.label}</span>
+                                                <span style="font-weight: 600; color: #1e293b;">${detail.value}</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
             <!-- Navigation Tabs -->
             <div class="detail-nav-tabs">
                 <button class="detail-tab active" data-tab="overview">
@@ -4783,9 +5928,29 @@ renderOrderDetailsModal(data) {
                         <i class="fa fa-boxes"></i> Materials (${materialRequests.length})
                     </button>
                 ` : ''}
+                ${order.project && purchaseOrders.length > 0 ? `
+                    <button class="detail-tab" data-tab="purchase-orders">
+                        <i class="fa fa-shopping-cart"></i> Purchase Orders (${purchaseOrders.length})
+                    </button>
+                ` : ''}
+                ${order.project && boms.length > 0 ? `
+                    <button class="detail-tab" data-tab="boms">
+                        <i class="fa fa-cogs"></i> BOMs (${boms.length})
+                    </button>
+                ` : ''}
                 <button class="detail-tab" data-tab="workflow">
                     <i class="fa fa-sitemap"></i> Workflow
                 </button>
+                ${designRequests.length > 0 ? `
+                    <button class="detail-tab" data-tab="design-requests">
+                        <i class="fa fa-paint-brush"></i> Design Request (${designRequests.length})
+                    </button>
+                ` : ''}
+                ${permits.length > 0 ? `
+                    <button class="detail-tab" data-tab="permits">
+                        <i class="fa fa-file-signature"></i> Permit (${permits.length})
+                    </button>
+                ` : ''}
             </div>
 
             <!-- Content Areas -->
@@ -4825,9 +5990,33 @@ renderOrderDetailsModal(data) {
                 </div>
             ` : ''}
 
+            ${order.project && purchaseOrders.length > 0 ? `
+                <div class="detail-content" data-content="purchase-orders" style="display: none;">
+                    ${this.renderPurchaseOrdersSection(purchaseOrders)}
+                </div>
+            ` : ''}
+
+            ${order.project && boms.length > 0 ? `
+                <div class="detail-content" data-content="boms" style="display: none;">
+                    ${this.renderBOMsSection(boms)}
+                </div>
+            ` : ''}
+
             <div class="detail-content" data-content="workflow" style="display: none;">
                 ${this.renderWorkflowSection(opportunities)}
             </div>
+
+            ${designRequests.length > 0 ? `
+                <div class="detail-content" data-content="design-requests" style="display: none;">
+                    ${this.renderDesignRequestsSection(designRequests)}
+                </div>
+            ` : ''}
+
+            ${permits.length > 0 ? `
+                <div class="detail-content" data-content="permits" style="display: none;">
+                    ${this.renderPermitsSection(permits)}
+                </div>
+            ` : ''}
 
         </div>
         
@@ -4955,7 +6144,7 @@ renderOrderDetailsModal(data) {
             }
             
             .detail-label {
-                font-size: 0.7rem;
+                font-size: 0.75rem;
                 color: var(--text-muted);
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
@@ -4972,7 +6161,7 @@ renderOrderDetailsModal(data) {
                 display: inline-block;
                 padding: 2px 8px;
                 border-radius: var(--radius);
-                font-size: 0.7rem;
+                font-size: 0.75rem;
                 font-weight: 600;
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
@@ -4981,7 +6170,7 @@ renderOrderDetailsModal(data) {
             .status-overdue { background: rgba(239, 68, 68, 0.1); color: var(--error); }
             .status-pending { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
             .status-completed { background: rgba(16, 185, 129, 0.1); color: var(--success); }
-            .status-normal { background: rgba(99, 102, 241, 0.1); color: var(--primary); }
+            .status-normal { background: var(--primary-glass); color: var(--primary); }
             
             .open-doc-btn {
                 background: var(--primary);
@@ -4989,7 +6178,7 @@ renderOrderDetailsModal(data) {
                 border: none;
                 border-radius: var(--radius);
                 padding: var(--space-1) var(--space-2);
-                font-size: 0.7rem;
+                font-size: 0.75rem;
                 font-weight: 600;
                 cursor: pointer;
                 transition: var(--transition-fast);
@@ -5150,6 +6339,9 @@ renderOrderDetailsModal(data) {
     
     this.detail_modal.find('.modal-body').html(html);
     this.setupDetailTabHandlers();
+
+    // Setup filtering for all sections
+    this.setupAllSectionFilters(data);
 }
 // Generate insights based on order data
 generateOrderInsights(data) {
@@ -5159,7 +6351,7 @@ generateOrderInsights(data) {
     const tasks = data.tasks || [];
     const paymentSchedule = data.payment_schedule || [];
     const advanceInvoices = data.advance_invoices || [];
-    
+
     // Financial insights
     if (financialDetails.profit_percentage !== undefined) {
         if (financialDetails.profit_percentage < 35) {
@@ -5176,7 +6368,7 @@ generateOrderInsights(data) {
             });
         }
     }
-    
+
     // Delivery insights
     if (order.days_until_delivery < 0) {
         insights.push({
@@ -5191,7 +6383,7 @@ generateOrderInsights(data) {
             message: 'Order is due for delivery today. Ensure all items are ready for dispatch.'
         });
     }
-    
+
     // Payment insights
     const unpaidAdvances = advanceInvoices.filter(inv => !inv.is_paid);
     if (unpaidAdvances.length > 0) {
@@ -5202,7 +6394,7 @@ generateOrderInsights(data) {
             message: `${unpaidAdvances.length} advance invoice(s) pending payment totaling ${frappe.format(totalUnpaid, {fieldtype: 'Currency'})}.`
         });
     }
-    
+
     // Task insights
     const incompleteTasks = tasks.filter(task => task.status !== 'Completed' && task.status !== 'Closed');
     if (incompleteTasks.length > 0 && order.days_until_delivery < 7) {
@@ -5212,7 +6404,7 @@ generateOrderInsights(data) {
             message: `${incompleteTasks.length} task(s) still pending with delivery approaching. Review task priorities.`
         });
     }
-    
+
     // Budget status insight
     if (financialDetails.status === 'Over Budget') {
         insights.push({
@@ -5221,8 +6413,383 @@ generateOrderInsights(data) {
             message: 'Project expenses have exceeded budget limits. Cost control measures recommended.'
         });
     }
-    
+
     return insights;
+}
+
+// NEW: Generate smart summary cards
+generateSmartSummary(data) {
+    const summaryCards = [];
+
+    const items = data.items || [];
+    const invoices = data.invoices || [];
+    const deliveryNotes = data.delivery_notes || [];
+    const payments = data.payment_entries || [];
+    const tasks = data.tasks || [];
+    const materialRequests = data.material_requests || [];
+    const purchaseOrders = data.purchase_orders || [];
+    const boms = data.boms || [];
+
+    // Purchase Orders Summary
+    if (purchaseOrders && purchaseOrders.length > 0) {
+        const poByStatus = purchaseOrders.reduce((acc, po) => {
+            acc[po.status] = (acc[po.status] || 0) + 1;
+            return acc;
+        }, {});
+
+        const pendingPO = (poByStatus['To Receive and Bill'] || 0) + (poByStatus['To Receive'] || 0) + (poByStatus['To Bill'] || 0);
+        const completedPO = poByStatus['Completed'] || 0;
+
+        summaryCards.push({
+            title: 'Purchase Orders',
+            icon: 'fa-shopping-cart',
+            color: '#3b82f6',
+            stats: [
+                { label: 'Total', value: purchaseOrders.length, color: '#64748b' },
+                { label: 'Pending', value: pendingPO, color: '#f59e0b', highlight: pendingPO > 0 },
+                { label: 'Completed', value: completedPO, color: '#10b981' }
+            ],
+            details: Object.entries(poByStatus).map(([status, count]) => ({
+                label: status,
+                value: count
+            }))
+        });
+    }
+
+    // Material Requests Summary
+    if (materialRequests && materialRequests.length > 0) {
+        const mrByStatus = materialRequests.reduce((acc, mr) => {
+            acc[mr.status] = (acc[mr.status] || 0) + 1;
+            return acc;
+        }, {});
+
+        const pendingMR = (mrByStatus['Pending'] || 0) + (mrByStatus['Partially Ordered'] || 0);
+        const completedMR = mrByStatus['Ordered'] || 0;
+
+        summaryCards.push({
+            title: 'Material Requests',
+            icon: 'fa-boxes',
+            color: '#8b5cf6',
+            stats: [
+                { label: 'Total', value: materialRequests.length, color: '#64748b' },
+                { label: 'Pending', value: pendingMR, color: '#f59e0b', highlight: pendingMR > 0 },
+                { label: 'Ordered', value: completedMR, color: '#10b981' }
+            ],
+            details: Object.entries(mrByStatus).map(([status, count]) => ({
+                label: status,
+                value: count
+            }))
+        });
+    }
+
+    // Invoices Summary
+    if (invoices && invoices.length > 0) {
+        const paidInvoices = invoices.filter(inv => inv.status === 'Paid').length;
+        const unpaidInvoices = invoices.filter(inv => inv.status !== 'Paid').length;
+        const totalOutstanding = invoices.reduce((sum, inv) => sum + (parseFloat(inv.outstanding_amount) || 0), 0);
+
+        summaryCards.push({
+            title: 'Sales Invoices',
+            icon: 'fa-file-invoice-dollar',
+            color: '#ec4899',
+            stats: [
+                { label: 'Total', value: invoices.length, color: '#64748b' },
+                { label: 'Paid', value: paidInvoices, color: '#10b981' },
+                { label: 'Unpaid', value: unpaidInvoices, color: '#f59e0b', highlight: unpaidInvoices > 0 }
+            ],
+            amount: totalOutstanding > 0 ? {
+                label: 'Outstanding',
+                value: frappe.format(totalOutstanding, {fieldtype: 'Currency'}),
+                color: '#dc2626'
+            } : null
+        });
+    }
+
+    // Delivery Summary
+    if (items && items.length > 0) {
+        const totalQty = items.reduce((sum, item) => sum + (parseFloat(item.qty) || 0), 0);
+        const deliveredQty = items.reduce((sum, item) => sum + (parseFloat(item.delivered_qty) || 0), 0);
+        const pendingQty = totalQty - deliveredQty;
+        const deliveryPercent = totalQty > 0 ? Math.round((deliveredQty / totalQty) * 100) : 0;
+
+        summaryCards.push({
+            title: 'Delivery Status',
+            icon: 'fa-truck',
+            color: '#10b981',
+            stats: [
+                { label: 'Total Items', value: items.length, color: '#64748b' },
+                { label: 'Delivered', value: `${deliveryPercent}%`, color: '#10b981' },
+                { label: 'Pending Qty', value: Math.round(pendingQty), color: '#f59e0b', highlight: pendingQty > 0 }
+            ],
+            progress: {
+                percent: deliveryPercent,
+                label: `${Math.round(deliveredQty)} of ${Math.round(totalQty)} units delivered`
+            }
+        });
+    }
+
+    // Tasks Summary
+    if (tasks && tasks.length > 0) {
+        const taskByStatus = tasks.reduce((acc, task) => {
+            acc[task.status] = (acc[task.status] || 0) + 1;
+            return acc;
+        }, {});
+
+        const completedTasks = (taskByStatus['Completed'] || 0) + (taskByStatus['Closed'] || 0);
+        const pendingTasks = tasks.length - completedTasks;
+        const overdueTasks = tasks.filter(task => task.exp_end_date && new Date(task.exp_end_date) < new Date() && task.status !== 'Completed').length;
+
+        summaryCards.push({
+            title: 'Project Tasks',
+            icon: 'fa-tasks',
+            color: '#6366f1',
+            stats: [
+                { label: 'Total', value: tasks.length, color: '#64748b' },
+                { label: 'Completed', value: completedTasks, color: '#10b981' },
+                { label: 'Pending', value: pendingTasks, color: '#f59e0b', highlight: pendingTasks > 0 },
+                { label: 'Overdue', value: overdueTasks, color: '#dc2626', highlight: overdueTasks > 0 }
+            ]
+        });
+    }
+
+    // Payment Summary
+    if (payments && payments.length > 0) {
+        const totalPaid = payments.reduce((sum, pay) => sum + (parseFloat(pay.paid_amount) || 0), 0);
+        const paymentModes = payments.reduce((acc, pay) => {
+            acc[pay.mode_of_payment] = (acc[pay.mode_of_payment] || 0) + 1;
+            return acc;
+        }, {});
+
+        summaryCards.push({
+            title: 'Payments Received',
+            icon: 'fa-money',
+            color: '#10b981',
+            stats: [
+                { label: 'Transactions', value: payments.length, color: '#64748b' },
+                { label: 'Total Received', value: frappe.format(totalPaid, {fieldtype: 'Currency'}), color: '#10b981' }
+            ],
+            details: Object.entries(paymentModes).map(([mode, count]) => ({
+                label: mode,
+                value: count
+            }))
+        });
+    }
+
+    // BOM Summary
+    if (boms && boms.length > 0) {
+        summaryCards.push({
+            title: 'Bill of Materials',
+            icon: 'fa-list-alt',
+            color: '#f59e0b',
+            stats: [
+                { label: 'Total BOMs', value: boms.length, color: '#64748b' },
+                { label: 'Items Planned', value: boms.reduce((sum, bom) => sum + (bom.items_count || 0), 0), color: '#f59e0b' }
+            ]
+        });
+    }
+
+    return summaryCards;
+}
+
+// Setup filtering for all sections in the detail modal
+setupAllSectionFilters(data) {
+    const self = this;
+
+    // Purchase Orders filtering
+    if (data.purchase_orders && data.purchase_orders.length > 0) {
+        this.setupSectionFiltering('purchase-orders', data.purchase_orders, {
+            searchFields: ['name', 'supplier', 'supplier_name', 'status'],
+            renderFn: (filteredData) => self.renderPurchaseOrderItems(filteredData)
+        });
+    }
+
+    // Material Requests filtering
+    if (data.material_requests && data.material_requests.length > 0) {
+        this.setupSectionFiltering('material-requests', data.material_requests, {
+            searchFields: ['name', 'status', 'material_request_type'],
+            renderFn: (filteredData) => self.renderMaterialRequestItems(filteredData)
+        });
+    }
+
+    // Sales Invoices filtering
+    if (data.invoices && data.invoices.length > 0) {
+        this.setupSectionFiltering('sales-invoices', data.invoices, {
+            searchFields: ['name', 'status'],
+            renderFn: (filteredData) => self.renderSalesInvoiceItems(filteredData)
+        });
+    }
+
+    // Delivery Notes filtering
+    if (data.delivery_notes && data.delivery_notes.length > 0) {
+        this.setupSectionFiltering('delivery-notes', data.delivery_notes, {
+            searchFields: ['name', 'status'],
+            renderFn: (filteredData) => self.renderDeliveryNoteItems(filteredData)
+        });
+    }
+
+    // Payment Entries filtering
+    if (data.payment_entries && data.payment_entries.length > 0) {
+        this.setupSectionFiltering('payment-entries', data.payment_entries, {
+            searchFields: ['name', 'mode_of_payment', 'status', 'reference_no'],
+            renderFn: (filteredData) => self.renderPaymentEntryItems(filteredData)
+        });
+    }
+
+    // Tasks filtering
+    if (data.tasks && data.tasks.length > 0) {
+        this.setupSectionFiltering('tasks', data.tasks, {
+            searchFields: ['name', 'subject', 'status', 'description'],
+            renderFn: (filteredData) => self.renderTaskItems(filteredData)
+        });
+    }
+}
+
+// Generate filter bar for sections
+generateSectionFilterBar(sectionId, filterOptions = {}) {
+    const {
+        showSearch = true,
+        showStatusFilter = false,
+        statusOptions = [],
+        placeholder = 'Search...',
+        additionalFilters = []
+    } = filterOptions;
+
+    return `
+        <div class="section-filter-bar" style="background: #f8fafc; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                ${showSearch ? `
+                    <div style="flex: 1; min-width: 200px; position: relative;">
+                        <i class="fa fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px;"></i>
+                        <input
+                            type="text"
+                            class="section-search-input"
+                            data-section="${sectionId}"
+                            placeholder="${placeholder}"
+                            style="width: 100%; padding: 8px 12px 8px 36px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; outline: none; transition: all 0.2s;"
+                        />
+                    </div>
+                ` : ''}
+
+                ${showStatusFilter && statusOptions.length > 0 ? `
+                    <select
+                        class="section-status-filter"
+                        data-section="${sectionId}"
+                        style="padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: white; cursor: pointer; outline: none;"
+                    >
+                        <option value="">All Status</option>
+                        ${statusOptions.map(opt => `<option value="${opt.value}">${opt.label} ${opt.count ? `(${opt.count})` : ''}</option>`).join('')}
+                    </select>
+                ` : ''}
+
+                ${additionalFilters.map(filter => `
+                    <select
+                        class="section-additional-filter"
+                        data-section="${sectionId}"
+                        data-filter="${filter.key}"
+                        style="padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: white; cursor: pointer; outline: none;"
+                    >
+                        <option value="">${filter.label}</option>
+                        ${filter.options.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('')}
+                    </select>
+                `).join('')}
+
+                <div class="filter-results-count" data-section="${sectionId}" style="padding: 6px 12px; background: #3b82f6; color: white; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap;">
+                    <i class="fa fa-filter" style="margin-right: 4px;"></i>
+                    <span class="count">0</span> items
+                </div>
+
+                <button
+                    class="section-reset-filter"
+                    data-section="${sectionId}"
+                    style="padding: 8px 16px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: white; cursor: pointer; transition: all 0.2s; display: none;"
+                >
+                    <i class="fa fa-times"></i> Reset
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Setup filtering for a section
+setupSectionFiltering(sectionId, data, filterConfig) {
+    const self = this;
+    const containerId = `${sectionId}-container`;
+    let filteredData = [...data];
+    let filters = {
+        search: '',
+        status: '',
+        additional: {}
+    };
+
+    const applyFilters = () => {
+        filteredData = data.filter(item => {
+            // Search filter
+            if (filters.search && filterConfig.searchFields) {
+                const matchesSearch = filterConfig.searchFields.some(field => {
+                    const value = item[field];
+                    return value && String(value).toLowerCase().includes(filters.search);
+                });
+                if (!matchesSearch) return false;
+            }
+
+            // Status filter
+            if (filters.status && item.status !== filters.status) {
+                return false;
+            }
+
+            // Additional filters
+            for (let key in filters.additional) {
+                if (filters.additional[key] && item[key] !== filters.additional[key]) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        // Update count
+        $(`.filter-results-count[data-section="${sectionId}"] .count`).text(filteredData.length);
+
+        // Show/hide reset button
+        const hasFilters = filters.search || filters.status || Object.values(filters.additional).some(v => v);
+        $(`.section-reset-filter[data-section="${sectionId}"]`).toggle(hasFilters);
+
+        // Re-render
+        if (filterConfig.renderFn) {
+            $(`#${containerId}`).html(filterConfig.renderFn(filteredData));
+        }
+    };
+
+    // Search input handler
+    $(document).on('input', `.section-search-input[data-section="${sectionId}"]`, function() {
+        filters.search = $(this).val().toLowerCase().trim();
+        applyFilters();
+    });
+
+    // Status filter handler
+    $(document).on('change', `.section-status-filter[data-section="${sectionId}"]`, function() {
+        filters.status = $(this).val();
+        applyFilters();
+    });
+
+    // Additional filters handler
+    $(document).on('change', `.section-additional-filter[data-section="${sectionId}"]`, function() {
+        const filterKey = $(this).data('filter');
+        filters.additional[filterKey] = $(this).val();
+        applyFilters();
+    });
+
+    // Reset button handler
+    $(document).on('click', `.section-reset-filter[data-section="${sectionId}"]`, function() {
+        filters = { search: '', status: '', additional: {} };
+        $(`.section-search-input[data-section="${sectionId}"]`).val('');
+        $(`.section-status-filter[data-section="${sectionId}"]`).val('');
+        $(`.section-additional-filter[data-section="${sectionId}"]`).val('');
+        applyFilters();
+    });
+
+    // Initial count
+    $(`.filter-results-count[data-section="${sectionId}"] .count`).text(data.length);
 }
 
 // Enhanced Overview Section
@@ -5401,14 +6968,67 @@ renderProjectSection(projectDetails, tasks, financialDetails) {
                 </div>
             </div>
             
-            <!-- Project P&L Statement -->
+            
+            <!-- Project Tasks -->
+            ${this.renderTasksSection(tasks)}
+        </div>
+    `;
+}
+
+// Enhanced Financials Section
+renderEnhancedFinancialsSection(order, invoices, payments, advanceInvoices, financialDetails) {
+    const totalInvoiced = invoices.reduce((sum, inv) => sum + (inv.grand_total || 0), 0);
+    const totalOutstanding = invoices.reduce((sum, inv) => sum + (inv.outstanding_amount || 0), 0);
+    const totalPaid = payments.reduce((sum, payment) => sum + (payment.paid_amount || 0), 0);
+    const totalAdvance = advanceInvoices.reduce((sum, inv) => sum + (inv.grand_total || 0), 0);
+    const totalAdvancePaid = advanceInvoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
+    const plStatement = financialDetails.profit_loss_statement || {};
+
+    return `
+        <div style="display: grid; gap: var(--space-6);">
+
+            <!-- Financial Summary -->
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-chart-bar" style="color: var(--success);"></i>
+                    Financial Summary
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4);">
+                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: var(--space-1);">
+                            ${frappe.format(order.grand_total || 0, {fieldtype: 'Currency'})}
+                        </div>
+                        <div class="detail-label">Order Total</div>
+                    </div>
+                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--success); margin-bottom: var(--space-1);">
+                            ${frappe.format(totalInvoiced, {fieldtype: 'Currency'})}
+                        </div>
+                        <div class="detail-label">Total Invoiced</div>
+                    </div>
+                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--info); margin-bottom: var(--space-1);">
+                            ${frappe.format(totalPaid, {fieldtype: 'Currency'})}
+                        </div>
+                        <div class="detail-label">Total Paid</div>
+                    </div>
+                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning); margin-bottom: var(--space-1);">
+                            ${frappe.format(totalOutstanding, {fieldtype: 'Currency'})}
+                        </div>
+                        <div class="detail-label">Outstanding</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profit & Loss Statement -->
             ${plStatement.summary ? `
                 <div class="detail-section">
                     <div class="detail-section-title">
-                        <i class="fa fa-chart-bar" style="color: var(--success);"></i>
-                        Project Profit & Loss Statement
+                        <i class="fa fa-chart-line" style="color: var(--success);"></i>
+                        Profit & Loss Statement
                     </div>
-                    
+
                     <!-- Summary Cards -->
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6);">
                         <div class="profit-card">
@@ -5437,7 +7057,7 @@ renderProjectSection(projectDetails, tasks, financialDetails) {
                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: var(--space-1);">Target: 40%</div>
                         </div>
                     </div>
-                    
+
                     <!-- Income Accounts -->
                     ${plStatement.income_accounts && plStatement.income_accounts.length > 0 ? `
                         <div style="margin-bottom: var(--space-6);">
@@ -5462,7 +7082,7 @@ renderProjectSection(projectDetails, tasks, financialDetails) {
                             </div>
                         </div>
                     ` : ''}
-                    
+
                     <!-- Expense Accounts -->
                     ${plStatement.expense_accounts && plStatement.expense_accounts.length > 0 ? `
                         <div>
@@ -5497,97 +7117,6 @@ renderProjectSection(projectDetails, tasks, financialDetails) {
                     ` : ''}
                 </div>
             ` : ''}
-            
-            <!-- Project Tasks -->
-            ${tasks.length > 0 ? `
-                <div class="detail-section">
-                    <div class="detail-section-title">
-                        <i class="fa fa-tasks" style="color: var(--info);"></i>
-                        Project Tasks (${tasks.length})
-                    </div>
-                    <div style="display: grid; gap: var(--space-4);">
-                        ${tasks.map(task => `
-                            <div class="task-card">
-                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-3);">
-                                    <div>
-                                        <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
-                                            ${task.subject}
-                                        </div>
-                                        <div class="status-badge status-${task.status === 'Completed' ? 'completed' : task.status === 'Open' ? 'pending' : 'normal'}">
-                                            ${task.status}
-                                        </div>
-                                    </div>
-                                    <button class="open-doc-btn" onclick="window.open('/app/task/${task.name}', '_blank')">
-                                        <i class="fa fa-external-link"></i>
-                                    </button>
-                                </div>
-                                ${task.description ? `
-                                    <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-3);">
-                                        ${task.description}
-                                    </div>
-                                ` : ''}
-                                <div class="progress-item">
-                                    <div class="progress-header">
-                                        <span class="progress-label">Progress</span>
-                                        <span class="progress-value">${task.progress || 0}%</span>
-                                    </div>
-                                    <div class="progress-bar-modern" style="height: 6px;">
-                                        <div class="progress-fill-modern" style="width: ${task.progress || 0}%"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            ` : ''}
-        </div>
-    `;
-}
-
-// Enhanced Financials Section
-renderEnhancedFinancialsSection(order, invoices, payments, advanceInvoices, financialDetails) {
-    const totalInvoiced = invoices.reduce((sum, inv) => sum + (inv.grand_total || 0), 0);
-    const totalOutstanding = invoices.reduce((sum, inv) => sum + (inv.outstanding_amount || 0), 0);
-    const totalPaid = payments.reduce((sum, payment) => sum + (payment.paid_amount || 0), 0);
-    const totalAdvance = advanceInvoices.reduce((sum, inv) => sum + (inv.grand_total || 0), 0);
-    const totalAdvancePaid = advanceInvoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
-
-    return `
-        <div style="display: grid; gap: var(--space-6);">
-            
-            <!-- Financial Summary -->
-            <div class="detail-section">
-                <div class="detail-section-title">
-                    <i class="fa fa-chart-bar" style="color: var(--success);"></i>
-                    Financial Summary
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4);">
-                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: var(--space-1);">
-                            ${frappe.format(order.grand_total || 0, {fieldtype: 'Currency'})}
-                        </div>
-                        <div class="detail-label">Order Total</div>
-                    </div>
-                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--success); margin-bottom: var(--space-1);">
-                            ${frappe.format(totalInvoiced, {fieldtype: 'Currency'})}
-                        </div>
-                        <div class="detail-label">Total Invoiced</div>
-                    </div>
-                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--info); margin-bottom: var(--space-1);">
-                            ${frappe.format(totalPaid, {fieldtype: 'Currency'})}
-                        </div>
-                        <div class="detail-label">Total Paid</div>
-                    </div>
-                    <div style="text-align: center; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border);">
-                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning); margin-bottom: var(--space-1);">
-                            ${frappe.format(totalOutstanding, {fieldtype: 'Currency'})}
-                        </div>
-                        <div class="detail-label">Outstanding</div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Advance Invoices -->
             ${advanceInvoices.length > 0 ? `
@@ -5686,6 +7215,24 @@ renderEnhancedFinancialsSection(order, invoices, payments, advanceInvoices, fina
                         </div>
                         <div class="financial-metric">
                             <div>
+                                <div style="font-weight: 600;">Timesheet Cost</div>
+                                <div style="font-size: 0.875rem; color: var(--text-muted);">Labor and resource costs</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--warning);">
+                                ${frappe.format(financialDetails.timesheet_amount || 0, {fieldtype: 'Currency'})}
+                            </div>
+                        </div>
+                        <div class="financial-metric">
+                            <div>
+                                <div style="font-weight: 600;">Job Card Cost</div>
+                                <div style="font-size: 0.875rem; color: var(--text-muted);">Manufacturing costs</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--warning);">
+                                ${frappe.format(financialDetails.jc_expense || 0, {fieldtype: 'Currency'})}
+                            </div>
+                        </div>
+                        <div class="financial-metric">
+                            <div>
                                 <div style="font-weight: 600;">Expense Limit (60% Target)</div>
                                 <div style="font-size: 0.875rem; color: var(--text-muted);">Maximum recommended expenses</div>
                             </div>
@@ -5710,53 +7257,7 @@ renderEnhancedFinancialsSection(order, invoices, payments, advanceInvoices, fina
                 </div>
             ` : ''}
 
-            <!-- Payment Entries -->
-            <div class="detail-section">
-                <div class="detail-section-title">
-                    <i class="fa fa-credit-card" style="color: var(--info);"></i>
-                    Payment Entries (${payments.length})
-                </div>
-                ${payments.length ? `
-                    <div style="display: grid; gap: var(--space-4);">
-                        ${payments.map(payment => `
-                            <div class="document-card">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
-                                            ${payment.name}
-                                        </div>
-                                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
-                                            ${frappe.datetime.str_to_user(payment.posting_date)} • ${payment.mode_of_payment || 'N/A'}
-                                            ${payment.reference_no ? ` • Ref: ${payment.reference_no}` : ''}
-                                        </div>
-                                        <div style="display: flex; gap: var(--space-4);">
-                                            <div>
-                                                <span class="detail-label">Amount: </span>
-                                                <strong style="color: var(--success);">${frappe.format(payment.paid_amount, {fieldtype: 'Currency'})}</strong>
-                                            </div>
-                                            <div>
-                                                <span class="detail-label">Status: </span>
-                                                <span class="status-badge status-${payment.status === 'Submitted' ? 'completed' : 'pending'}">
-                                                    ${payment.status}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button class="open-doc-btn" onclick="window.open('/app/payment-entry/${payment.name}', '_blank')">
-                                        <i class="fa fa-external-link"></i>
-                                        Open
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : `
-                    <div style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
-                        <i class="fa fa-credit-card" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
-                        <div>No payment entries recorded</div>
-                    </div>
-                `}
-            </div>
+            ${this.renderPaymentEntriesSection(payments)}
 
         </div>
     `;
@@ -5829,30 +7330,517 @@ renderPaymentScheduleSection(paymentSchedule, order) {
 
 // Material Requests Section
 renderMaterialRequestsSection(materialRequests) {
+    // Get unique statuses for filter
+    const uniqueStatuses = [...new Set(materialRequests.map(mr => mr.status))].sort();
+
     return `
         <div class="detail-section">
             <div class="detail-section-title">
                 <i class="fa fa-boxes" style="color: var(--warning);"></i>
                 Material Requests (${materialRequests.length})
             </div>
-            <div style="display: grid; gap: var(--space-4);">
-                ${materialRequests.map(mr => `
-                    <div class="document-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
+
+            <!-- Filter Bar -->
+            ${this.generateSectionFilterBar('material-requests', {
+                showSearch: true,
+                showStatusFilter: true,
+                statusOptions: uniqueStatuses.map(status => ({
+                    value: status,
+                    label: status
+                })),
+                placeholder: 'Search by MR number, type...'
+            })}
+
+            <div id="material-requests-container" style="display: grid; gap: var(--space-4);">
+                ${this.renderMaterialRequestItems(materialRequests)}
+            </div>
+        </div>
+    `;
+}
+
+// Render individual Material Request items (separated for filtering)
+renderMaterialRequestItems(materialRequests) {
+    return materialRequests.map(mr => `
+        <div class="document-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex: 1;">
+                    <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                        ${mr.name}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                        ${frappe.datetime.str_to_user(mr.transaction_date)}
+                    </div>
+                    <div style="display: flex; gap: var(--space-2); align-items: center;">
+                        <span class="status-badge status-${mr.status === 'Submitted' ? 'completed' : mr.status === 'Ordered' ? 'pending' : 'normal'}">
+                            ${mr.status}
+                        </span>
+                        <span style="background: var(--surface-alt); padding: var(--space-1) var(--space-2); border-radius: var(--radius); font-size: 0.75rem; color: var(--text-secondary);">
+                            ${mr.material_request_type}
+                        </span>
+                    </div>
+                </div>
+                <button class="open-doc-btn" onclick="window.open('/app/material-request/${mr.name}', '_blank')">
+                    <i class="fa fa-external-link"></i>
+                    Open
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Render Sales Invoices Section
+renderSalesInvoicesSection(invoices) {
+    if (!invoices || invoices.length === 0) {
+        return `
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-file-text" style="color: var(--success);"></i>
+                    Sales Invoices (0)
+                </div>
+                <div style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
+                    <i class="fa fa-file-text" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
+                    <div>No invoices created yet</div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Get unique statuses for filter
+    const uniqueStatuses = [...new Set(invoices.map(inv => inv.status))].sort();
+
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-file-text" style="color: var(--success);"></i>
+                Sales Invoices (${invoices.length})
+            </div>
+
+            <!-- Filter Bar -->
+            ${this.generateSectionFilterBar('sales-invoices', {
+                showSearch: true,
+                showStatusFilter: true,
+                statusOptions: uniqueStatuses.map(status => ({
+                    value: status,
+                    label: status
+                })),
+                placeholder: 'Search by invoice number, status...'
+            })}
+
+            <div id="sales-invoices-container" style="display: grid; gap: var(--space-4);">
+                ${this.renderSalesInvoiceItems(invoices)}
+            </div>
+        </div>
+    `;
+}
+
+// Render individual Sales Invoice items (separated for filtering)
+renderSalesInvoiceItems(invoices) {
+    return invoices.map(invoice => `
+        <div class="document-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                        ${invoice.name}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                        ${frappe.datetime.str_to_user(invoice.posting_date)} • ${invoice.status}
+                    </div>
+                    <div style="display: flex; gap: var(--space-4);">
+                        <div>
+                            <span class="detail-label">Total: </span>
+                            <strong>${frappe.format(invoice.grand_total, {fieldtype: 'Currency'})}</strong>
+                        </div>
+                        <div>
+                            <span class="detail-label">Outstanding: </span>
+                            <strong style="color: var(--warning);">${frappe.format(invoice.outstanding_amount, {fieldtype: 'Currency'})}</strong>
+                        </div>
+                    </div>
+                </div>
+                <button class="open-doc-btn" onclick="window.open('/app/sales-invoice/${invoice.name}', '_blank')">
+                    <i class="fa fa-external-link"></i>
+                    Open
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Render Delivery Notes Section
+renderDeliveryNotesSection(deliveryNotes) {
+    if (!deliveryNotes || deliveryNotes.length === 0) {
+        return `
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-truck" style="color: var(--info);"></i>
+                    Delivery Notes (0)
+                </div>
+                <div style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
+                    <i class="fa fa-truck" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
+                    <div>No delivery notes created yet</div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Get unique statuses for filter
+    const uniqueStatuses = [...new Set(deliveryNotes.map(dn => dn.status))].sort();
+
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-truck" style="color: var(--info);"></i>
+                Delivery Notes (${deliveryNotes.length})
+            </div>
+
+            <!-- Filter Bar -->
+            ${this.generateSectionFilterBar('delivery-notes', {
+                showSearch: true,
+                showStatusFilter: true,
+                statusOptions: uniqueStatuses.map(status => ({
+                    value: status,
+                    label: status
+                })),
+                placeholder: 'Search by delivery note number, status...'
+            })}
+
+            <div id="delivery-notes-container" style="display: grid; gap: var(--space-4);">
+                ${this.renderDeliveryNoteItems(deliveryNotes)}
+            </div>
+        </div>
+    `;
+}
+
+// Render individual Delivery Note items (separated for filtering)
+renderDeliveryNoteItems(deliveryNotes) {
+    return deliveryNotes.map(dn => `
+        <div class="document-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                        ${dn.name}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                        ${frappe.datetime.str_to_user(dn.posting_date)} • ${dn.status}
+                    </div>
+                    <div>
+                        <span class="detail-label">Total: </span>
+                        <strong>${frappe.format(dn.grand_total, {fieldtype: 'Currency'})}</strong>
+                    </div>
+                </div>
+                <button class="open-doc-btn" onclick="window.open('/app/delivery-note/${dn.name}', '_blank')">
+                    <i class="fa fa-external-link"></i>
+                    Open
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Render Payment Entries Section
+renderPaymentEntriesSection(payments) {
+    if (!payments || payments.length === 0) {
+        return `
+            <div class="detail-section">
+                <div class="detail-section-title">
+                    <i class="fa fa-credit-card" style="color: var(--info);"></i>
+                    Payment Entries (0)
+                </div>
+                <div style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
+                    <i class="fa fa-credit-card" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
+                    <div>No payment entries recorded</div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Get unique payment modes and statuses for filter
+    const uniqueModes = [...new Set(payments.map(p => p.mode_of_payment).filter(Boolean))].sort();
+    const uniqueStatuses = [...new Set(payments.map(p => p.status))].sort();
+
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-credit-card" style="color: var(--info);"></i>
+                Payment Entries (${payments.length})
+            </div>
+
+            <!-- Filter Bar -->
+            ${this.generateSectionFilterBar('payment-entries', {
+                showSearch: true,
+                showStatusFilter: true,
+                statusOptions: uniqueStatuses.map(status => ({
+                    value: status,
+                    label: status
+                })),
+                placeholder: 'Search by payment number, mode, reference...',
+                additionalFilters: [{
+                    type: 'select',
+                    id: 'mode-filter',
+                    label: 'Payment Mode',
+                    options: [
+                        { value: '', label: 'All Modes' },
+                        ...uniqueModes.map(mode => ({ value: mode, label: mode }))
+                    ]
+                }]
+            })}
+
+            <div id="payment-entries-container" style="display: grid; gap: var(--space-4);">
+                ${this.renderPaymentEntryItems(payments)}
+            </div>
+        </div>
+    `;
+}
+
+// Render individual Payment Entry items (separated for filtering)
+renderPaymentEntryItems(payments) {
+    return payments.map(payment => `
+        <div class="document-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                        ${payment.name}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                        ${frappe.datetime.str_to_user(payment.posting_date)} • ${payment.mode_of_payment || 'N/A'}
+                        ${payment.reference_no ? ` • Ref: ${payment.reference_no}` : ''}
+                    </div>
+                    <div style="display: flex; gap: var(--space-4);">
+                        <div>
+                            <span class="detail-label">Amount: </span>
+                            <strong style="color: var(--success);">${frappe.format(payment.paid_amount, {fieldtype: 'Currency'})}</strong>
+                        </div>
+                        <div>
+                            <span class="detail-label">Status: </span>
+                            <span class="status-badge status-${payment.status === 'Submitted' ? 'completed' : 'pending'}">
+                                ${payment.status}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <button class="open-doc-btn" onclick="window.open('/app/payment-entry/${payment.name}', '_blank')">
+                    <i class="fa fa-external-link"></i>
+                    Open
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Render Tasks Section
+renderTasksSection(tasks) {
+    if (!tasks || tasks.length === 0) {
+        return '';
+    }
+
+    // Get unique statuses for filter
+    const uniqueStatuses = [...new Set(tasks.map(t => t.status))].sort();
+
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-tasks" style="color: var(--info);"></i>
+                Project Tasks (${tasks.length})
+            </div>
+
+            <!-- Filter Bar -->
+            ${this.generateSectionFilterBar('tasks', {
+                showSearch: true,
+                showStatusFilter: true,
+                statusOptions: uniqueStatuses.map(status => ({
+                    value: status,
+                    label: status
+                })),
+                placeholder: 'Search by task name, description...'
+            })}
+
+            <div id="tasks-container" style="display: grid; gap: var(--space-4);">
+                ${this.renderTaskItems(tasks)}
+            </div>
+        </div>
+    `;
+}
+
+// Render individual Task items (separated for filtering)
+renderTaskItems(tasks) {
+    return tasks.map(task => `
+        <div class="task-card">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-3);">
+                <div>
+                    <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                        ${task.subject}
+                    </div>
+                    <div class="status-badge status-${task.status === 'Completed' ? 'completed' : task.status === 'Open' ? 'pending' : 'normal'}">
+                        ${task.status}
+                    </div>
+                </div>
+                <button class="open-doc-btn" onclick="window.open('/app/task/${task.name}', '_blank')">
+                    <i class="fa fa-external-link"></i>
+                </button>
+            </div>
+            ${task.description ? `
+                <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-3);">
+                    ${task.description}
+                </div>
+            ` : ''}
+            <div class="progress-item">
+                <div class="progress-header">
+                    <span class="progress-label">Progress</span>
+                    <span class="progress-value">${task.progress || 0}%</span>
+                </div>
+                <div class="progress-bar-modern" style="height: 6px;">
+                    <div class="progress-fill-modern" style="width: ${task.progress || 0}%"></div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Render Purchase Orders Section
+renderPurchaseOrdersSection(purchaseOrders) {
+    const totalPOAmount = purchaseOrders.reduce((sum, po) => sum + (po.grand_total || 0), 0);
+
+    // Get unique statuses for filter
+    const uniqueStatuses = [...new Set(purchaseOrders.map(po => po.status))].sort();
+
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-shopping-cart" style="color: var(--secondary);"></i>
+                Purchase Orders (${purchaseOrders.length})
+            </div>
+
+            <!-- Summary Card -->
+            <div style="background: var(--surface-alt); padding: var(--space-4); border-radius: var(--radius-lg); margin-bottom: var(--space-4);">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-4);">
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">
+                            ${purchaseOrders.length}
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Total POs</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);">
+                            ${frappe.format(totalPOAmount, {fieldtype: 'Currency'})}
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Total Amount</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Bar -->
+            ${this.generateSectionFilterBar('purchase-orders', {
+                showSearch: true,
+                showStatusFilter: true,
+                statusOptions: uniqueStatuses.map(status => ({
+                    value: status,
+                    label: status
+                })),
+                placeholder: 'Search by PO number, supplier...'
+            })}
+
+            <!-- Purchase Orders List -->
+            <div id="purchase-orders-container" style="display: grid; gap: var(--space-4);">
+                ${this.renderPurchaseOrderItems(purchaseOrders)}
+            </div>
+        </div>
+    `;
+}
+
+// Render individual Purchase Order items (separated for filtering)
+renderPurchaseOrderItems(purchaseOrders) {
+    return purchaseOrders.map(po => `
+        <div class="document-card">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
+                        ${po.name}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                        Supplier: ${po.supplier_name || po.supplier}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
+                        Date: ${frappe.datetime.str_to_user(po.transaction_date)} • Schedule: ${frappe.datetime.str_to_user(po.schedule_date)}
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-2);">
+                        <div>
+                            <span class="detail-label">Total: </span>
+                            <strong>${frappe.format(po.grand_total, {fieldtype: 'Currency'})}</strong>
+                        </div>
+                        <div>
+                            <span class="detail-label">Received: </span>
+                            <strong>${po.per_received}%</strong>
+                        </div>
+                        <div>
+                            <span class="detail-label">Billed: </span>
+                            <strong>${po.per_billed}%</strong>
+                        </div>
+                        ${po.advance_paid > 0 ? `
                             <div>
+                                <span class="detail-label">Advance: </span>
+                                <strong>${frappe.format(po.advance_paid, {fieldtype: 'Currency'})}</strong>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div>
+                        <span class="status-badge status-${
+                            po.status === 'Completed' ? 'completed' :
+                            po.status === 'To Receive and Bill' || po.status === 'To Bill' || po.status === 'To Receive' ? 'pending' :
+                            'normal'
+                        }">
+                            ${po.status}
+                        </span>
+                    </div>
+                </div>
+                <button class="open-doc-btn" onclick="window.open('/app/purchase-order/${po.name}', '_blank')">
+                    <i class="fa fa-external-link"></i>
+                    Open
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Render BOMs Section
+renderBOMsSection(boms) {
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-cogs" style="color: var(--info);"></i>
+                Bills of Materials (${boms.length})
+            </div>
+            <div style="display: grid; gap: var(--space-4);">
+                ${boms.map(bom => `
+                    <div class="document-card">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
                                 <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
-                                    ${mr.name}
+                                    ${bom.name}
                                 </div>
                                 <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
-                                    ${frappe.datetime.str_to_user(mr.transaction_date)} • ${mr.material_request_type}
+                                    Item: ${bom.item_name || bom.item}
                                 </div>
-                                <div>
-                                    <span class="status-badge status-${mr.status === 'Submitted' ? 'completed' : mr.status === 'Ordered' ? 'pending' : 'normal'}">
-                                        ${mr.status}
+                                <div style="display: flex; gap: var(--space-4); margin-bottom: var(--space-2);">
+                                    <div>
+                                        <span class="detail-label">Quantity: </span>
+                                        <strong>${bom.quantity}</strong>
+                                    </div>
+                                    <div>
+                                        <span class="detail-label">Created: </span>
+                                        <strong>${frappe.datetime.str_to_user(bom.creation)}</strong>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: var(--space-2); align-items: center;">
+                                    <span class="status-badge status-${bom.is_active ? 'completed' : 'normal'}">
+                                        ${bom.is_active ? 'Active' : 'Inactive'}
                                     </span>
+                                    ${bom.is_default ? `
+                                        <span style="background: var(--primary-glass); color: var(--primary); padding: var(--space-1) var(--space-2); border-radius: var(--radius); font-size: 0.75rem; font-weight: 600;">
+                                            Default
+                                        </span>
+                                    ` : ''}
                                 </div>
                             </div>
-                            <button class="open-doc-btn" onclick="window.open('/app/material-request/${mr.name}', '_blank')">
+                            <button class="open-doc-btn" onclick="window.open('/app/bom/${bom.name}', '_blank')">
                                 <i class="fa fa-external-link"></i>
                                 Open
                             </button>
@@ -6174,89 +8162,9 @@ renderDocumentsSection(invoices, deliveryNotes, quotations, permits) {
     return `
         <div style="display: grid; gap: var(--space-6);">
             
-            <!-- Invoices Section -->
-            <div class="detail-section">
-                <div class="detail-section-title">
-                    <i class="fa fa-file-text" style="color: var(--success);"></i>
-                    Sales Invoices (${invoices.length})
-                </div>
-                ${invoices.length ? `
-                    <div style="display: grid; gap: var(--space-4);">
-                        ${invoices.map(invoice => `
-                            <div class="document-card">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
-                                            ${invoice.name}
-                                        </div>
-                                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
-                                            ${frappe.datetime.str_to_user(invoice.posting_date)} • ${invoice.status}
-                                        </div>
-                                        <div style="display: flex; gap: var(--space-4);">
-                                            <div>
-                                                <span class="detail-label">Total: </span>
-                                                <strong>${frappe.format(invoice.grand_total, {fieldtype: 'Currency'})}</strong>
-                                            </div>
-                                            <div>
-                                                <span class="detail-label">Outstanding: </span>
-                                                <strong style="color: var(--warning);">${frappe.format(invoice.outstanding_amount, {fieldtype: 'Currency'})}</strong>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button class="open-doc-btn" onclick="window.open('/app/sales-invoice/${invoice.name}', '_blank')">
-                                        <i class="fa fa-external-link"></i>
-                                        Open
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : `
-                    <div style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
-                        <i class="fa fa-file-text" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
-                        <div>No invoices created yet</div>
-                    </div>
-                `}
-            </div>
+            ${this.renderSalesInvoicesSection(invoices)}
 
-            <!-- Delivery Notes Section -->
-            <div class="detail-section">
-                <div class="detail-section-title">
-                    <i class="fa fa-truck" style="color: var(--info);"></i>
-                    Delivery Notes (${deliveryNotes.length})
-                </div>
-                ${deliveryNotes.length ? `
-                    <div style="display: grid; gap: var(--space-4);">
-                        ${deliveryNotes.map(dn => `
-                            <div class="document-card">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
-                                            ${dn.name}
-                                        </div>
-                                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
-                                            ${frappe.datetime.str_to_user(dn.posting_date)} • ${dn.status}
-                                        </div>
-                                        <div>
-                                            <span class="detail-label">Total: </span>
-                                            <strong>${frappe.format(dn.grand_total, {fieldtype: 'Currency'})}</strong>
-                                        </div>
-                                    </div>
-                                    <button class="open-doc-btn" onclick="window.open('/app/delivery-note/${dn.name}', '_blank')">
-                                        <i class="fa fa-external-link"></i>
-                                        Open
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : `
-                    <div style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
-                        <i class="fa fa-truck" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
-                        <div>No delivery notes created yet</div>
-                    </div>
-                `}
-            </div>
+            ${this.renderDeliveryNotesSection(deliveryNotes)}
 
             <!-- Quotations Section -->
             <div class="detail-section">
@@ -6382,53 +8290,7 @@ renderFinancialsSection(order, invoices, payments) {
                 </div>
             </div>
 
-            <!-- Payment Entries -->
-            <div class="detail-section">
-                <div class="detail-section-title">
-                    <i class="fa fa-credit-card" style="color: var(--info);"></i>
-                    Payment Entries (${payments.length})
-                </div>
-                ${payments.length ? `
-                    <div style="display: grid; gap: var(--space-4);">
-                        ${payments.map(payment => `
-                            <div class="document-card">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
-                                            ${payment.name}
-                                        </div>
-                                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-2);">
-                                            ${frappe.datetime.str_to_user(payment.posting_date)} • ${payment.mode_of_payment || 'N/A'}
-                                            ${payment.reference_no ? ` • Ref: ${payment.reference_no}` : ''}
-                                        </div>
-                                        <div style="display: flex; gap: var(--space-4);">
-                                            <div>
-                                                <span class="detail-label">Amount: </span>
-                                                <strong style="color: var(--success);">${frappe.format(payment.paid_amount, {fieldtype: 'Currency'})}</strong>
-                                            </div>
-                                            <div>
-                                                <span class="detail-label">Status: </span>
-                                                <span class="status-badge status-${payment.status === 'Submitted' ? 'completed' : 'pending'}">
-                                                    ${payment.status}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button class="open-doc-btn" onclick="window.open('/app/payment-entry/${payment.name}', '_blank')">
-                                        <i class="fa fa-external-link"></i>
-                                        Open
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : `
-                    <div style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
-                        <i class="fa fa-credit-card" style="font-size: 2rem; margin-bottom: var(--space-3);"></i>
-                        <div>No payment entries recorded</div>
-                    </div>
-                `}
-            </div>
+            ${this.renderPaymentEntriesSection(payments)}
 
         </div>
     `;
@@ -6476,7 +8338,7 @@ renderWorkflowSection(opportunities) {
                                             <div class="document-card" style="padding: var(--space-3);">
                                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                                     <div style="font-weight: 600; color: var(--text);">${visit.name}</div>
-                                                    <button class="open-doc-btn" style="padding: var(--space-1) var(--space-2); font-size: 0.7rem;" onclick="window.open('/app/site-visit/${visit.name}', '_blank')">
+                                                    <button class="open-doc-btn" style="padding: var(--space-1) var(--space-2); font-size: 0.75rem;" onclick="window.open('/app/site-visit/${visit.name}', '_blank')">
                                                         <i class="fa fa-external-link"></i>
                                                     </button>
                                                 </div>
@@ -6498,7 +8360,7 @@ renderWorkflowSection(opportunities) {
                                             <div class="document-card" style="padding: var(--space-3);">
                                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                                     <div style="font-weight: 600; color: var(--text);">${design.name}</div>
-                                                    <button class="open-doc-btn" style="padding: var(--space-1) var(--space-2); font-size: 0.7rem;" onclick="window.open('/app/design-request/${design.name}', '_blank')">
+                                                    <button class="open-doc-btn" style="padding: var(--space-1) var(--space-2); font-size: 0.75rem;" onclick="window.open('/app/design-request/${design.name}', '_blank')">
                                                         <i class="fa fa-external-link"></i>
                                                     </button>
                                                 </div>
@@ -6529,10 +8391,102 @@ renderWorkflowSection(opportunities) {
     `;
 }
 
+renderDesignRequestsSection(designRequests) {
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-paint-brush" style="color: var(--secondary);"></i>
+                Design Requests
+            </div>
+            ${designRequests.length ? `
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-4);">
+                    ${designRequests.map(design => `
+                        <div class="document-card" style="padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border-light); transition: all 0.2s;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-3);">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 700; color: var(--text); font-size: 1rem; margin-bottom: var(--space-2);">
+                                        ${design.name}
+                                    </div>
+                                    <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-1);">
+                                        <i class="fa fa-calendar" style="margin-right: var(--space-1);"></i>
+                                        Created: ${frappe.datetime.str_to_user(design.creation)}
+                                    </div>
+                                    ${design.modified ? `
+                                        <div style="font-size: 0.875rem; color: var(--text-muted);">
+                                            <i class="fa fa-clock" style="margin-right: var(--space-1);"></i>
+                                            Modified: ${frappe.datetime.str_to_user(design.modified)}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            <button class="open-doc-btn" style="width: 100%; justify-content: center;" onclick="window.open('/app/design-request/${design.name}', '_blank')">
+                                <i class="fa fa-external-link"></i>
+                                Open Design Request
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : `
+                <div style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
+                    <i class="fa fa-paint-brush" style="font-size: 3rem; margin-bottom: var(--space-4);"></i>
+                    <div>No design requests found</div>
+                    <div style="font-size: 0.875rem; margin-top: var(--space-2);">This sales order doesn't have any linked design requests</div>
+                </div>
+            `}
+        </div>
+    `;
+}
+
+renderPermitsSection(permits) {
+    return `
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="fa fa-file-signature" style="color: var(--warning);"></i>
+                Permits
+            </div>
+            ${permits.length ? `
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-4);">
+                    ${permits.map(permit => `
+                        <div class="document-card" style="padding: var(--space-4); background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border-light); transition: all 0.2s;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-3);">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 700; color: var(--text); font-size: 1rem; margin-bottom: var(--space-2);">
+                                        ${permit.name}
+                                    </div>
+                                    <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--space-1);">
+                                        <i class="fa fa-calendar" style="margin-right: var(--space-1);"></i>
+                                        Created: ${frappe.datetime.str_to_user(permit.creation)}
+                                    </div>
+                                    ${permit.modified ? `
+                                        <div style="font-size: 0.875rem; color: var(--text-muted);">
+                                            <i class="fa fa-clock" style="margin-right: var(--space-1);"></i>
+                                            Modified: ${frappe.datetime.str_to_user(permit.modified)}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            <button class="open-doc-btn" style="width: 100%; justify-content: center;" onclick="window.open('/app/permit-form/${permit.name}', '_blank')">
+                                <i class="fa fa-external-link"></i>
+                                Open Permit
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : `
+                <div style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
+                    <i class="fa fa-file-signature" style="font-size: 3rem; margin-bottom: var(--space-4);"></i>
+                    <div>No permits found</div>
+                    <div style="font-size: 0.875rem; margin-top: var(--space-2);">This sales order doesn't have any linked permits</div>
+                </div>
+            `}
+        </div>
+    `;
+}
+
 setupDetailTabHandlers() {
     $('.detail-tab').on('click', function() {
         const tabId = $(this).data('tab');
-        
+
         // Update active tab
         $('.detail-tab').removeClass('active');
         $(this).addClass('active');
