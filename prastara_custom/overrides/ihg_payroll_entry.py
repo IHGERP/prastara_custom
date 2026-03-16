@@ -332,18 +332,28 @@ class IHGPayrollEntry(Document):
 		return jv_name
 
 
-	def make_emp_accrual_jv_entry(self):
+	def make_emp_accrual_jv_entry(
+		self,
+		salary_slip_names=None,
+		update_salary_slip_status=True,
+		is_test_run=False,
+	):
 		self.check_permission("write")
 		payroll_payable_account = self.payroll_payable_account
 		jv_name = ""
 		precision = frappe.get_precision("Journal Entry Account", "debit_in_account_currency")
 		tolerance = 1 / (10**precision) if precision else 0.0001
 
-		salary_slips = self.get_sal_slip_list(ss_status=1, as_dict=True) or []
-		if not salary_slips:
-			return jv_name
+		if salary_slip_names is None:
+			salary_slips = self.get_sal_slip_list(ss_status=1, as_dict=True) or []
+			if not salary_slips:
+				return jv_name
+			slip_names = [d.name for d in salary_slips]
+		else:
+			slip_names = list(dict.fromkeys(salary_slip_names))
+			if not slip_names:
+				return jv_name
 
-		slip_names = [d.name for d in salary_slips]
 		slip_rows = frappe.get_all(
 			"Salary Slip",
 			filters={"name": ["in", slip_names]},
@@ -576,8 +586,12 @@ class IHGPayrollEntry(Document):
 
 		journal_entry = frappe.new_doc("Journal Entry")
 		journal_entry.voucher_type = "Journal Entry"
-		journal_entry.user_remark = _("Accrual Journal Entry for salaries from {0} to {1}")\
-			.format(self.start_date, self.end_date)
+		if is_test_run:
+			journal_entry.user_remark = _("Test Accrual Journal Entry for salaries from {0} to {1}")\
+				.format(self.start_date, self.end_date)
+		else:
+			journal_entry.user_remark = _("Accrual Journal Entry for salaries from {0} to {1}")\
+				.format(self.start_date, self.end_date)
 		journal_entry.company = self.company
 		journal_entry.posting_date = self.posting_date
 		accounting_dimensions = get_accounting_dimensions() or []
@@ -663,7 +677,8 @@ class IHGPayrollEntry(Document):
 
 		try:
 			jv_name = journal_entry.name
-			self.update_salary_slip_status(jv_name=jv_name)
+			if update_salary_slip_status:
+				self.update_salary_slip_status(jv_name=jv_name)
 		except Exception as e:
 			if type(e) in (str, list, tuple):
 				frappe.msgprint(e)
@@ -706,6 +721,41 @@ class IHGPayrollEntry(Document):
 			"journal_entry": journal_entry,
 			"created": True,
 			"message": _("Journal Entry {0} created successfully.").format(journal_entry),
+		}
+
+	@frappe.whitelist()
+	def create_test_employee_accrual_journal_entry(self):
+		self.check_permission("write")
+
+		if self.docstatus != 1:
+			frappe.throw(_("Payroll Entry must be submitted before creating the accrual journal entry."))
+
+		submitted_slips = frappe.get_all(
+			"Salary Slip",
+			filters={"payroll_entry": self.name, "docstatus": 1},
+			fields=["name"],
+			order_by="name asc",
+		)
+
+		if not submitted_slips:
+			frappe.throw(_("No submitted Salary Slips found for Payroll Entry {0}.").format(self.name))
+
+		journal_entry = self.make_emp_accrual_jv_entry(
+			salary_slip_names=[d.name for d in submitted_slips],
+			update_salary_slip_status=False,
+			is_test_run=True,
+		)
+
+		if not journal_entry:
+			frappe.throw(_("Test accrual journal entry could not be created for Payroll Entry {0}.").format(self.name))
+
+		return {
+			"journal_entry": journal_entry,
+			"created": True,
+			"is_test": True,
+			"message": _(
+				"Test Journal Entry {0} created successfully. Salary Slips were not relinked."
+			).format(journal_entry),
 		}
 
 	def update_accounting_dimensions(self, row, accounting_dimensions):
