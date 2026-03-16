@@ -517,7 +517,7 @@ class IHGPayrollEntry(Document):
 					frappe.throw(_("Salary Component {0} not found").format(earning.salary_component))
 				if not should_post_earning(component):
 					continue
-				_, account_row = get_component_config(
+				component_config, account_row = get_component_config(
 					earning.salary_component,
 					require_payable_account=cint(component.create_liability),
 				)
@@ -539,7 +539,7 @@ class IHGPayrollEntry(Document):
 					frappe.throw(_("Salary Component {0} not found").format(deduction.salary_component))
 				if not should_post_deduction(component):
 					continue
-				_, account_row = get_component_config(deduction.salary_component)
+				component_config, account_row = get_component_config(deduction.salary_component)
 
 				add_amount(deduction_credits, (account_row.account, cost_center), deduction.amount)
 
