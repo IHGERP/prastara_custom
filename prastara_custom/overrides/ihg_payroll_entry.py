@@ -333,225 +333,380 @@ class IHGPayrollEntry(Document):
 
 
 	def make_emp_accrual_jv_entry(self):
-		
 		self.check_permission("write")
-		earnings = self.get_salary_component_total(component_type = "earnings") or {}
-		deductions = self.get_salary_component_total(component_type = "deductions") or {}
-		frappe.errprint("def")
-		frappe.errprint(earnings)
-		frappe.errprint(deductions)
 		payroll_payable_account = self.payroll_payable_account
 		jv_name = ""
 		precision = frappe.get_precision("Journal Entry Account", "debit_in_account_currency")
-		total_debit = 0
-		total_credit = 0
+		tolerance = 1 / (10**precision) if precision else 0.0001
 
-		if earnings or deductions:
-			frappe.errprint(earnings)
-			frappe.errprint(deductions)
-			journal_entry = frappe.new_doc("Journal Entry")
-			journal_entry.voucher_type = "Journal Entry"
-			journal_entry.user_remark = _("Accrual Journal Entry for salaries from {0} to {1}")\
-				.format(self.start_date, self.end_date)
-			journal_entry.company = self.company
-			journal_entry.posting_date = self.posting_date
-			accounting_dimensions = get_accounting_dimensions() or []
+		salary_slips = self.get_sal_slip_list(ss_status=1, as_dict=True) or []
+		if not salary_slips:
+			return jv_name
 
-			accounts = []
-			currencies = []
-			cost_center = []
-			payable_amount = 0
-			multi_currency = 0
-			company_currency = erpnext.get_company_currency(self.company)
-			for emp in self.employees:
-				frappe.errprint(emp.employee)
-				val = frappe.db.get_value("Employee",{"name":emp.employee},"payroll_cost_center")
-				if val not in cost_center:
-					cost_center.append(val)
-				frappe.errprint("cost_center")
-				frappe.errprint(cost_center)
+		slip_names = [d.name for d in salary_slips]
+		slip_rows = frappe.get_all(
+			"Salary Slip",
+			filters={"name": ["in", slip_names]},
+			fields=["name", "employee", "net_pay", "payroll_cost_center"],
+			order_by="name asc",
+		)
+		if not slip_rows:
+			return jv_name
 
-			# Earnings
-			for acc_cc, amount in earnings.items():
-				
-				dict1 = {}
-				exchange_rate, amt = self.get_amount_and_exchange_rate_for_journal_entry(acc_cc[0], amount, company_currency, currencies)
-				payable_amount += flt(amount, precision)
-				frappe.errprint("er 2")
-				
-				
-				for c in cost_center:
-					for emp in self.employees:
-						val = frappe.db.get_value("Employee",{"name":emp.employee},"payroll_cost_center")
-						if c == val:
-							doc = frappe.get_doc("Salary Slip", {"employee":emp.employee, "payroll_entry":self.name})
-							for comp in doc.earnings:
-								comp_doc = frappe.get_doc("Salary Component", comp.salary_component)
-								
-								for comp_acc in comp_doc.accounts:
-									if comp_acc.company == self.company and comp_acc.account == acc_cc[0]:
-										frappe.errprint("acc_cc[0]")	
-										frappe.errprint(emp)
-										frappe.errprint(acc_cc[0])
-										frappe.errprint(flt(comp.amount, precision))						
-										if val not in dict1:
-											dict1[val] = flt(comp.amount, precision)
-										else:
-											dict1[val] = dict1[val] + flt(comp.amount, precision)
-				if dict1:
-					frappe.errprint("dict1")
-					frappe.errprint(dict1)
-					for key,value in dict1.items():
-						accounts.append(self.update_accounting_dimensions({
-						"account": acc_cc[0],
-						"debit_in_account_currency": value,
-						"exchange_rate": flt(exchange_rate),
-						"cost_center": key,
-						"project": self.project
-					}, accounting_dimensions))
-				total_debit += flt(amt, precision)
-				frappe.errprint("total_debit")
-				frappe.errprint(total_debit)
-			frappe.errprint("earnings")
-			frappe.errprint(accounts)
-			
+		salary_details = frappe.get_all(
+			"Salary Detail",
+			filters={
+				"parent": ["in", slip_names],
+				"parenttype": "Salary Slip",
+				"parentfield": ["in", ["earnings", "deductions"]],
+			},
+			fields=["parent", "parentfield", "salary_component", "amount"],
+			order_by="parent asc, idx asc",
+		)
+		loan_rows = frappe.get_all(
+			"Salary Slip Loan",
+			filters={"parent": ["in", slip_names], "parenttype": "Salary Slip"},
+			fields=["parent", "loan_account", "total_payment"],
+			order_by="parent asc, idx asc",
+		)
 
-			# Deductions
-			for acc_cc, amount in deductions.items():
-				dict1 = {}
-				exchange_rate, amt = self.get_amount_and_exchange_rate_for_journal_entry(acc_cc[0], amount, company_currency, currencies)
-				payable_amount -= flt(amount, precision)
+		component_names = sorted({d.salary_component for d in salary_details if d.salary_component})
+		component_meta = {}
+		component_accounts = {}
+		if component_names:
+			component_meta = {
+				d.name: d
+				for d in frappe.get_all(
+					"Salary Component",
+					filters={"name": ["in", component_names]},
+					fields=[
+						"name",
+						"is_flexible_benefit",
+						"only_tax_impact",
+						"create_liability",
+						"do_not_include_in_total",
+						"statistical_component",
+					],
+				)
+			}
+			component_accounts = {}
+			for d in frappe.get_all(
+				"Salary Component Account",
+				filters={"parent": ["in", component_names], "company": self.company},
+				fields=["parent", "account", "payable_account"],
+			):
+				component_accounts[d.parent] = d
 
+		earnings_by_slip = {}
+		deductions_by_slip = {}
+		for detail in salary_details:
+			if detail.parentfield == "earnings":
+				earnings_by_slip.setdefault(detail.parent, []).append(detail)
+			elif detail.parentfield == "deductions":
+				deductions_by_slip.setdefault(detail.parent, []).append(detail)
 
+		loans_by_slip = {}
+		for loan in loan_rows:
+			loans_by_slip.setdefault(loan.parent, []).append(loan)
 
-				for c in cost_center:
-					for emp in self.employees:
-						val = frappe.db.get_value("Employee",{"name":emp.employee},"payroll_cost_center")
-						if c == val:
-							doc = frappe.get_doc("Salary Slip", {"employee":emp.employee, "payroll_entry":self.name})
-							for comp in doc.deductions:
-								comp_doc = frappe.get_doc("Salary Component", comp.salary_component)
-								
-								for comp_acc in comp_doc.accounts:
-									if comp_acc.company == self.company and comp_acc.account == acc_cc[0]:
-										frappe.errprint("acc_cc[0]")	
-										frappe.errprint(emp)
-										frappe.errprint(acc_cc[0])
-										frappe.errprint(flt(comp.amount, precision))						
-										if val not in dict1:
-											dict1[val] = flt(comp.amount, precision)
-										else:
-											dict1[val] = dict1[val] + flt(comp.amount, precision)
+		def add_amount(bucket, key, amount):
+			amount = flt(amount, precision)
+			if not amount:
+				return
+			bucket[key] = flt(bucket.get(key), precision) + amount
 
-				
+		def get_component_config(component_name, require_payable_account=False):
+			component = component_meta.get(component_name)
+			if not component:
+				frappe.throw(_("Salary Component {0} not found").format(component_name))
 
-				if dict1:
-					frappe.errprint("dict1")
-					frappe.errprint(dict1)
-					for key,value in dict1.items():
-						accounts.append(self.update_accounting_dimensions({
-						"account": acc_cc[0],
-						"credit_in_account_currency": value,
-						"exchange_rate": flt(exchange_rate),
-						"cost_center": key,
-						"project": self.project
-					}, accounting_dimensions))
-				total_credit += flt(amt, precision)
+			account_row = component_accounts.get(component_name)
+			if not account_row or not account_row.account:
+				frappe.throw(
+					_("Please set account in Salary Component {0} for Company {1}").format(
+						component_name, self.company
+					)
+				)
 
+			if require_payable_account and not account_row.payable_account:
+				frappe.throw(
+					_("Please set payable account in Salary Component {0} for Company {1}").format(
+						component_name, self.company
+					)
+				)
 
-			# Payable amount
-			
-			args = frappe._dict({
-			"salary_slip_based_on_timesheet": self.salary_slip_based_on_timesheet,
-			"payroll_frequency": self.payroll_frequency,
-			"start_date": self.start_date,
-			"end_date": self.end_date,
-			"company": self.company,
-			"posting_date": self.posting_date,
-			"deduct_tax_for_unclaimed_employee_benefits": self.deduct_tax_for_unclaimed_employee_benefits,
-			"deduct_tax_for_unsubmitted_tax_exemption_proof": self.deduct_tax_for_unsubmitted_tax_exemption_proof,
-			"payroll_entry": self.name,
-			"exchange_rate": self.exchange_rate,
-			"currency": self.currency
-			})
-			for item in self.employees:
-				ss = frappe.get_doc("Salary Slip", {"employee":item.employee, "payroll_entry":self.name})
-				net_pay = 0
-				l_total_amt = 0 
-				loan_ledger = ""
-				for l_amt in ss.loans:
-					l_total_amt += l_amt.total_payment
-					loan_ledger = l_amt.loan_account
+			return component, account_row
 
-				for comp in ss.earnings:
-					comp_doc = frappe.get_doc("Salary Component", comp.salary_component)
-					if comp_doc.create_liability:
-						comp_ledger = ""
-						for comp_acc in comp_doc.accounts:
-							if comp_acc.company == self.company:
-								comp_ledger = comp_acc.payable_account
-						accounts.append(self.update_accounting_dimensions({
-						"account": comp_ledger,
-						"party_type": "Employee",
-						"party":ss.employee,
-						"credit_in_account_currency":comp.amount,
-						"exchange_rate": flt(exchange_rate),
-						"cost_center": frappe.db.get_value("Employee",{"name":ss.employee},"payroll_cost_center")
-						}, accounting_dimensions))
-						total_credit += comp.amount
-						frappe.errprint("pay amount3")
-						frappe.errprint(accounts)
-				accounts.append(self.update_accounting_dimensions({
-				"account": payroll_payable_account,
-				"party_type": "Employee",
-				"party": ss.employee,
-				"credit_in_account_currency":ss.net_pay,
+		def append_account_row(
+			accounts,
+			currencies,
+			company_currency,
+			accounting_dimensions,
+			account,
+			amount,
+			entry_type,
+			cost_center,
+			party=None,
+			add_reference=False,
+		):
+			exchange_rate, amt = self.get_amount_and_exchange_rate_for_journal_entry(
+				account, amount, company_currency, currencies
+			)
+			row = {
+				"account": account,
 				"exchange_rate": flt(exchange_rate),
-				"cost_center": frappe.db.get_value("Employee",{"name":ss.employee},"payroll_cost_center")
-				}, accounting_dimensions))
-				frappe.errprint("pay amount2")
-				frappe.errprint(accounts)
-				total_credit += comp.amount
-				if l_total_amt != 0:
-					accounts.append(self.update_accounting_dimensions({
-					"account": loan_ledger,
-					# "party_type": "Employee",
-					# "party": ss.employee,
-					"credit_in_account_currency":l_total_amt,
-					"exchange_rate": flt(exchange_rate),
-					"cost_center": frappe.db.get_value("Employee",{"name":ss.employee},"payroll_cost_center")
-					}, accounting_dimensions))		
-					total_credit += l_total_amt
-					frappe.errprint("pay amount1")
-					frappe.errprint(accounts)
+				"cost_center": cost_center or self.cost_center,
+				"project": self.project,
+			}
 
+			if entry_type == "debit":
+				row["debit_in_account_currency"] = flt(amt, precision)
+			else:
+				row["credit_in_account_currency"] = flt(amt, precision)
 
+			if party:
+				row.update({"party_type": "Employee", "party": party})
 
+			if add_reference:
+				row.update({"reference_type": self.doctype, "reference_name": self.name})
 
-			
-				frappe.errprint(ss.employee)
-				frappe.errprint(total_debit)
-				frappe.errprint(total_credit)
-			journal_entry.set("accounts", accounts)
-			if len(currencies) > 1:
-				multi_currency = 1
-				frappe.errprint("multi_currency")
-			journal_entry.multi_currency = multi_currency
-			journal_entry.title = payroll_payable_account
-			frappe.errprint(journal_entry)
-			journal_entry.save()
+			self.update_accounting_dimensions(row, accounting_dimensions)
 
+			if row.get("debit_in_account_currency") or row.get("credit_in_account_currency"):
+				accounts.append(row)
 
-			try:
-				# journal_entry.submit()
-				jv_name = journal_entry.name
-				self.update_salary_slip_status(jv_name = jv_name)
-			except Exception as e:
-				if type(e) in (str, list, tuple):
-					frappe.msgprint(e)
-				raise
+		def should_post_earning(component):
+			if cint(component.statistical_component):
+				return False
+			if cint(component.is_flexible_benefit) and cint(component.only_tax_impact):
+				return False
+			if cint(component.do_not_include_in_total) and not cint(component.create_liability):
+				return False
+			return True
 
-		return jv_name		
+		def should_post_deduction(component):
+			if cint(component.statistical_component):
+				return False
+			if cint(component.do_not_include_in_total):
+				return False
+			return True
+
+		expense_debits = {}
+		deduction_credits = {}
+		employee_payable_credits = {}
+		liability_credits = {}
+		loan_credits = {}
+
+		for slip in slip_rows:
+			cost_center = slip.payroll_cost_center or self.cost_center
+			liability_in_net_pay = 0
+
+			for earning in earnings_by_slip.get(slip.name, []):
+				component = component_meta.get(earning.salary_component)
+				if not component:
+					frappe.throw(_("Salary Component {0} not found").format(earning.salary_component))
+				if not should_post_earning(component):
+					continue
+				_, account_row = get_component_config(
+					earning.salary_component,
+					require_payable_account=cint(component.create_liability),
+				)
+
+				add_amount(expense_debits, (account_row.account, cost_center), earning.amount)
+
+				if cint(component.create_liability):
+					add_amount(
+						liability_credits,
+						(account_row.payable_account, cost_center, slip.employee),
+						earning.amount,
+					)
+					if not cint(component.do_not_include_in_total):
+						liability_in_net_pay += flt(earning.amount, precision)
+
+			for deduction in deductions_by_slip.get(slip.name, []):
+				component = component_meta.get(deduction.salary_component)
+				if not component:
+					frappe.throw(_("Salary Component {0} not found").format(deduction.salary_component))
+				if not should_post_deduction(component):
+					continue
+				_, account_row = get_component_config(deduction.salary_component)
+
+				add_amount(deduction_credits, (account_row.account, cost_center), deduction.amount)
+
+			for loan in loans_by_slip.get(slip.name, []):
+				if not loan.loan_account:
+					frappe.throw(
+						_("Please set loan account for Salary Slip {0}").format(slip.name)
+					)
+				add_amount(loan_credits, (loan.loan_account, cost_center, slip.employee), loan.total_payment)
+
+			employee_payable = flt(slip.net_pay, precision) - flt(liability_in_net_pay, precision)
+			if employee_payable < 0 and abs(employee_payable) > tolerance:
+				frappe.throw(
+					_(
+						"Employee payable became negative for Salary Slip {0} after separating liability components. Review the salary component setup."
+					).format(slip.name)
+				)
+
+			add_amount(
+				employee_payable_credits,
+				(payroll_payable_account, cost_center, slip.employee),
+				max(employee_payable, 0),
+			)
+
+		total_debit = sum(flt(amount, precision) for amount in expense_debits.values())
+		total_credit = sum(flt(amount, precision) for amount in deduction_credits.values())
+		total_credit += sum(flt(amount, precision) for amount in employee_payable_credits.values())
+		total_credit += sum(flt(amount, precision) for amount in liability_credits.values())
+		total_credit += sum(flt(amount, precision) for amount in loan_credits.values())
+
+		if abs(total_debit - total_credit) > tolerance:
+			frappe.throw(
+				_(
+					"Payroll accrual journal entry is not balanced. Debit: {0}, Credit: {1}, Difference: {2}"
+				).format(
+					flt(total_debit, precision),
+					flt(total_credit, precision),
+					flt(total_debit - total_credit, precision),
+				)
+			)
+
+		if not total_debit and not total_credit:
+			return jv_name
+
+		journal_entry = frappe.new_doc("Journal Entry")
+		journal_entry.voucher_type = "Journal Entry"
+		journal_entry.user_remark = _("Accrual Journal Entry for salaries from {0} to {1}")\
+			.format(self.start_date, self.end_date)
+		journal_entry.company = self.company
+		journal_entry.posting_date = self.posting_date
+		accounting_dimensions = get_accounting_dimensions() or []
+
+		accounts = []
+		currencies = []
+		multi_currency = 0
+		company_currency = erpnext.get_company_currency(self.company)
+
+		sort_key = lambda item: tuple(part or "" for part in item[0])
+
+		for (account, cost_center), amount in sorted(expense_debits.items(), key=sort_key):
+			append_account_row(
+				accounts,
+				currencies,
+				company_currency,
+				accounting_dimensions,
+				account,
+				amount,
+				"debit",
+				cost_center,
+			)
+
+		for (account, cost_center), amount in sorted(deduction_credits.items(), key=sort_key):
+			append_account_row(
+				accounts,
+				currencies,
+				company_currency,
+				accounting_dimensions,
+				account,
+				amount,
+				"credit",
+				cost_center,
+			)
+
+		for (account, cost_center, employee), amount in sorted(liability_credits.items(), key=sort_key):
+			append_account_row(
+				accounts,
+				currencies,
+				company_currency,
+				accounting_dimensions,
+				account,
+				amount,
+				"credit",
+				cost_center,
+				party=employee,
+			)
+
+		for (account, cost_center, employee), amount in sorted(loan_credits.items(), key=sort_key):
+			append_account_row(
+				accounts,
+				currencies,
+				company_currency,
+				accounting_dimensions,
+				account,
+				amount,
+				"credit",
+				cost_center,
+			)
+
+		for (account, cost_center, employee), amount in sorted(
+			employee_payable_credits.items(), key=sort_key
+		):
+			append_account_row(
+				accounts,
+				currencies,
+				company_currency,
+				accounting_dimensions,
+				account,
+				amount,
+				"credit",
+				cost_center,
+				party=employee,
+				add_reference=True,
+			)
+
+		journal_entry.set("accounts", accounts)
+		if len(currencies) > 1:
+			multi_currency = 1
+		journal_entry.multi_currency = multi_currency
+		journal_entry.title = payroll_payable_account
+		journal_entry.save()
+
+		try:
+			jv_name = journal_entry.name
+			self.update_salary_slip_status(jv_name=jv_name)
+		except Exception as e:
+			if type(e) in (str, list, tuple):
+				frappe.msgprint(e)
+			raise
+
+		return jv_name
+
+	@frappe.whitelist()
+	def create_employee_accrual_journal_entry(self):
+		self.check_permission("write")
+
+		if self.docstatus != 1:
+			frappe.throw(_("Payroll Entry must be submitted before creating the accrual journal entry."))
+
+		submitted_slips = frappe.get_all(
+			"Salary Slip",
+			filters={"payroll_entry": self.name, "docstatus": 1},
+			fields=["name", "journal_entry"],
+			order_by="name asc",
+		)
+
+		if not submitted_slips:
+			frappe.throw(_("No submitted Salary Slips found for Payroll Entry {0}.").format(self.name))
+
+		existing_journal_entries = [d.journal_entry for d in submitted_slips if d.journal_entry]
+		if existing_journal_entries and len(existing_journal_entries) == len(submitted_slips):
+			return {
+				"journal_entry": existing_journal_entries[0],
+				"created": False,
+				"message": _("All submitted Salary Slips are already linked to Journal Entry {0}.").format(
+					existing_journal_entries[0]
+				),
+			}
+
+		journal_entry = self.make_emp_accrual_jv_entry()
+		if not journal_entry:
+			frappe.throw(_("No submitted Salary Slips without Journal Entry were found."))
+
+		return {
+			"journal_entry": journal_entry,
+			"created": True,
+			"message": _("Journal Entry {0} created successfully.").format(journal_entry),
+		}
 
 	def update_accounting_dimensions(self, row, accounting_dimensions):
 		for dimension in accounting_dimensions:
@@ -562,10 +717,15 @@ class IHGPayrollEntry(Document):
 	def get_amount_and_exchange_rate_for_journal_entry(self, account, amount, company_currency, currencies):
 		conversion_rate = 1
 		exchange_rate = self.exchange_rate
-		account_currency = frappe.db.get_value('Account', account, 'account_currency')
+		if not hasattr(self, "_account_currency_map"):
+			self._account_currency_map = {}
+
+		account_currency = self._account_currency_map.get(account)
+		if not account_currency:
+			account_currency = frappe.get_cached_value("Account", account, "account_currency")
+			self._account_currency_map[account] = account_currency
+
 		if account_currency not in currencies:
-			frappe.errprint("account Curreency")
-			frappe.errprint(account)
 			currencies.append(account_currency)
 		if account_currency == company_currency:
 			conversion_rate = self.exchange_rate
