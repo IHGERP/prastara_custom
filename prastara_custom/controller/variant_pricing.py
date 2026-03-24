@@ -6859,6 +6859,7 @@ def get_sales_order_no_project_list_prd(
         # Build SQL conditions
         conditions = ["so.docstatus = 1"]  # Only submitted sales orders
         conditions.append("(so.project IS NULL OR so.project = '')")  # No project tagged
+        conditions.append("(so.custom_not_require_project IS NULL OR so.custom_not_require_project = 0)")  # Exclude orders marked as not requiring a project
         params = []
 
         if search:
