@@ -2851,7 +2851,7 @@ def get_customer_outstandings_new(filters=None, customer=None, sales_person=None
             "customer_summary": [customer-wise summary] (if group_by_customer=True)
         }
     """
-    from qcshr.qcs_uae_hr.report.ihg_customer_outstanding.ihg_customer_outstanding import execute
+    from prastara_custom.prastara_custom.report.ihg_customer_outstanding.ihg_customer_outstanding import execute
     from collections import defaultdict
 
     # Parse filters

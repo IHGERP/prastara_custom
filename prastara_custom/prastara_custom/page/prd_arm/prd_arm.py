@@ -26,7 +26,7 @@ def get_collection_data(filters=None):
 	branch_filter = filters.get("branch")
 
 	# Call the existing payment report API
-	from qcshr.controller.accounts_receivable import get_payment_report
+	from prastara_custom.controller.accounts_receivable import get_payment_report
 
 	frappe.logger().info(f"=== Collection Data Request ===")
 	frappe.logger().info(f"Filters: {filters}")
@@ -100,6 +100,258 @@ def get_collection_data(filters=None):
 		'today_collection': today_collection,
 		'filters': filters
 	}
+
+
+import datetime
+import json
+
+@frappe.whitelist(allow_guest=False)
+def get_payment_report(branch=None, from_date=None, to_date=None, company=None):
+    """
+    API to fetch payment report data based on branch and date range.
+    Args:
+        branch (str): Branch filter (optional)
+        from_date (str): Start date in YYYY-MM-DD or DD-MM-YYYY format
+        to_date (str): End date in YYYY-MM-DD or DD-MM-YYYY format
+        company (str): Company filter (optional)
+    Returns:
+        dict: Report data with columns and data
+    """
+    try:
+        # Validate date parameters
+        if not from_date or not to_date:
+            frappe.throw(_("from_date and to_date are required parameters."))
+
+        def parse_date(date_str):
+            # Try parsing YYYY-MM-DD first
+            from datetime import datetime as dt
+            try:
+                return dt.strptime(date_str, '%Y-%m-%d').strftime('%Y-%m-%d')
+            except ValueError:
+                # Try parsing DD-MM-YYYY
+                try:
+                    return dt.strptime(date_str, '%d-%m-%Y').strftime('%Y-%m-%d')
+                except ValueError:
+                    frappe.throw(_("Invalid date format. Use YYYY-MM-DD or DD-MM-YYYY."))
+
+        try:
+            from_date = parse_date(from_date)
+            to_date = parse_date(to_date)
+        except ValueError as e:
+            frappe.throw(_("Invalid date format. Use YYYY-MM-DD or DD-MM-YYYY."))
+
+        data = []
+        columns = []
+
+        # Prepare company condition
+        company_condition_si = ""
+        company_condition_py = ""
+        query_values = []
+        
+        if company:
+            company_condition_si = "AND si.company = %s"
+            company_condition_py = "AND py.company = %s"
+        
+        print(f"DEBUG: get_payment_report company={company}")
+        print(f"DEBUG: company_condition_si='{company_condition_si}'")
+        print(f"DEBUG: company_condition_py='{company_condition_py}'")
+
+        if branch:
+            branch_filter = branch
+            date_range = (from_date, to_date)
+            
+            # Prepare values for the query
+            # Query 1: date range (2), branch (1), company (1 if exists)
+            # Query 2: date range (2), branch (1), company (1 if exists)
+            
+            values_q1 = [date_range[0], date_range[1], branch_filter]
+            if company:
+                values_q1.append(company)
+                
+            values_q2 = [date_range[0], date_range[1], branch_filter]
+            if company:
+                values_q2.append(company)
+                
+            query_values = values_q1 + values_q2
+
+            # Combined query for Sales Invoice and Payment Entry
+            documents = frappe.db.sql(f"""
+                SELECT 
+                    si.branch,
+                    sp.mode_of_payment,
+                    SUM(sp.amount) AS amount,
+                    0 AS pdc_amount
+                FROM `tabSales Invoice` si
+                JOIN `tabSales Invoice Payment` sp ON si.name = sp.parent
+                WHERE si.posting_date BETWEEN %s AND %s
+                    AND si.docstatus = 1
+                    AND si.branch = %s
+                    {company_condition_si}
+                GROUP BY si.branch, sp.mode_of_payment
+                
+                UNION ALL
+                
+                SELECT 
+                    COALESCE(po.branch, py.custom_branch) as branch,
+                    py.mode_of_payment,
+                    SUM(
+                        CASE 
+                            WHEN py.mode_of_payment = 'Cheque' 
+                                AND py.posting_date > CURDATE() THEN 0
+                            ELSE py.paid_amount
+                        END
+                    ) AS amount,
+                    SUM(
+                        CASE 
+                            WHEN py.mode_of_payment = 'Cheque' THEN py.paid_amount
+                            ELSE 0
+                        END
+                    ) AS pdc_amount
+                FROM `tabPayment Entry` py
+                LEFT JOIN `tabPOS Profile` po ON py.pos_profile = po.name
+                WHERE py.posting_date BETWEEN %s AND %s
+                    AND py.payment_type = 'Receive'
+                    AND py.docstatus = 1
+                    AND COALESCE(po.branch, py.custom_branch) = %s
+                    {company_condition_py}
+                GROUP BY COALESCE(po.branch, py.custom_branch), py.mode_of_payment
+            """, tuple(query_values), as_dict=True)
+        else:
+            date_range = (from_date, to_date)
+            
+            # Prepare values for the query
+            # Query 1: date range (2), company (1 if exists)
+            # Query 2: date range (2), company (1 if exists)
+            
+            values_q1 = [date_range[0], date_range[1]]
+            if company:
+                values_q1.append(company)
+                
+            values_q2 = [date_range[0], date_range[1]]
+            if company:
+                values_q2.append(company)
+                
+            query_values = values_q1 + values_q2
+
+            print(f"DEBUG: get_payment_report query values: {query_values}")
+            documents = frappe.db.sql(f"""
+                SELECT 
+                    si.branch,
+                    sp.mode_of_payment,
+                    SUM(sp.amount) AS amount,
+                    0 AS pdc_amount
+                FROM `tabSales Invoice` si
+                JOIN `tabSales Invoice Payment` sp ON si.name = sp.parent
+                WHERE si.posting_date BETWEEN %s AND %s
+                    AND si.docstatus = 1
+                    {company_condition_si}
+                GROUP BY si.branch, sp.mode_of_payment
+                
+                UNION ALL
+                
+                SELECT 
+                    COALESCE(po.branch, py.custom_branch) as branch,
+                    py.mode_of_payment,
+                    SUM(
+                        CASE 
+                            WHEN py.mode_of_payment = 'Cheque' 
+                                AND py.posting_date > CURDATE() THEN 0
+                            ELSE py.paid_amount
+                        END
+                    ) AS amount,
+                    SUM(
+                        CASE 
+                            WHEN py.mode_of_payment = 'Cheque' THEN py.paid_amount
+                            ELSE 0
+                        END
+                    ) AS pdc_amount
+                FROM `tabPayment Entry` py
+                LEFT JOIN `tabPOS Profile` po ON py.pos_profile = po.name
+                WHERE py.posting_date BETWEEN %s AND %s
+                    AND py.payment_type = 'Receive'
+                    AND py.docstatus = 1
+                    {company_condition_py}
+                GROUP BY COALESCE(po.branch, py.custom_branch), py.mode_of_payment
+            """, tuple(query_values), as_dict=True)
+            print(f"DEBUG: get_payment_report results count: {len(documents)}")
+            if documents:
+                print(f"DEBUG: First record sample: {documents[0]}")
+
+        # Initialize dictionary to aggregate payment mode data by branch
+        payment_data = {}
+        print(f"DEBUG: Processing {len(documents)} documents")
+        for record in documents:
+            branch_key = record.get('branch') or "Unknown Branch"
+            mode_of_payment = record.get('mode_of_payment')
+            amount = record.get('amount', 0)
+            pdc_amount = record.get('pdc_amount', 0)
+            
+            print(f"DEBUG: Record: branch={branch_key}, mode={mode_of_payment}, amount={amount}, pdc={pdc_amount}")
+
+            if branch_key not in payment_data:
+                payment_data[branch_key] = {
+                    'cash': 0,
+                    'card': 0,
+                    'cheque': 0,
+                    'credit': 0,
+                    'wired_transfer': 0,
+                    'pdc': 0,
+                    'total': 0
+                }
+
+            if mode_of_payment:
+                if "Cash" in mode_of_payment:
+                    payment_data[branch_key]['cash'] += amount
+                elif "Card" in mode_of_payment:
+                    payment_data[branch_key]['card'] += amount
+                elif "Cheque" in mode_of_payment:
+                    payment_data[branch_key]['cheque'] += amount
+                elif "Credit" in mode_of_payment:
+                    payment_data[branch_key]['credit'] += amount
+                elif "Wire Transfer" in mode_of_payment:
+                    payment_data[branch_key]['wired_transfer'] += amount
+                
+            payment_data[branch_key]['pdc'] += pdc_amount
+            payment_data[branch_key]['total'] += amount + pdc_amount
+
+        # Compile final data
+        for branch_key, payments in payment_data.items():
+            pos_profile = frappe.db.get_value("POS Profile", {"branch": branch_key}, "name") or " "
+            data.append({
+                'branch': branch_key,
+                'pos': pos_profile,
+                'cash': payments['cash'],
+                'card': payments['card'],
+                'cheque': payments['cheque'],
+                'credit': payments['credit'],
+                'wired_transfer': payments['wired_transfer'],
+                'pdc': payments['pdc'],
+                'total': payments['total']
+            })
+
+        # Define columns
+        columns = [
+            {'fieldname': 'branch', 'label': _('Branch'), 'fieldtype': 'Link', 'options': 'Branch', 'width': 150},
+            {'fieldname': 'pos', 'label': _('POS Profile'), 'fieldtype': 'Link', 'options': 'POS Profile', 'width': 150},
+            {'fieldname': 'cash', 'label': _('Cash'), 'fieldtype': 'Float', 'width': 100},
+            {'fieldname': 'card', 'label': _('Card'), 'fieldtype': 'Float', 'width': 100},
+            {'fieldname': 'cheque', 'label': _('Cheque'), 'fieldtype': 'Float', 'width': 100},
+            {'fieldname': 'pdc', 'label': _('PDC'), 'fieldtype': 'Float', 'width': 100},
+            {'fieldname': 'wired_transfer', 'label': _('Wired Transfer'), 'fieldtype': 'Float', 'width': 100},
+            {'fieldname': 'credit', 'label': _('Credit'), 'fieldtype': 'Float', 'width': 100},
+            {'fieldname': 'total', 'label': _('Total'), 'fieldtype': 'Float', 'width': 100}
+        ]
+
+        return {
+            'status': 'success',
+            'data': data,
+            'columns': columns
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Payment Report API Error")
+        frappe.throw(_("An error occurred while generating the report: {0}").format(str(e)))
+
 
 
 @frappe.whitelist()
@@ -1845,7 +2097,7 @@ def get_payment_schedule_summary(company=None, from_date=None, to_date=None, cus
         Payment schedule data with totals for Due Today, Due This Week, Due This Month
     """
     try:
-        from qcshr.controller.accounts_receivable import get_payment_schedule_data
+        from prastara_custom.controller.accounts_receivable import get_payment_schedule_data
 
         result = get_payment_schedule_data(
             company=company,
