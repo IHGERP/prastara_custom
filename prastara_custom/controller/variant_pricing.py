@@ -379,7 +379,7 @@ def quote_sharing(data):
 def create_delivery_note(sales_invoice,method,target_doc=None):
 	frappe.errprint("Sales INvoice Call")
 	frappe.errprint(sales_invoice)
-	if sales_invoice.is_return == 0 and sales_invoice.custom_disable_automation == 0 and sales_invoice.is_internal_customer == 0 and sales_invoice.is_replacement_invoice == 0 and (sales_invoice.company in ["LED WORLD LLC" , "IHG BRANDS LIGHTING LLC"]):
+	if sales_invoice.is_return == 0 and sales_invoice.custom_disable_automation == 0 and sales_invoice.is_internal_customer == 0 and sales_invoice.is_replacement_invoice == 0 and (sales_invoice.company in ["PRASTARA DECORATION DESIGN L.L.C"]):
 		def set_missing_values(source, target):
 			frappe.errprint("set missing value")
 			frappe.errprint(target_doc)
@@ -3092,7 +3092,7 @@ def get_sales_order_data(display_type='count', sales_person=None, sales_team=Non
     # Base conditions for both queries
     conditions = [
         "`tabSales Order`.docstatus = 1",
-        "`tabSales Order`.company = 'METROPLUS ADVERTISING LLC'",
+        "`tabSales Order`.company = 'PRASTARA DECORATION DESIGN L.L.C'",
         "`tabSales Order`.is_internal_customer = 0",
         "`tabSales Order`.delivery_date IS NOT NULL"
     ]
@@ -3295,7 +3295,7 @@ def get_sales_orders():
     try:
         # Define common filters for base query
         base_filters = {
-            "company": "METROPLUS ADVERTISING LLC",
+            "company": "PRASTARA DECORATION DESIGN L.L.C",
             "status": ["not in", ["Completed", "Closed"]],
             "docstatus": 1,
             "is_internal_customer": 0
@@ -3334,7 +3334,7 @@ def get_sales_orders():
 
         # Define filters for "Hold" status sales orders
         hold_status_filters = {
-            "company": "METROPLUS ADVERTISING LLC",
+            "company": "PRASTARA DECORATION DESIGN L.L.C",
             "status": "On Hold",
             "docstatus": 1,
             "is_internal_customer": 0
@@ -3358,7 +3358,7 @@ def get_sales_orders():
 
         # Define filters for completed sales orders within the current month
         completed_status_filters = {
-            "company": "METROPLUS ADVERTISING LLC",
+            "company": "PRASTARA DECORATION DESIGN L.L.C",
             "status": ["in", ["Completed", "Closed"]],
             "docstatus": 1,
             "is_internal_customer": 0,
@@ -3434,7 +3434,7 @@ def get_sales_orders():
 def get_sales_orders1(sales_team=None, sales_person=None):
     try:
         base_filters = {
-            "company": "METROPLUS ADVERTISING LLC",
+            "company": "PRASTARA DECORATION DESIGN L.L.C",
             "status": ["not in", ["Completed", "Closed"]],
             "docstatus": 1,
             "is_internal_customer": 0,
@@ -3548,7 +3548,7 @@ def get_sales_orders1(sales_team=None, sales_person=None):
 
         # Define filters for completed sales orders within the current month
         completed_status_filters = {
-            "company": "METROPLUS ADVERTISING LLC",
+            "company": "PRASTARA DECORATION DESIGN L.L.C",
             "status": ["in", ["Completed", "Closed"]],
             "docstatus": 1,
             "is_internal_customer": 0,
@@ -3953,8 +3953,8 @@ def get_workflow_summary(filters=None):
 def get_sales_orders_ldw(sales_team=None, sales_person=None):
     try:
         base_filters = {
-            "company": "LED WORLD LLC",
-			"branch":"LEDWORLD - PROJECTS",
+            "company": "PRASTARA DECORATION DESIGN L.L.C",
+			"branch":"Prastara - Decor",
             "status": ["not in", ["Completed", "Closed"]],
             "docstatus": 1,
             "is_internal_customer": 0,
@@ -4068,8 +4068,8 @@ def get_sales_orders_ldw(sales_team=None, sales_person=None):
 
         
         completed_status_filters = {
-            "company": "LED WORLD LLC",
-			"branch":"LEDWORLD - PROJECTS",
+            "company": "PRASTARA DECORATION DESIGN L.L.C",
+			"branch":"Prastara - Decor",
             "status": ["not in", ["Completed", "Closed"]],
             "docstatus": 1,
             "is_internal_customer": 0,
@@ -4136,8 +4136,8 @@ def get_sales_order_data_ldw(statuses=None, display_type='count'):
             `tabSales Order`
         WHERE 
             docstatus = 1
-			AND company = 'LED WORLD LLC'
-            AND branch = 'LEDWORLD - PROJECTS'
+			AND company = 'PRASTARA DECORATION DESIGN L.L.C'
+            AND branch = 'Prastara - Decor'
             AND is_internal_customer = 0
     """
     
@@ -4551,7 +4551,7 @@ def get_outstanding_invoices():
 def get_ldw_project_sales_orders(sales_team=None, sales_person=None, branch=None):
     try:
         base_filters = {
-            "company": "LED WORLD LLC",
+            "company": "PRASTARA DECORATION DESIGN L.L.C",
             "status": ["not in", ["Completed", "Closed"]],
             "docstatus": 1,
             "is_internal_customer": 0,
@@ -4637,7 +4637,7 @@ def get_ldw_project_sales_orders(sales_team=None, sales_person=None, branch=None
         all_per_bill = calculate_per_bill(all_sales_orders)
 
         completed_status_filters = {
-            "company": "LED WORLD LLC",
+            "company": "PRASTARA DECORATION DESIGN L.L.C",
             "status": ["in", ["Completed", "Closed"]],
             "docstatus": 1,
             "is_internal_customer": 0,
@@ -4845,7 +4845,7 @@ def get_sales_order_ldw_data(statuses=None, display_type='count'):
             `tabSales Order`
         WHERE 
             docstatus = 1
-            AND company = 'LED WORLD LLC'
+            AND company = 'PRASTARA DECORATION DESIGN L.L.C'
             AND is_internal_customer = 0
     """
     
@@ -5376,8 +5376,8 @@ def get_dashboard_data(filters=None):
 #     employees = frappe.get_all(
 #         'Employee',
 #         filters={
-#             'company': 'METROPLUS ADVERTISING LLC',
-#             'branch': 'METROPLUS OPERATION',
+#             'company': 'PRASTARA DECORATION DESIGN L.L.C',
+#             'branch': 'Prastara - Decor',
 #             'status': 'Active'
 #         },
 #         fields=['name', 'employee_name', 'designation', 'image'],
@@ -5387,7 +5387,7 @@ def get_dashboard_data(filters=None):
 #     if not employees:
 #         return {
 #             'status': 'error',
-#             'message': 'No active employees found for METROPLUS ADVERTISING LLC, METROPLUS OPERATION.'
+#             'message': 'No active employees found for PRASTARA DECORATION DESIGN L.L.C, Prastara - Decor.'
 #         }
 
 #     # Get existing team members in current document if it exists
