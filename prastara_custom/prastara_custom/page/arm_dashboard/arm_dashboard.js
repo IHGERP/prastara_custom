@@ -14,6 +14,8 @@ frappe.pages['arm-dashboard'].on_page_load = function (wrapper) {
 	frappe.arm_dashboard.init();
 }
 
+const ARM_DEFAULT_COMPANY = 'PRASTARA DECORATION DESIGN\u00A0L.L.C';
+
 class ARMDashboard {
 	constructor(wrapper, page) {
 		this.wrapper = wrapper;
@@ -28,7 +30,7 @@ class ARMDashboard {
 		this.cache_duration = 5 * 60 * 1000; // 5 minutes cache
 		this.last_loaded = null;
 		this.filters = {
-			company: '',
+			company: ARM_DEFAULT_COMPANY,
 			customer: '',
 			branch: '',
 			account_incharge: '',
@@ -6663,24 +6665,9 @@ class ARMDashboard {
 	get_allowed_company_configs() {
 		return [
 			{
-				name: 'METROPLUS ADVERTISING LLC',
-				abbr: 'Metroplus',
-				logo_url: 'https://logo.clearbit.com/metroplusads.com'
-			},
-			{
-				name: 'LED WORLD LLC',
-				abbr: 'LED World',
-				logo_url: 'https://logo.clearbit.com/ledworld.com'
-			},
-			{
-				name: 'LEXA LIFESTYLE TRADING L.L.C',
-				abbr: 'Lexa',
-				logo_url: 'https://logo.clearbit.com/lexalifestyle.com'
-			},
-			{
-				name: 'IHG BRANDS LIGHTING LLC',
-				abbr: 'IHG',
-				logo_url: 'https://logo.clearbit.com/ihgbrands.com'
+				name: ARM_DEFAULT_COMPANY,
+				abbr: 'Prastara',
+				logo_url: ''
 			}
 		];
 	}
@@ -6779,6 +6766,13 @@ class ARMDashboard {
 	}
 
 	show_company_selection_modal() {
+		if (!this.filters.company) {
+			this.filters.company = ARM_DEFAULT_COMPANY;
+		}
+		this.sync_company_filter_controls(this.filters.company);
+		this.reload_section_data_for_active_filters();
+		return;
+
 		if ($('#arm-company-selection-backdrop').length) {
 			return;
 		}
@@ -20782,12 +20776,11 @@ class ARMDashboard {
 						this.credit_limit_metadata_cache.clear();
 						this.reload_section_data_for_active_filters();
 					} else {
-						this.sync_company_filter_controls('');
-						this.reset_company_dependent_filters();
-						this.data = [];
-						this.filtered_data = [];
-						this.refresh_customer_quick_panel({ clearSelection: true });
-						this.show_company_selection_modal();
+						this.filters.company = ARM_DEFAULT_COMPANY;
+						this.sync_company_filter_controls(this.filters.company);
+						this.data_cache.clear();
+						this.credit_limit_metadata_cache.clear();
+						this.reload_section_data_for_active_filters();
 					}
 				}
 			},
@@ -21196,23 +21189,17 @@ class ARMDashboard {
 	}
 
 	load_default_data() {
-		if (this.filters.company) {
-			this.load_data();
-		} else {
-			this.data = [];
-			this.filtered_data = [];
-			this.refresh_customer_quick_panel({ clearSelection: true });
-			this.show_company_selection_modal();
+		if (!this.filters.company) {
+			this.filters.company = ARM_DEFAULT_COMPANY;
 		}
+		this.sync_company_filter_controls(this.filters.company);
+		this.load_data();
 	}
 
 	load_data() {
 		if (!this.filters.company) {
-			this.data = [];
-			this.filtered_data = [];
-			this.refresh_customer_quick_panel({ clearSelection: true });
-			this.show_company_selection_modal();
-			return;
+			this.filters.company = ARM_DEFAULT_COMPANY;
+			this.sync_company_filter_controls(this.filters.company);
 		}
 
 		// Prevent multiple simultaneous calls

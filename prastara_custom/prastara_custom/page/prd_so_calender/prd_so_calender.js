@@ -3816,13 +3816,13 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
     fetchSalesTeamPerformanceDetails(fromDate, toDate) {
         return new Promise((resolve) => {
             frappe.call({
-                method: 'prastara_custom.controller.variant_pricing.get_sales_order_basic',
+                method: 'prastara_custom.controller.variant_pricing.get_sales_data',
                 args: {
-                    filters: {
+                    filters: JSON.stringify({
                         from_date: fromDate,
                         to_date: toDate,
                         company: 'METROPLUS ADVERTISING LLC'
-                    }
+                    })
                 },
                 callback: (r) => {
                     const rows = Array.isArray(r?.message) ? r.message : [];
@@ -3866,7 +3866,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
         const rowsHtml = sortedRows.map(row => {
             const salesPerson = escapeHtml(row.sales_person || 'Unknown');
             const team = escapeHtml(row.sales_team || 'No Team');
-            const imageSrc = escapeHtml(row.employee_image || '/assets/frappe/images/ui/avatar.png');
+            const imageSrc = escapeHtml(row.employee_image || '/assets/frappe/images/default-avatar.png');
             const target = this.toNumber(row.total_target);
             const actualSales = this.toNumber(row.total_sales);
             const remainingToBill = Math.max(
@@ -3894,7 +3894,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
                             <img src="${imageSrc}"
                                  alt="${salesPerson}"
                                  style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-light);"
-                                 onerror="this.src='/assets/frappe/images/ui/avatar.png'">
+                                 onerror="this.src='/assets/frappe/images/default-avatar.png'">
                             <span style="font-weight: 600;">${salesPerson}</span>
                         </div>
                     </td>
@@ -4932,7 +4932,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
                     overdue_count: 0,
                     avg_completion: 0,
                     efficiency_score: 0,
-                    image: order.sales_person_image || '/assets/frappe/images/ui/avatar.png'
+                    image: order.sales_person_image || '/assets/frappe/images/default-avatar.png'
                 };
             }
             groups[salesPerson].orders.push(order);
@@ -4941,7 +4941,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
             groups[salesPerson].avg_completion += (parseFloat(order.per_billed || 0) + parseFloat(order.per_delivered || 0)) / 2;
             if (order.due_days < 0) groups[salesPerson].overdue_count++;
 
-            if (order.sales_person_image && order.sales_person_image !== '/assets/frappe/images/ui/avatar.png') {
+            if (order.sales_person_image && order.sales_person_image !== '/assets/frappe/images/default-avatar.png') {
                 groups[salesPerson].image = order.sales_person_image;
             }
         });
@@ -5680,7 +5680,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
                     <div class="metric-card-modern">
                         <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4);">
                             <img src="${sp.image}" style="width: 50px; height: 50px; border-radius: var(--radius-full); object-fit: cover; border: 3px solid var(--primary);" 
-                                 onerror="this.src='/assets/frappe/images/ui/avatar.png'">
+                                 onerror="this.src='/assets/frappe/images/default-avatar.png'">
                             <div>
                                 <div style="font-weight: 700; color: var(--text);">${sp.name}</div>
                                 <div style="font-size: 0.875rem; color: var(--text-muted);">${sp.orders.length} orders</div>
@@ -5729,7 +5729,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
                         <td>
                             <div style="display: flex; align-items: center; gap: var(--space-3);">
                                 <img src="${sp.image}" style="width: 35px; height: 35px; border-radius: var(--radius-full); object-fit: cover;"
-                                     onerror="this.src='/assets/frappe/images/ui/avatar.png'">
+                                     onerror="this.src='/assets/frappe/images/default-avatar.png'">
                                 <strong>${sp.name}</strong>
                             </div>
                         </td>
@@ -6087,7 +6087,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
             const ownerUser = (projectMeta[roleConfig.userField] || '').trim();
             const ownerKey = hasTaggedProject ? (ownerUser || 'unassigned') : 'unassigned_no_project';
             const ownerName = projectMeta[roleConfig.nameField] || ownerUser || 'Unassigned';
-            const ownerImage = projectMeta[roleConfig.imageField] || '/assets/frappe/images/ui/avatar.png';
+            const ownerImage = projectMeta[roleConfig.imageField] || '/assets/frappe/images/default-avatar.png';
 
             if (!owners[ownerKey]) {
                 owners[ownerKey] = {
@@ -6792,7 +6792,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
             <div class="table-modern-container" style="box-shadow: none; margin: 0;">
                 <div class="table-modern-header" style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); flex-wrap: wrap;">
                     <div style="display: flex; align-items: center; gap: var(--space-4);">
-                        <img src="${this.escapeHtml(owner.owner_image || '/assets/frappe/images/ui/avatar.png')}" alt="${this.escapeHtml(owner.owner_name || 'Unassigned')}" style="width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(100, 116, 139, 0.18);" onerror="this.src='/assets/frappe/images/ui/avatar.png'">
+                        <img src="${this.escapeHtml(owner.owner_image || '/assets/frappe/images/default-avatar.png')}" alt="${this.escapeHtml(owner.owner_name || 'Unassigned')}" style="width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(100, 116, 139, 0.18);" onerror="this.src='/assets/frappe/images/default-avatar.png'">
                         <div>
                             <div class="table-modern-title" style="margin: 0;">${this.escapeHtml(owner.owner_name || 'Unassigned')}</div>
                             <div style="font-size: 0.85rem; color: var(--text-muted);">${this.escapeHtml(owner.owner_user || 'No linked user')}</div>
@@ -6961,7 +6961,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
         }).join('');
 
         const cardsHtml = owners.map((owner) => {
-            const ownerImage = this.escapeHtml(owner.owner_image || '/assets/frappe/images/ui/avatar.png');
+            const ownerImage = this.escapeHtml(owner.owner_image || '/assets/frappe/images/default-avatar.png');
             const ownerName = this.escapeHtml(owner.owner_name || 'Unassigned');
             const ownerUser = this.escapeHtml(owner.owner_user || 'Unassigned');
 
@@ -6971,7 +6971,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
                     data-owner-key="${this.escapeHtml(owner.key)}"
                     style="text-align: left; border: 1px solid var(--border-light); background: var(--surface-card); border-radius: var(--radius-xl); padding: var(--space-5); box-shadow: var(--shadow-sm); transition: var(--transition-fast); display: flex; flex-direction: column; gap: var(--space-4); cursor: pointer;">
                     <div style="display: flex; align-items: center; gap: var(--space-4);">
-                        <img src="${ownerImage}" alt="${ownerName}" style="width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(100, 116, 139, 0.18);" onerror="this.src='/assets/frappe/images/ui/avatar.png'">
+                        <img src="${ownerImage}" alt="${ownerName}" style="width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(100, 116, 139, 0.18);" onerror="this.src='/assets/frappe/images/default-avatar.png'">
                         <div style="min-width: 0;">
                             <div style="font-size: 1rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${ownerName}</div>
                             <div style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${ownerUser}</div>
@@ -7781,7 +7781,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
     fetchDisputeOverviewData() {
         return new Promise((resolve) => {
             frappe.call({
-                method: 'prastara_custom.api.get_prd_dispute_overview',
+                method: 'prastara_custom.prastara_custom.page.prd_so_calender.prd_so_calender.get_prd_dispute_overview',
                 args: { company: 'METROPLUS ADVERTISING LLC' },
                 callback: (r) => {
                     if (r.message && r.message.status === 'success') {
@@ -8040,7 +8040,7 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
     fetchIssueOverviewData() {
         return new Promise((resolve) => {
             frappe.call({
-                method: 'prastara_custom.api.get_prd_issue_overview',
+                method: 'prastara_custom.prastara_custom.page.prd_so_calender.prd_so_calender.get_prd_issue_overview',
                 args: { company: 'METROPLUS ADVERTISING LLC' },
                 callback: (r) => {
                     if (r.message && r.message.status === 'success') {
@@ -10725,9 +10725,9 @@ box-shadow: rgba(0, 0, 0, 0.15) 0px 15px 25px, rgba(0, 0, 0, 0.05) 0px 5px 10px;
             <div style="display: grid; gap: var(--space-4);">
                 ${salesTeam.map(member => `
                     <div class="team-member-card">
-                        <img src="${member.image || '/assets/frappe/images/ui/avatar.png'}" 
+                        <img src="${member.image || '/assets/frappe/images/default-avatar.png'}" 
                              class="team-member-image" 
-                             onerror="this.src='/assets/frappe/images/ui/avatar.png'">
+                             onerror="this.src='/assets/frappe/images/default-avatar.png'">
                         <div style="flex: 1;">
                             <div style="font-weight: 700; color: var(--text); margin-bottom: var(--space-1);">
                                 ${member.employee_name || member.sales_person}

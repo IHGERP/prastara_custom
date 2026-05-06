@@ -336,6 +336,7 @@ def get_project_sales_order_overview(company=None):
         }
 
 
+@frappe.whitelist()
 def get_project_owner_mapping(company=None):
     """Return project role mapping for Project Owner dashboard tab."""
     try:
@@ -452,6 +453,129 @@ def get_project_owner_mapping(company=None):
                     "assigned_projects": 0,
                     "unassigned_projects": 0,
                     "total_owners": 0,
+                },
+            },
+        }
+
+
+@frappe.whitelist()
+def get_prd_dispute_overview(company=None):
+    """Return dispute list linked to projects or sales orders for the selected company."""
+    try:
+        company = (company or "").strip() or "PRASTARA DECORATION DESIGN L.L.C"
+        disputes = frappe.db.sql(
+            """
+            SELECT
+                d.name AS dispute_id,
+                d.customer,
+                d.project,
+                d.sales_order,
+                d.status,
+                d.reason,
+                d.company,
+                d.creation,
+                IFNULL(p.status, '') AS project_status
+            FROM `tabDispute` d
+            LEFT JOIN `tabProject` p ON p.name = d.project
+            WHERE d.company = %s
+            ORDER BY d.creation DESC
+            """,
+            (company,),
+            as_dict=True,
+        )
+
+        total_disputes = len(disputes)
+        open_disputes = sum(
+            1
+            for d in disputes
+            if (d.get("status") or "") not in ("Resolved", "Closed", "Cancelled")
+        )
+        resolved_disputes = total_disputes - open_disputes
+
+        return {
+            "status": "success",
+            "data": {
+                "disputes": disputes,
+                "summary": {
+                    "total_disputes": total_disputes,
+                    "open_disputes": open_disputes,
+                    "resolved_disputes": resolved_disputes,
+                },
+            },
+        }
+    except Exception as exc:
+        frappe.log_error(frappe.get_traceback(), "PRD SO Calendar Dispute Overview Error")
+        return {
+            "status": "error",
+            "message": str(exc),
+            "data": {
+                "disputes": [],
+                "summary": {
+                    "total_disputes": 0,
+                    "open_disputes": 0,
+                    "resolved_disputes": 0,
+                },
+            },
+        }
+
+
+@frappe.whitelist()
+def get_prd_issue_overview(company=None):
+    """Return issue list linked to projects or sales orders for the selected company."""
+    try:
+        company = (company or "").strip() or "PRASTARA DECORATION DESIGN L.L.C"
+        issues = frappe.db.sql(
+            """
+            SELECT
+                i.name AS issue_id,
+                i.subject,
+                i.customer_name,
+                i.project,
+                i.custom_sales_order,
+                i.opening_date,
+                i.status,
+                i.priority,
+                i.company,
+                IFNULL(p.status, '') AS project_status
+            FROM `tabIssue` i
+            LEFT JOIN `tabProject` p ON p.name = i.project
+            WHERE i.company = %s
+            ORDER BY i.opening_date DESC, i.creation DESC
+            """,
+            (company,),
+            as_dict=True,
+        )
+
+        total_issues = len(issues)
+        open_issues = sum(
+            1
+            for i in issues
+            if (i.get("status") or "") not in ("Closed", "Resolved", "Cancelled")
+        )
+        resolved_issues = total_issues - open_issues
+
+        return {
+            "status": "success",
+            "data": {
+                "issues": issues,
+                "summary": {
+                    "total_issues": total_issues,
+                    "open_issues": open_issues,
+                    "resolved_issues": resolved_issues,
+                },
+            },
+        }
+    except Exception as exc:
+        frappe.log_error(frappe.get_traceback(), "PRD SO Calendar Issue Overview Error")
+        return {
+            "status": "error",
+            "message": str(exc),
+            "data": {
+                "issues": [],
+                "summary": {
+                    "total_issues": 0,
+                    "open_issues": 0,
+                    "resolved_issues": 0,
                 },
             },
         }
