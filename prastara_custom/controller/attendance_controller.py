@@ -261,7 +261,14 @@ def tardiness_attendance(attendance, method):
 			else:
 				attendance.early_mins = 0
 
-		if attendance.late_min or attendance.early_mins:
+		# if attendance.late_min or attendance.early_mins:
+		# 	attendance.total_missed_hours = float(attendance.late_min) + float(attendance.early_mins)
+
+		flexible_timing = frappe.db.get_value("Employee", attendance.employee, "flexible_timing") or 0
+
+		if cint(flexible_timing):
+			attendance.total_missed_hours = 0
+		elif attendance.late_min or attendance.early_mins:
 			attendance.total_missed_hours = float(attendance.late_min) + float(attendance.early_mins)
 
 	#frappe.errprint(actual_in)
