@@ -1,160 +1,213 @@
-# Copyright (c) 2023, Frappe Technologies Pvt. Ltd. and contributors
-# For license information, please see license.txt
-
 from __future__ import unicode_literals
 import frappe
 from frappe import _
 from datetime import date
-from datetime import timedelta,datetime
+
 
 def execute(filters=None):
+	filters = filters or {}
+
+	columns = get_columns()
 	data = []
-	columns = []
-	list1 = []
-	
-	if filters.get("branch") and filters.get("from_date") and  filters.get("to_date"):
-		documents = frappe.db.sql("""SELECT si.branch,sp.mode_of_payment,sp.amount FROM `tabSales Invoice` si INNER JOIN `tabSales Invoice Payment` sp ON si.name = sp.parent WHERE  si.posting_date BETWEEN %s and %s and si.docstatus=1 and si.branch = %s """,(filters.get("from_date"),filters.get("to_date"),filters.get("branch")),as_dict = True)
-		document = frappe.db.sql("""SELECT py.name,py.posting_date,py.pos_profile,py.mode_of_payment,py.paid_amount,po.branch FROM `tabPayment Entry` py INNER JOIN `tabPOS Profile` po ON py.pos_profile = po.name WHERE  py.posting_date BETWEEN %s and %s and py.payment_type="Receive" and py.docstatus = 1 and po.branch = %s """,(filters.get("from_date"),filters.get("to_date"),filters.get("branch")),as_dict = True)
-	
-	else:
-		documents = frappe.db.sql("""SELECT si.branch,sp.mode_of_payment,sp.amount FROM `tabSales Invoice` si INNER JOIN `tabSales Invoice Payment` sp ON si.name = sp.parent WHERE  si.posting_date BETWEEN %s and %s and si.docstatus=1 """,(filters.get("from_date"),filters.get("to_date")),as_dict = True)
-		document = frappe.db.sql("""SELECT py.name,py.posting_date,py.pos_profile,py.mode_of_payment,py.paid_amount,po.branch FROM `tabPayment Entry` py INNER JOIN `tabPOS Profile` po ON py.pos_profile = po.name WHERE  py.posting_date BETWEEN %s and %s and py.payment_type="Receive" and py.docstatus = 1 """,(filters.get("from_date"),filters.get("to_date")),as_dict = True)
-	
+
+	from_date = filters.get("from_date")
+	to_date = filters.get("to_date")
+	branch = filters.get("branch")
+	company = filters.get("company")
+
+	if not from_date or not to_date:
+		return columns, data
+
+	si_conditions = [
+		"si.posting_date BETWEEN %s AND %s",
+		"si.docstatus = 1",
+	]
+	si_values = [from_date, to_date]
+
+	pe_conditions = [
+		"py.posting_date BETWEEN %s AND %s",
+		"py.payment_type = 'Receive'",
+		"py.docstatus = 1",
+	]
+	pe_values = [from_date, to_date]
+
+	if branch:
+		si_conditions.append("si.branch = %s")
+		si_values.append(branch)
+
+		pe_conditions.append("COALESCE(po.branch, py.custom_branch) = %s")
+		pe_values.append(branch)
+
+	if company:
+		si_conditions.append("si.company = %s")
+		si_values.append(company)
+
+		pe_conditions.append("py.company = %s")
+		pe_values.append(company)
+
+	documents = frappe.db.sql(
+		"""
+		SELECT
+			si.posting_date,
+			si.company,
+			si.branch,
+			sp.mode_of_payment,
+			sp.amount
+		FROM `tabSales Invoice` si
+		INNER JOIN `tabSales Invoice Payment` sp
+			ON si.name = sp.parent
+		WHERE {conditions}
+		""".format(conditions=" AND ".join(si_conditions)),
+		si_values,
+		as_dict=True,
+	)
+
+	payment_entries = frappe.db.sql(
+		"""
+		SELECT
+			py.name,
+			py.posting_date,
+			py.creation,
+			py.company,
+			py.pos_profile,
+			COALESCE(po.branch, py.custom_branch) AS branch,
+			py.mode_of_payment,
+			py.paid_amount
+		FROM `tabPayment Entry` py
+		LEFT JOIN `tabPOS Profile` po
+			ON py.pos_profile = po.name
+		WHERE {conditions}
+		""".format(conditions=" AND ".join(pe_conditions)),
+		pe_values,
+		as_dict=True,
+	)
+
+	grouped = {}
 	today = date.today()
-	creation_doc  = (frappe.db.get_list('Payment Entry', filters=[['posting_date', 'between', [filters.get("from_date"),filters.get("to_date")]]],fields = "*"))
-	
-	if len(documents or document or creation_doc)!= 0:
-		for i in range(len(documents)):
-			if documents[i].branch not in list1:
-				list1.append(documents[i].branch)
-		for j in range(len(document)):
-			if document[j].branch not in list1:
-				list1.append(document[j].branch)
-		for m  in range(len(creation_doc)):
-			if(creation_doc[m].docstatus == 1):
-				if filters.get("branch"):
-					doc = frappe.db.get_value("POS Profile",{"name":creation_doc[m].pos_profile,"branch":filters.get("branch")},"branch")
-				else:
-					doc = frappe.db.get_value("POS Profile",{"name":creation_doc[m].pos_profile,},"branch")
-				if doc not in list1:
-					list1.append(doc) 
-		
-		for k in list1:
-			cash = card = wired_transfer = credit = cheque = pdc =  0
-			dict = {}
-			for i in range(len(documents)):
-				if k == documents[i].branch:
-					
-					if ("Cash" in documents[i].mode_of_payment):
-						cash += documents[i].amount
-					elif ("Card" in documents[i].mode_of_payment):
-						card += documents[i].amount
-					elif ("Cheque" in documents[i].mode_of_payment):
-						cheque += documents[i].amount
-					elif ("Credit" in documents[i].mode_of_payment):
-						credit += documents[i].amount
-					elif ("Wire Transfer" in documents[i].mode_of_payment):
-							wired_transfer += documents[i].paid_amount
 
-					
-			for j in range(len(document)):
-				if k == document[j].branch:
-					if document[j].pos_profile:
-						if (document[j].mode_of_payment):
-							if ("Cash" in document[j].mode_of_payment):
-								cash += document[j].paid_amount
-							elif ("Card" in document[j].mode_of_payment):
-								card += document[j].paid_amount
-							elif ("Credit" in document[j].mode_of_payment):
-								credit += document[j].paid_amount
-							elif ("Wire Transfer" in document[j].mode_of_payment):
-								wired_transfer += document[j].paid_amount
+	def get_row(company, branch):
+		key = (company or "", branch or "")
+		if key not in grouped:
+			grouped[key] = {
+				"company": company,
+				"branch": branch,
+				"cash": 0,
+				"card": 0,
+				"cheque": 0,
+				"pdc": 0,
+				"wired_transfer": 0,
+				"credit": 0,
+				"total": 0,
+			}
+		return grouped[key]
 
-			for m in range(len(creation_doc)):
-				if(creation_doc[m].docstatus == 1):
-					doc = frappe.db.get_value("POS Profile",{"name":creation_doc[m].pos_profile,},"branch")
-					if k == doc:
-						if creation_doc[m].pos_profile:
-							if (creation_doc[m].mode_of_payment):
-								if ("Cheque" in creation_doc[m].mode_of_payment):
-									
-									if creation_doc[m].posting_date > (creation_doc[m].creation).date():
-										if creation_doc[m].posting_date > today:
-											pdc += creation_doc[m].paid_amount									
-										else:
-											cheque += creation_doc[m].paid_amount
-									else:
-										cheque += creation_doc[m].paid_amount
-					
-										
-			if k:
-				dict['branch'] = k
-				dict['cash'] = cash	
-				dict['card'] = card	
-				dict['pdc'] = pdc	
-				dict['cheque'] = cheque		
-				dict['credit'] = credit		
-				dict['wired_transfer'] = wired_transfer
-				dict['total'] = cash + 	card +	pdc + cheque + credit + wired_transfer
-				data.append(dict)
-		
-	
-	columns =  [
-		{
-			'fieldname': 'branch',
-			'label': _('Branch'),
-			'fieldtype': 'Link',
-			'options':'Branch',
-			'width':159
-		},
-		{
-			'fieldname': 'cash',
-			'label': _('Cash'),
-			'fieldtype': 'Float',
-			'width':150
-			
-		},
+	for row in documents:
+		out = get_row(row.company, row.branch)
+		mode = row.mode_of_payment or ""
+		amount = row.amount or 0
 
-		{
-			'fieldname': 'card',
-			'label': _('Card'),
-			'fieldtype': 'Float',
-			'width':150
-		},
-		{
-			'fieldname': 'cheque',
-			'label': _('Cheque'),
-			'fieldtype': 'Float',
-			'width':150
-			
-		},
-		{
-			'fieldname': 'pdc',
-			'label': _('PDC'),
-			'fieldtype': 'Float',
-			'width':150
-			
-		},
-		{
-			'fieldname': 'wired_transfer',
-			'label': _('Wired Transfer'),
-			'fieldtype': 'Float',
-			'width':150
-		},
-		{
-			'fieldname': 'credit',
-			'label': _('Credit'),
-			'fieldtype': 'Float',
-			'width':150
-		},
-		{
-			'fieldname': 'total',
-			'label': _('Total'),
-			'fieldtype': 'Float',
-			'width':150
-		},
+		if "Cash" in mode:
+			out["cash"] += amount
+		elif "Card" in mode:
+			out["card"] += amount
+		elif "Cheque" in mode:
+			out["cheque"] += amount
+		elif "Credit" in mode:
+			out["credit"] += amount
+		elif "Wire Transfer" in mode:
+			out["wired_transfer"] += amount
 
+	for row in payment_entries:
+		out = get_row(row.company, row.branch)
+		mode = row.mode_of_payment or ""
+		amount = row.paid_amount or 0
 
-   ]
+		if "Cash" in mode:
+			out["cash"] += amount
+		elif "Card" in mode:
+			out["card"] += amount
+		elif "Credit" in mode:
+			out["credit"] += amount
+		elif "Wire Transfer" in mode:
+			out["wired_transfer"] += amount
+		elif "Cheque" in mode:
+			if row.posting_date and row.creation and row.posting_date > row.creation.date() and row.posting_date > today:
+				out["pdc"] += amount
+			else:
+				out["cheque"] += amount
+
+	for row in grouped.values():
+		row["total"] = (
+			row["cash"]
+			+ row["card"]
+			+ row["cheque"]
+			+ row["pdc"]
+			+ row["wired_transfer"]
+			+ row["credit"]
+		)
+		data.append(row)
+
+	data = sorted(data, key=lambda d: (d.get("company") or "", d.get("branch") or ""))
+
 	return columns, data
 
+
+def get_columns():
+	return [
+		{
+			"fieldname": "company",
+			"label": _("Company"),
+			"fieldtype": "Link",
+			"options": "Company",
+			"width": 180,
+		},
+		{
+			"fieldname": "branch",
+			"label": _("Branch"),
+			"fieldtype": "Link",
+			"options": "Branch",
+			"width": 160,
+		},
+		{
+			"fieldname": "cash",
+			"label": _("Cash"),
+			"fieldtype": "Float",
+			"width": 130,
+		},
+		{
+			"fieldname": "card",
+			"label": _("Card"),
+			"fieldtype": "Float",
+			"width": 130,
+		},
+		{
+			"fieldname": "cheque",
+			"label": _("Cheque"),
+			"fieldtype": "Float",
+			"width": 130,
+		},
+		{
+			"fieldname": "pdc",
+			"label": _("PDC"),
+			"fieldtype": "Float",
+			"width": 130,
+		},
+		{
+			"fieldname": "wired_transfer",
+			"label": _("Wired Transfer"),
+			"fieldtype": "Float",
+			"width": 150,
+		},
+		{
+			"fieldname": "credit",
+			"label": _("Credit"),
+			"fieldtype": "Float",
+			"width": 130,
+		},
+		{
+			"fieldname": "total",
+			"label": _("Total"),
+			"fieldtype": "Float",
+			"width": 140,
+		},
+	]
